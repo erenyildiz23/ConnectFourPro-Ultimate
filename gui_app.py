@@ -1,6 +1,12 @@
 # =============================================================================
 # MODÜL: gui_app.py
 # =============================================================================
+# GÜNCELLEME: Komut satırından sunucu URL'i alabilir
+# Kullanım:
+#   python gui_app.py                              # localhost:5000 (varsayılan)
+#   python gui_app.py http://localhost:5000        # açık localhost
+#   python gui_app.py https://abc123.ngrok-free.app # ngrok URL
+# =============================================================================
 
 import pygame
 import sys
@@ -19,7 +25,18 @@ SQUARESIZE=100
 WIDTH=COLS*SQUARESIZE + 250 
 HEIGHT=(ROWS+1)*SQUARESIZE
 RADIUS=44
-SERVER_URL='http://localhost:5000'
+
+# --- SUNUCU URL AYARI ---
+# Komut satırından parametre verilmişse onu kullan, yoksa localhost
+if len(sys.argv) > 1:
+    SERVER_URL = sys.argv[1]
+    # URL formatı kontrolü
+    if not SERVER_URL.startswith('http'):
+        SERVER_URL = 'http://' + SERVER_URL
+    print(f"[CONFIG] Uzak sunucuya bağlanılıyor: {SERVER_URL}")
+else:
+    SERVER_URL = 'http://localhost:5000'
+    print(f"[CONFIG] Yerel sunucuya bağlanılıyor: {SERVER_URL}")
 
 # --- UI YARDIMCILARI ---
 
@@ -62,45 +79,70 @@ class InputBox:
 
 class NetworkClient:
     def __init__(self, gui):
-        self.sio = socketio.Client()
+        self.sio = socketio.Client(reconnection=True, reconnection_attempts=5, reconnection_delay=1)
         self.gui = gui; self.connected = False; self.user_data = None
         
-        self.sio.on('connect', lambda: setattr(self, 'connected', True))
+        self.sio.on('connect', self._on_connect)
+        self.sio.on('disconnect', self._on_disconnect)
         self.sio.on('game_created', self.on_created)
         self.sio.on('game_joined', self.on_joined)
         self.sio.on('game_start', self.on_start)
         self.sio.on('move_made', self.on_move)
         self.sio.on('error', lambda d: setattr(self.gui, 'status_message', d['msg']))
 
+    def _on_connect(self):
+        self.connected = True
+        print(f"[SOCKET] Bağlantı kuruldu: {SERVER_URL}")
+        
+    def _on_disconnect(self):
+        self.connected = False
+        print("[SOCKET] Bağlantı kesildi")
+
     def login(self, u, p):
         try:
-            r = requests.post(f"{SERVER_URL}/login", json={'username':u, 'password':p})
+            r = requests.post(f"{SERVER_URL}/login", json={'username':u, 'password':p}, timeout=10)
             if r.status_code==200: self.user_data=r.json()['user']; return True
-            self.gui.status_message = r.json().get('error', 'Fail')
-        except: self.gui.status_message = "No Server"; return False
+            self.gui.status_message = r.json().get('error', 'Giriş başarısız')
+        except requests.exceptions.Timeout:
+            self.gui.status_message = "Sunucu yanıt vermiyor"
+        except requests.exceptions.ConnectionError:
+            self.gui.status_message = "Sunucuya bağlanılamıyor"
+        except Exception as e: 
+            self.gui.status_message = f"Hata: {str(e)[:30]}"
+        return False
 
     def register(self, u, p):
         try:
-            r = requests.post(f"{SERVER_URL}/signup", json={'username':u, 'password':p})
-            if r.status_code==201: self.gui.status_message="Created!"; return True
-            self.gui.status_message = r.json().get('error', 'Fail')
-        except: self.gui.status_message = "No Server"; return False
+            r = requests.post(f"{SERVER_URL}/signup", json={'username':u, 'password':p}, timeout=10)
+            if r.status_code==201: self.gui.status_message="Hesap oluşturuldu!"; return True
+            self.gui.status_message = r.json().get('error', 'Kayıt başarısız')
+        except requests.exceptions.Timeout:
+            self.gui.status_message = "Sunucu yanıt vermiyor"
+        except requests.exceptions.ConnectionError:
+            self.gui.status_message = "Sunucuya bağlanılamıyor"
+        except Exception as e: 
+            self.gui.status_message = f"Hata: {str(e)[:30]}"
+        return False
 
     def get_leaderboard(self):
-        try: return requests.get(f"{SERVER_URL}/leaderboard").json()
+        try: return requests.get(f"{SERVER_URL}/leaderboard", timeout=10).json()
         except: return []
 
     def get_active_games(self):
         try:
-            r = requests.get(f"{SERVER_URL}/active_games")
+            r = requests.get(f"{SERVER_URL}/active_games", timeout=10)
             if r.status_code == 200: return r.json()
         except: pass
         return []
 
     def connect_socket(self): 
         if not self.connected: 
-            try: self.sio.connect(SERVER_URL)
-            except: pass
+            try: 
+                print(f"[SOCKET] Bağlanılıyor: {SERVER_URL}")
+                self.sio.connect(SERVER_URL, transports=['websocket', 'polling'], wait_timeout=10)
+            except Exception as e:
+                print(f"[SOCKET] Bağlantı hatası: {e}")
+                self.gui.status_message = "Socket bağlantısı başarısız"
 
     # Socket Callbacks
     def on_created(self, d): 
@@ -116,7 +158,7 @@ class NetworkClient:
         self.gui.is_spectator = (role == 'spectator')
         
         if self.gui.is_spectator:
-            self.gui.status_message = "IZLEYICI MODU"
+            self.gui.status_message = "İZLEYİCİ MODU"
             self.gui.start_online_game(True)
             if 'current_state' in d:
                 self.gui.game_core.from_dict(d['current_state'])
@@ -156,7 +198,7 @@ class GUI:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Connect 4 Pro - Distributed System")
+        pygame.display.set_caption(f"Connect 4 Pro - {SERVER_URL}")
         self.font = pygame.font.SysFont("Arial", 40, bold=True)
         self.small_font = pygame.font.SysFont("Arial", 20)
         self.network = NetworkClient(self)
@@ -166,125 +208,127 @@ class GUI:
         self.game_core = ConnectFourGame()
 
         # Login Ekranı
-        self.in_u = InputBox(250, 200, 300, 50, "kullanici")
-        self.in_p = InputBox(250, 280, 300, 50, "sifre", True)
-        self.btn_log = Button(250, 360, 140, 50, "GIRIS", GREEN)
-        self.btn_reg = Button(410, 360, 140, 50, "KAYIT", BLUE)
+        self.in_u = InputBox(WIDTH//2-100, 200, 200, 40, 'test')
+        self.in_p = InputBox(WIDTH//2-100, 280, 200, 40, 'test', is_password=True)
+        self.btn_log = Button(WIDTH//2-110, 350, 100, 50, "Giriş", GREEN)
+        self.btn_reg = Button(WIDTH//2+10, 350, 100, 50, "Kayıt", BLUE)
         
         # Ana Menü
-        self.btn_menu_pve = Button(150, 200, 400, 60, "YEREL: VS AI", YELLOW)
-        self.btn_menu_net = Button(150, 280, 400, 60, "ONLINE LOBBY", GREEN)
-        self.btn_menu_ldr = Button(150, 360, 400, 60, "LIDERLIK TABLOSU", ORANGE)
+        self.btn_menu_pve = Button(WIDTH//2-100, 200, 200, 60, "vs AI", GREEN)
+        self.btn_menu_net = Button(WIDTH//2-100, 280, 200, 60, "Online", BLUE)
+        self.btn_menu_ldr = Button(WIDTH//2-100, 360, 200, 60, "Liderlik", ORANGE)
         
-        # AI Zorluk Seçimi (Local)
-        self.btn_ai_easy = Button(150, 200, 400, 60, "KOLAY (Depth 2)", GREEN)
-        self.btn_ai_med = Button(150, 280, 400, 60, "ORTA (Depth 4)", YELLOW)
-        self.btn_ai_hard = Button(150, 360, 400, 60, "ZOR (Depth 6)", RED)
+        # AI Seçim
+        self.btn_ai_easy = Button(WIDTH//2-100, 200, 200, 50, "Kolay (D2)", GREEN)
+        self.btn_ai_med = Button(WIDTH//2-100, 270, 200, 50, "Orta (D4)", YELLOW)
+        self.btn_ai_hard = Button(WIDTH//2-100, 340, 200, 50, "Zor (D6)", RED)
         
-        # Lobby Ekranı
-        self.btn_create_pvp = Button(50, 100, 250, 50, "YENI OYUN KUR", BLUE, WHITE)
-        self.btn_refresh = Button(WIDTH-150, 100, 120, 50, "YENILE", ORANGE)
+        # Lobi
+        self.btn_create_pvp = Button(WIDTH//2-100, 80, 200, 50, "Yeni Oyun Kur", GREEN)
+        self.btn_refresh = Button(WIDTH//2+110, 80, 100, 50, "Yenile", GRAY)
         self.room_buttons = []
         
-        # Ortak Butonlar
-        self.btn_back = Button(20, 20, 80, 40, "GERI", GRAY, font_size=18)
-        self.btn_reset = Button(WIDTH//2 - 100, 300, 200, 60, "ANA MENU", BLUE, WHITE)
-
-    def update_lobby_list(self):
-        games = self.network.get_active_games()
-        self.room_buttons = []
-        y = 180
-        for g in games[:7]:
-            color = GREEN if "WAITING" in g['status'] else RED
-            status_text = "KATIL" if "WAITING" in g['status'] else "IZLE"
-            
-            txt = f"[{g['room_id']}] {g['p1']} vs {g['p2']} | {status_text}"
-            btn = Button(50, y, WIDTH-100, 40, txt, color, font_size=18)
-            btn.room_id = g['room_id']
-            self.room_buttons.append(btn)
-            y += 50
-
-    def start_online_game(self, spec):
-        self.game_core = ConnectFourGame()
-        self.game_state = "PLAYING_ONLINE"
-        self.is_spectator = spec
-        my_piece = getattr(self, 'my_online_piece', 0)
-        self.player_color = RED if my_piece == PLAYER1_PIECE else (YELLOW if my_piece == PLAYER2_PIECE else GRAY)
+        # Ortak
+        self.btn_back = Button(20, 20, 80, 40, "Geri", GRAY)
+        self.btn_reset = Button(WIDTH//2-80, 300, 160, 60, "Menüye Dön", GREEN)
+        
+        # Oyun
+        self.room_id = None
+        self.my_online_piece = None
+        self.player_piece = PLAYER1_PIECE
+        self.ai_piece = PLAYER2_PIECE
+        self.ai_engine = None
 
     def start_local_ai(self, depth):
         self.game_core = ConnectFourGame()
-        self.player_color = RED
-        self.player_piece = PLAYER1_PIECE
-        self.ai_piece = PLAYER2_PIECE
+        self.ai_engine = AIEngine(self.ai_piece, depth)
         self.game_state = "PLAYING_AI"
-        self.ai = AIEngine(PLAYER2_PIECE, depth)
-        self.ai_thinking = False
-
+        self.status_message = f"AI Derinlik: {depth}"
+        
+    def start_online_game(self, is_spectator):
+        self.game_core = ConnectFourGame()
+        self.is_spectator = is_spectator
+        self.game_state = "PLAYING_ONLINE"
+        
     def run_ai(self):
         self.ai_thinking = True
-        try:
-            time.sleep(0.5) 
-            col = self.ai.find_best_move(self.game_core)
-            self.ai_move_res = col
-        except Exception as e:
-            print(f"AI Error: {e}")
-        finally:
-            self.ai_thinking = False
+        col = self.ai_engine.get_best_move(self.game_core)
+        self.ai_move_res = col
+        self.ai_thinking = False
+    
+    def update_lobby_list(self):
+        games = self.network.get_active_games()
+        self.room_buttons = []
+        y = 150
+        for g in games:
+            status_txt = "BEKLIYOR" if g['status'] == "WAITING" else "OYUNDA"
+            color = GREEN if g['status'] == "WAITING" else ORANGE
+            btn = Button(WIDTH//2-150, y, 300, 45, f"{g['room_id']} | {g['p1']} vs {g['p2']} [{status_txt}]", color, WHITE, 18)
+            btn.room_id = g['room_id']
+            self.room_buttons.append(btn)
+            y += 55
 
     def draw_history_panel(self):
-        panel_rect = pygame.Rect(COLS*SQUARESIZE, 0, 250, HEIGHT)
-        pygame.draw.rect(self.screen, (40, 40, 45), panel_rect)
-        pygame.draw.line(self.screen, WHITE, (COLS*SQUARESIZE, 0), (COLS*SQUARESIZE, HEIGHT), 2)
+        panel_x = COLS * SQUARESIZE + 10
+        pygame.draw.rect(self.screen, (30, 30, 40), (panel_x, 0, 240, HEIGHT))
         
-        self.screen.blit(self.font.render("HAMLELER", True, WHITE), (COLS*SQUARESIZE + 40, 20))
+        # Başlık
+        title = self.small_font.render("HAMLE GEÇMİŞİ", True, WHITE)
+        self.screen.blit(title, (panel_x + 60, 10))
         
-        moves = self.game_core.move_history
-        start_idx = max(0, len(moves) - 15)
-        y = 80
-        for i in range(start_idx, len(moves)):
-            color = RED if i % 2 == 0 else YELLOW
-            p_name = "P1" if i % 2 == 0 else "P2"
-            txt = f"{i+1}. {p_name} -> Sutun {moves[i]}"
-            self.screen.blit(self.small_font.render(txt, True, color), (COLS*SQUARESIZE + 20, y))
-            y += 30
+        # Durum
+        status_color = GREEN if "BAŞLADI" in self.status_message else YELLOW
+        status = self.small_font.render(self.status_message[:25], True, status_color)
+        self.screen.blit(status, (panel_x + 10, 40))
+        
+        # Sunucu bilgisi
+        server_short = SERVER_URL.replace('https://', '').replace('http://', '')[:20]
+        server_txt = self.small_font.render(f"Srv: {server_short}", True, GRAY)
+        self.screen.blit(server_txt, (panel_x + 10, HEIGHT - 30))
+        
+        # Hamle listesi
+        y = 70
+        for i, move in enumerate(self.game_core.move_history[-15:]):  # Son 15 hamle
+            player = "🔴" if i % 2 == 0 else "🟡"
+            txt = self.small_font.render(f"{i+1}. {player} Sütun {move+1}", True, WHITE)
+            self.screen.blit(txt, (panel_x + 10, y))
+            y += 25
+            
+        self.btn_back.draw(self.screen)
 
     def draw_board(self):
         self.screen.fill(BLACK)
         
-        # Üst Bar
-        pygame.draw.rect(self.screen, (30,30,30), (0,0,COLS*SQUARESIZE,SQUARESIZE))
-        self.btn_back.draw(self.screen)
+        # Mouse pozisyonu ile önizleme
+        mouse_x = pygame.mouse.get_pos()[0]
+        if mouse_x < COLS * SQUARESIZE:
+            preview_col = mouse_x // SQUARESIZE
+            if not self.is_spectator and self.game_core.is_valid_location(preview_col):
+                color = RED if self.game_core.current_player == PLAYER1_PIECE else YELLOW
+                pygame.draw.circle(self.screen, color, (preview_col * SQUARESIZE + 50, 50), RADIUS, 3)
         
-        # Durum Mesajı
-        info = f"{self.status_message}"
-        if self.is_spectator: info = "[IZLEYICI] " + info
-        self.screen.blit(self.small_font.render(info, True, WHITE), (120, 20))
-        
-        # Tahta Çizimi
+        # Tahta
         for c in range(COLS):
             for r in range(ROWS):
-                vis_r = r
-                rect_y = (vis_r + 1) * SQUARESIZE
-                cx = int(c * SQUARESIZE + 50)
-                cy = int(rect_y + 50)
-                log_r = ROWS - 1 - vis_r
-
-                pygame.draw.rect(self.screen, BLUE, (c*SQUARESIZE, rect_y, SQUARESIZE, SQUARESIZE))
-                pygame.draw.circle(self.screen, BLACK, (cx, cy), RADIUS)
+                pygame.draw.rect(self.screen, BLUE, (c*SQUARESIZE, (r+1)*SQUARESIZE, SQUARESIZE, SQUARESIZE))
                 
-                mask = 1 << (c * (ROWS + 1) + log_r)
-                if self.game_core.bitboards[PLAYER1_PIECE] & mask: 
-                    pygame.draw.circle(self.screen, RED, (cx, cy), RADIUS)
-                elif self.game_core.bitboards[PLAYER2_PIECE] & mask:
-                    pygame.draw.circle(self.screen, YELLOW, (cx, cy), RADIUS)
-
-        # Kazanan Çizgisi
-        if self.game_core.winning_mask:
-            for c in range(COLS):
-                for r in range(ROWS):
-                    if self.game_core.winning_mask & (1 << (c*(ROWS+1)+r)):
-                         y_pos = HEIGHT - int(r*SQUARESIZE + 50)
-                         pygame.draw.circle(self.screen, WHITE, (int(c*SQUARESIZE+50), y_pos), RADIUS+5, 5)
+                piece = self.game_core.get_piece(r, c)
+                if piece == 0:
+                    color = BLACK
+                elif piece == PLAYER1_PIECE:
+                    color = RED
+                else:
+                    color = YELLOW
+                    
+                pygame.draw.circle(self.screen, color, (int(c*SQUARESIZE+50), int((r+1)*SQUARESIZE+50)), RADIUS)
+        
+        # Son hamle vurgusu
+        if self.game_core.move_history:
+            last_col = self.game_core.move_history[-1]
+            last_row = self.game_core.heights[last_col] - 1
+            if 0 <= last_row < ROWS:
+                y_pos = (last_row + 1) * SQUARESIZE + 50
+                pygame.draw.circle(self.screen, WHITE, (int(last_col*SQUARESIZE+50), y_pos), RADIUS+5, 5)
 
         self.draw_history_panel()
         pygame.display.update()
@@ -315,7 +359,7 @@ class GUI:
         
         # Winner ELO
         if self.game_state == "GAME_OVER" and not self.is_spectator and "online" in self.status_message.lower():
-             elo_msg = "ELO Guncellendi (+/- 15)"
+             elo_msg = "ELO Güncellendi (+/- 15)"
              self.screen.blit(self.small_font.render(elo_msg, True, WHITE), (WIDTH//2 - 80, 250))
 
         self.btn_reset.draw(self.screen)
@@ -334,6 +378,11 @@ class GUI:
                 self.in_u.draw(self.screen); self.in_p.draw(self.screen)
                 self.btn_log.draw(self.screen); self.btn_reg.draw(self.screen)
                 self.screen.blit(self.small_font.render(self.status_message, True, RED), (WIDTH//2-50, 430))
+                
+                # Sunucu bilgisi
+                srv_txt = self.small_font.render(f"Sunucu: {SERVER_URL}", True, GRAY)
+                self.screen.blit(srv_txt, (WIDTH//2 - srv_txt.get_width()//2, HEIGHT - 40))
+                
                 pygame.display.update()
                 for e in events:
                     self.in_u.handle_event(e); self.in_p.handle_event(e)
@@ -344,15 +393,15 @@ class GUI:
 
             elif self.game_state == "MENU":
                 self.screen.fill(BLACK)
-                self.screen.blit(self.font.render("ANA MENU", True, WHITE), (WIDTH//2-80, 100))
+                self.screen.blit(self.font.render("ANA MENÜ", True, WHITE), (WIDTH//2-80, 100))
                 self.btn_menu_pve.draw(self.screen); self.btn_menu_net.draw(self.screen); self.btn_menu_ldr.draw(self.screen)
                 if self.network.user_data:
                     u = self.network.user_data
-                    self.screen.blit(self.small_font.render(f"Kullanici: {u['username']} | ELO: {u['rating']}", True, GREEN), (20, HEIGHT-30))
+                    self.screen.blit(self.small_font.render(f"Kullanıcı: {u['username']} | ELO: {u['rating']}", True, GREEN), (20, HEIGHT-30))
                 pygame.display.update()
                 for e in events:
                     if e.type == pygame.MOUSEBUTTONDOWN:
-                        if self.btn_menu_pve.is_clicked(e.pos): self.game_state = "AI_SELECT" # Zorluk Seçimine Git
+                        if self.btn_menu_pve.is_clicked(e.pos): self.game_state = "AI_SELECT"
                         if self.btn_menu_net.is_clicked(e.pos): 
                             self.update_lobby_list()
                             self.game_state = "LOBBY"
@@ -361,7 +410,7 @@ class GUI:
             elif self.game_state == "AI_SELECT":
                 self.screen.fill(BLACK)
                 self.btn_back.draw(self.screen)
-                self.screen.blit(self.font.render("ZORLUK SECIN", True, WHITE), (WIDTH//2-120, 100))
+                self.screen.blit(self.font.render("ZORLUK SEÇİN", True, WHITE), (WIDTH//2-120, 100))
                 self.btn_ai_easy.draw(self.screen); self.btn_ai_med.draw(self.screen); self.btn_ai_hard.draw(self.screen)
                 pygame.display.update()
                 for e in events:
@@ -374,7 +423,7 @@ class GUI:
             elif self.game_state == "LOBBY":
                 self.screen.fill(BLACK)
                 self.btn_back.draw(self.screen)
-                self.screen.blit(self.font.render("OYUN LOBISI", True, WHITE), (WIDTH//2-100, 20))
+                self.screen.blit(self.font.render("OYUN LOBİSİ", True, WHITE), (WIDTH//2-100, 20))
                 
                 self.btn_create_pvp.draw(self.screen)
                 self.btn_refresh.draw(self.screen)
@@ -400,10 +449,10 @@ class GUI:
             elif self.game_state == "LEADERBOARD":
                 self.network.gui = self 
                 self.screen.fill(BLACK); self.btn_back.draw(self.screen)
-                self.screen.blit(self.font.render("EN IYI 10 OYUNCU", True, ORANGE), (WIDTH//2-130, 50))
+                self.screen.blit(self.font.render("EN İYİ 10 OYUNCU", True, ORANGE), (WIDTH//2-130, 50))
                 data = self.network.get_leaderboard(); y = 120
                 
-                header = f"{'SIRA':<5} {'ISIM':<15} {'ELO':<10} {'G.':<5}"
+                header = f"{'SIRA':<5} {'İSİM':<15} {'ELO':<10} {'G.':<5}"
                 self.screen.blit(self.small_font.render(header, True, GRAY), (WIDTH//2-150, y))
                 y += 40
                 for i, p in enumerate(data):
@@ -451,4 +500,8 @@ class GUI:
             
             clock.tick(30)
 
-if __name__ == "__main__": GUI().run()
+if __name__ == "__main__": 
+    print("="*50)
+    print("   CONNECT FOUR PRO - CLIENT")
+    print("="*50)
+    GUI().run()
