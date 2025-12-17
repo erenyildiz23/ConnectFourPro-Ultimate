@@ -1,0 +1,8791 @@
+{
+  "timestamp": "20251212_114420",
+  "test_count": {
+    "latency_tests": 60,
+    "tournament_games": 1000,
+    "scenario_tests": 33
+  },
+  "latency_results": [
+    {
+      "depth": 1,
+      "iteration": 1,
+      "latency_ms": 0.9763380001004407,
+      "nodes_evaluated": 8,
+      "cutoffs": 0,
+      "move_chosen": 3
+    },
+    {
+      "depth": 1,
+      "iteration": 2,
+      "latency_ms": 0.5439639999167412,
+      "nodes_evaluated": 8,
+      "cutoffs": 0,
+      "move_chosen": 3
+    },
+    {
+      "depth": 1,
+      "iteration": 3,
+      "latency_ms": 0.5253599999832659,
+      "nodes_evaluated": 8,
+      "cutoffs": 0,
+      "move_chosen": 3
+    },
+    {
+      "depth": 1,
+      "iteration": 4,
+      "latency_ms": 0.5161260000932089,
+      "nodes_evaluated": 8,
+      "cutoffs": 0,
+      "move_chosen": 3
+    },
+    {
+      "depth": 1,
+      "iteration": 5,
+      "latency_ms": 0.5880310000065947,
+      "nodes_evaluated": 8,
+      "cutoffs": 0,
+      "move_chosen": 3
+    },
+    {
+      "depth": 1,
+      "iteration": 6,
+      "latency_ms": 0.5760080000527523,
+      "nodes_evaluated": 8,
+      "cutoffs": 0,
+      "move_chosen": 3
+    },
+    {
+      "depth": 1,
+      "iteration": 7,
+      "latency_ms": 0.5415640000592248,
+      "nodes_evaluated": 8,
+      "cutoffs": 0,
+      "move_chosen": 4
+    },
+    {
+      "depth": 1,
+      "iteration": 8,
+      "latency_ms": 0.5956179998065636,
+      "nodes_evaluated": 8,
+      "cutoffs": 0,
+      "move_chosen": 4
+    },
+    {
+      "depth": 1,
+      "iteration": 9,
+      "latency_ms": 0.5682450000676909,
+      "nodes_evaluated": 8,
+      "cutoffs": 0,
+      "move_chosen": 2
+    },
+    {
+      "depth": 1,
+      "iteration": 10,
+      "latency_ms": 0.5323379998571909,
+      "nodes_evaluated": 8,
+      "cutoffs": 0,
+      "move_chosen": 2
+    },
+    {
+      "depth": 2,
+      "iteration": 1,
+      "latency_ms": 1.5906039998299093,
+      "nodes_evaluated": 27,
+      "cutoffs": 6,
+      "move_chosen": 3
+    },
+    {
+      "depth": 2,
+      "iteration": 2,
+      "latency_ms": 1.7088629999761906,
+      "nodes_evaluated": 29,
+      "cutoffs": 5,
+      "move_chosen": 2
+    },
+    {
+      "depth": 2,
+      "iteration": 3,
+      "latency_ms": 1.136508999934449,
+      "nodes_evaluated": 21,
+      "cutoffs": 6,
+      "move_chosen": 3
+    },
+    {
+      "depth": 2,
+      "iteration": 4,
+      "latency_ms": 1.977451999891855,
+      "nodes_evaluated": 27,
+      "cutoffs": 5,
+      "move_chosen": 1
+    },
+    {
+      "depth": 2,
+      "iteration": 5,
+      "latency_ms": 3.5495269999046286,
+      "nodes_evaluated": 42,
+      "cutoffs": 6,
+      "move_chosen": 3
+    },
+    {
+      "depth": 2,
+      "iteration": 6,
+      "latency_ms": 2.3050810000313504,
+      "nodes_evaluated": 29,
+      "cutoffs": 6,
+      "move_chosen": 3
+    },
+    {
+      "depth": 2,
+      "iteration": 7,
+      "latency_ms": 4.512410999950589,
+      "nodes_evaluated": 57,
+      "cutoffs": 5,
+      "move_chosen": 6
+    },
+    {
+      "depth": 2,
+      "iteration": 8,
+      "latency_ms": 1.0801309999806108,
+      "nodes_evaluated": 21,
+      "cutoffs": 6,
+      "move_chosen": 3
+    },
+    {
+      "depth": 2,
+      "iteration": 9,
+      "latency_ms": 2.5602789999084052,
+      "nodes_evaluated": 43,
+      "cutoffs": 6,
+      "move_chosen": 3
+    },
+    {
+      "depth": 2,
+      "iteration": 10,
+      "latency_ms": 2.098662999969747,
+      "nodes_evaluated": 37,
+      "cutoffs": 5,
+      "move_chosen": 4
+    },
+    {
+      "depth": 3,
+      "iteration": 1,
+      "latency_ms": 12.174812000012025,
+      "nodes_evaluated": 178,
+      "cutoffs": 19,
+      "move_chosen": 3
+    },
+    {
+      "depth": 3,
+      "iteration": 2,
+      "latency_ms": 11.65997399994012,
+      "nodes_evaluated": 215,
+      "cutoffs": 25,
+      "move_chosen": 3
+    },
+    {
+      "depth": 3,
+      "iteration": 3,
+      "latency_ms": 10.672316999944087,
+      "nodes_evaluated": 166,
+      "cutoffs": 17,
+      "move_chosen": 3
+    },
+    {
+      "depth": 3,
+      "iteration": 4,
+      "latency_ms": 5.7419360000494635,
+      "nodes_evaluated": 140,
+      "cutoffs": 17,
+      "move_chosen": 3
+    },
+    {
+      "depth": 3,
+      "iteration": 5,
+      "latency_ms": 6.209418000025835,
+      "nodes_evaluated": 200,
+      "cutoffs": 18,
+      "move_chosen": 4
+    },
+    {
+      "depth": 3,
+      "iteration": 6,
+      "latency_ms": 3.979320000098596,
+      "nodes_evaluated": 153,
+      "cutoffs": 22,
+      "move_chosen": 2
+    },
+    {
+      "depth": 3,
+      "iteration": 7,
+      "latency_ms": 6.479264000063267,
+      "nodes_evaluated": 212,
+      "cutoffs": 22,
+      "move_chosen": 2
+    },
+    {
+      "depth": 3,
+      "iteration": 8,
+      "latency_ms": 4.750190000095245,
+      "nodes_evaluated": 164,
+      "cutoffs": 15,
+      "move_chosen": 3
+    },
+    {
+      "depth": 3,
+      "iteration": 9,
+      "latency_ms": 6.355935000101454,
+      "nodes_evaluated": 225,
+      "cutoffs": 18,
+      "move_chosen": 4
+    },
+    {
+      "depth": 3,
+      "iteration": 10,
+      "latency_ms": 3.6802780000471103,
+      "nodes_evaluated": 139,
+      "cutoffs": 19,
+      "move_chosen": 2
+    },
+    {
+      "depth": 4,
+      "iteration": 1,
+      "latency_ms": 7.435156999918036,
+      "nodes_evaluated": 229,
+      "cutoffs": 65,
+      "move_chosen": 3
+    },
+    {
+      "depth": 4,
+      "iteration": 2,
+      "latency_ms": 24.91295100003299,
+      "nodes_evaluated": 616,
+      "cutoffs": 105,
+      "move_chosen": 2
+    },
+    {
+      "depth": 4,
+      "iteration": 3,
+      "latency_ms": 21.926437000047372,
+      "nodes_evaluated": 772,
+      "cutoffs": 149,
+      "move_chosen": 1
+    },
+    {
+      "depth": 4,
+      "iteration": 4,
+      "latency_ms": 29.0952099999231,
+      "nodes_evaluated": 902,
+      "cutoffs": 137,
+      "move_chosen": 3
+    },
+    {
+      "depth": 4,
+      "iteration": 5,
+      "latency_ms": 5.385706999959439,
+      "nodes_evaluated": 215,
+      "cutoffs": 70,
+      "move_chosen": 3
+    },
+    {
+      "depth": 4,
+      "iteration": 6,
+      "latency_ms": 14.23057199986033,
+      "nodes_evaluated": 529,
+      "cutoffs": 105,
+      "move_chosen": 1
+    },
+    {
+      "depth": 4,
+      "iteration": 7,
+      "latency_ms": 24.94969300005323,
+      "nodes_evaluated": 603,
+      "cutoffs": 100,
+      "move_chosen": 3
+    },
+    {
+      "depth": 4,
+      "iteration": 8,
+      "latency_ms": 32.760387000053015,
+      "nodes_evaluated": 985,
+      "cutoffs": 151,
+      "move_chosen": 5
+    },
+    {
+      "depth": 4,
+      "iteration": 9,
+      "latency_ms": 6.209236000131568,
+      "nodes_evaluated": 207,
+      "cutoffs": 58,
+      "move_chosen": 3
+    },
+    {
+      "depth": 4,
+      "iteration": 10,
+      "latency_ms": 25.535802000149488,
+      "nodes_evaluated": 871,
+      "cutoffs": 138,
+      "move_chosen": 5
+    },
+    {
+      "depth": 5,
+      "iteration": 1,
+      "latency_ms": 115.71125499995105,
+      "nodes_evaluated": 3523,
+      "cutoffs": 636,
+      "move_chosen": 3
+    },
+    {
+      "depth": 5,
+      "iteration": 2,
+      "latency_ms": 54.11925900011738,
+      "nodes_evaluated": 1621,
+      "cutoffs": 231,
+      "move_chosen": 3
+    },
+    {
+      "depth": 5,
+      "iteration": 3,
+      "latency_ms": 122.58045099997616,
+      "nodes_evaluated": 3839,
+      "cutoffs": 737,
+      "move_chosen": 2
+    },
+    {
+      "depth": 5,
+      "iteration": 4,
+      "latency_ms": 54.33039500007908,
+      "nodes_evaluated": 1853,
+      "cutoffs": 265,
+      "move_chosen": 4
+    },
+    {
+      "depth": 5,
+      "iteration": 5,
+      "latency_ms": 59.61280400015312,
+      "nodes_evaluated": 1782,
+      "cutoffs": 307,
+      "move_chosen": 3
+    },
+    {
+      "depth": 5,
+      "iteration": 6,
+      "latency_ms": 85.13696799991521,
+      "nodes_evaluated": 2957,
+      "cutoffs": 444,
+      "move_chosen": 4
+    },
+    {
+      "depth": 5,
+      "iteration": 7,
+      "latency_ms": 69.38289599997916,
+      "nodes_evaluated": 2446,
+      "cutoffs": 379,
+      "move_chosen": 3
+    },
+    {
+      "depth": 5,
+      "iteration": 8,
+      "latency_ms": 129.96251200002007,
+      "nodes_evaluated": 4483,
+      "cutoffs": 738,
+      "move_chosen": 4
+    },
+    {
+      "depth": 5,
+      "iteration": 9,
+      "latency_ms": 141.79629899990687,
+      "nodes_evaluated": 2858,
+      "cutoffs": 465,
+      "move_chosen": 3
+    },
+    {
+      "depth": 5,
+      "iteration": 10,
+      "latency_ms": 91.52009000013095,
+      "nodes_evaluated": 2702,
+      "cutoffs": 378,
+      "move_chosen": 3
+    },
+    {
+      "depth": 6,
+      "iteration": 1,
+      "latency_ms": 486.3274710000951,
+      "nodes_evaluated": 14825,
+      "cutoffs": 2547,
+      "move_chosen": 6
+    },
+    {
+      "depth": 6,
+      "iteration": 2,
+      "latency_ms": 592.22510099994,
+      "nodes_evaluated": 19613,
+      "cutoffs": 3237,
+      "move_chosen": 6
+    },
+    {
+      "depth": 6,
+      "iteration": 3,
+      "latency_ms": 84.70061900015935,
+      "nodes_evaluated": 2678,
+      "cutoffs": 642,
+      "move_chosen": 3
+    },
+    {
+      "depth": 6,
+      "iteration": 4,
+      "latency_ms": 354.02083400003903,
+      "nodes_evaluated": 12111,
+      "cutoffs": 1981,
+      "move_chosen": 3
+    },
+    {
+      "depth": 6,
+      "iteration": 5,
+      "latency_ms": 408.08216799996444,
+      "nodes_evaluated": 14108,
+      "cutoffs": 2136,
+      "move_chosen": 3
+    },
+    {
+      "depth": 6,
+      "iteration": 6,
+      "latency_ms": 298.8868720001392,
+      "nodes_evaluated": 10233,
+      "cutoffs": 2047,
+      "move_chosen": 4
+    },
+    {
+      "depth": 6,
+      "iteration": 7,
+      "latency_ms": 230.97953699993923,
+      "nodes_evaluated": 7807,
+      "cutoffs": 1460,
+      "move_chosen": 0
+    },
+    {
+      "depth": 6,
+      "iteration": 8,
+      "latency_ms": 451.1039300000448,
+      "nodes_evaluated": 11629,
+      "cutoffs": 2032,
+      "move_chosen": 3
+    },
+    {
+      "depth": 6,
+      "iteration": 9,
+      "latency_ms": 273.4521620000123,
+      "nodes_evaluated": 9645,
+      "cutoffs": 1650,
+      "move_chosen": 4
+    },
+    {
+      "depth": 6,
+      "iteration": 10,
+      "latency_ms": 375.97641000002113,
+      "nodes_evaluated": 11335,
+      "cutoffs": 1971,
+      "move_chosen": 1
+    }
+  ],
+  "tournament_results": [
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 1,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 52.79670499999156
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 2,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 35.18548100009866
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 3,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 64.68059200005882
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 4,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 37.61349000001246
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 5,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 46.65107599998919
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 6,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 31.563862999973935
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 7,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 48.68814199994631
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 8,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 38.51485700010926
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 9,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 45.68026300012207
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 10,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 33.399114000076224
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 11,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 69.6263300001192
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 12,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 48.64652599985675
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 13,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 56.35337400008211
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 14,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 33.6427970000841
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 15,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 50.28936399980921
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 16,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 33.450098999992406
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 17,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 47.34629999984463
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 18,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 32.0213560000866
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 19,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 75.88370999997096
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 20,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 51.49348899999495
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 21,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 89.5189410000512
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 22,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 31.344756999942547
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 23,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 48.23124099993947
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 24,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 58.74843500009774
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 25,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 70.32526699981645
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 26,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 38.43750100008947
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 27,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 64.27740000003723
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 28,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 31.988477999902898
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 29,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 47.81083500006389
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 30,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 57.255436999867015
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 31,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 58.44088899993949
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 32,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 43.33837400008633
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 33,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 46.52949399996942
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 34,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 37.02787499992155
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 35,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 87.58853499989527
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 36,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 33.8835080001445
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 37,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 58.71411899988743
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 38,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 31.728794999935417
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 39,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 68.53265999984615
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 40,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 33.17293300005986
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 41,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 54.442582999854494
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 42,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 58.171344000129466
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 43,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 85.39804299994103
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 44,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 60.40031399993495
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 45,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 58.68553300001622
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 46,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 42.180927999879714
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 47,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 72.59839400012424
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 48,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 41.45671800006312
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 49,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 63.311158000033174
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 50,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 44.85076600008142
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 51,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 58.112486999789326
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 52,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 45.36227299990969
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 53,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 60.20317799993791
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 54,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 43.48617299979196
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 55,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 77.11127599986867
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 56,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 71.47142600001644
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 57,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 102.95318199996473
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 58,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 80.76863600012985
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 59,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 81.74260100008723
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 60,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 59.06757600018864
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 61,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 81.45686100010607
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 62,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 49.248612000155845
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 63,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 49.97784000011052
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 64,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 31.674841000040033
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 65,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 67.64565999992556
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 66,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 31.47532800016961
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 67,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 59.41919599990797
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 68,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 54.2025620000004
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 69,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 91.07437600005142
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 70,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 57.409834000054616
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 71,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 70.18503499989492
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 72,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 68.0293719999554
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 73,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 48.89041100000213
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 74,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 35.22452600009274
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 75,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 58.5647569998855
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 76,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 43.039824000061344
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 77,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 53.94182899999578
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 78,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 57.41139699989617
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 79,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 61.26743100003296
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 80,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 32.530403000009755
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 81,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 50.74322500013295
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 82,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 32.565406999992774
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 83,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 47.43725399998766
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 84,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 41.55973100000665
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 85,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 86.16164899990508
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 86,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 66.3700659999904
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 87,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 96.37716499992166
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 88,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 60.395566999886796
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 89,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 47.773586999937834
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 90,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 33.9378599999236
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 91,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 71.38455500012242
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 92,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 34.35965100015892
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 93,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 61.63181400006579
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 94,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 62.884835999966526
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 95,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 73.46705100007966
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 96,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 36.80470799986324
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 97,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 62.03362900009779
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 98,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 35.661476999848674
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 99,
+      "winner_depth": 2,
+      "total_moves": 41,
+      "duration_ms": 49.24783800015575
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "game_number": 100,
+      "winner_depth": 3,
+      "total_moves": 19,
+      "duration_ms": 31.221211999991283
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 1,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 203.87323799991464
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 2,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 145.27074500006165
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 3,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 153.9180430002034
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 4,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 95.99442600006114
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 5,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 141.72997199989368
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 6,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 81.45032800007357
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 7,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 159.37747699990723
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 8,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 94.71006399985527
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 9,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 128.1590190001225
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 10,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 103.40835600004539
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 11,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 154.93734400001813
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 12,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 122.58158000008734
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 13,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 159.40538299992113
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 14,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 75.68583300007958
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 15,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 130.09065700020983
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 16,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 93.83985600015876
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 17,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 110.76604300001236
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 18,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 75.31843900005697
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 19,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 177.66287800009195
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 20,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 139.35350699989613
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 21,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 175.69267899989427
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 22,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 74.00600099981602
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 23,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 149.64093599996886
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 24,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 97.59102499992878
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 25,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 113.18858499998896
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 26,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 75.73306099993715
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 27,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 132.5481700000637
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 28,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 109.29165999982615
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 29,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 151.4222289999907
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 30,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 76.7927360000158
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 31,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 155.05702799987375
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 32,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 91.45042999989528
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 33,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 144.97692700001608
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 34,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 93.312061000006
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 35,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 159.44209600002068
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 36,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 74.16801099998338
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 37,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 110.48553699993136
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 38,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 75.0969520001945
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 39,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 110.12914799994178
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 40,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 75.68779600001108
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 41,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 146.0094950000439
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 42,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 120.65800200002741
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 43,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 141.62628000008226
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 44,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 82.42014799998287
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 45,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 208.92240900002435
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 46,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 137.41401700008282
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 47,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 146.47874299998875
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 48,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 153.74017399994955
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 49,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 217.54455100017367
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 50,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 130.42772299991157
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 51,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 126.02012299998933
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 52,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 93.68813600008252
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 53,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 169.5389389999491
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 54,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 88.83787500008111
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 55,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 140.55442699986997
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 56,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 92.55951399995865
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 57,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 128.7749000000531
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 58,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 75.35337900003469
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 59,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 117.39938200003053
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 60,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 93.34878699996807
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 61,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 125.36453699999583
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 62,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 79.60603499986973
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 63,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 143.29800099994827
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 64,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 108.1433740000648
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 65,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 106.48747599998387
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 66,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 74.73990199991931
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 67,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 180.02761799994005
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 68,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 89.62538800005859
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 69,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 149.02437000000646
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 70,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 114.21461099985208
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 71,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 141.23824400007834
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 72,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 110.68259199987551
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 73,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 134.81253500003731
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 74,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 74.86965900011455
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 75,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 108.07586399982938
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 76,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 88.80423999994491
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 77,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 121.48114599995097
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 78,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 119.03358900008243
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 79,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 196.27816799993525
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 80,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 87.46144599990657
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 81,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 146.8227539999134
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 82,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 76.6893729999083
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 83,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 107.5098699998307
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 84,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 72.75864299981549
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 85,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 126.99935199998436
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 86,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 78.43966299992644
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 87,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 128.32471499996245
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 88,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 122.01043300001402
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 89,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 116.91758400002072
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 90,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 83.79720700008875
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 91,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 191.46691600008126
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 92,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 93.20339200007766
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 93,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 154.36190500008706
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 94,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 74.35705300008522
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 95,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 108.1448840000121
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 96,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 74.89059099998485
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 97,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 142.77368400007617
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 98,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 113.34264300012364
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 99,
+      "winner_depth": 2,
+      "total_moves": 37,
+      "duration_ms": 154.1550649999408
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "game_number": 100,
+      "winner_depth": 4,
+      "total_moves": 23,
+      "duration_ms": 72.71567800012235
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 1,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 497.709881999981
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 2,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 341.6738810001334
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 3,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 473.73677199993836
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 4,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 380.7715800001006
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 5,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 376.3940459998594
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 6,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 366.2839499997972
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 7,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 419.75026499994783
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 8,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 318.23610299989014
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 9,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 419.6753759999865
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 10,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 385.82371699999385
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 11,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 440.6838670001889
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 12,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 338.0140679998931
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 13,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 493.42738399991504
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 14,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 359.92775700015045
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 15,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 422.8336500000296
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 16,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 305.35303999999996
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 17,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 497.0529439999609
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 18,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 395.0296929999695
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 19,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 459.2717890000131
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 20,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 326.7546520000906
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 21,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 513.2930280001347
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 22,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 369.733523999912
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 23,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 509.43634000009297
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 24,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 401.4833470000667
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 25,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 425.7813399999577
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 26,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 347.6921120000043
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 27,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 543.852028000174
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 28,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 306.24045600006866
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 29,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 382.08348199987086
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 30,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 304.32004899989806
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 31,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 529.59009600022
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 32,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 342.69832799986943
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 33,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 433.8387420000345
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 34,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 332.0337180000479
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 35,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 391.09120700004496
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 36,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 304.66002000002845
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 37,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 447.61862099994687
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 38,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 372.84873399994467
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 39,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 435.58415300003617
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 40,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 357.4024039999131
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 41,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 519.0076429998953
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 42,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 374.8901429999023
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 43,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 411.2428270000237
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 44,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 395.8182549999947
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 45,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 433.23261799991997
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 46,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 397.9184859999805
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 47,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 425.94946999997774
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 48,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 407.02741600011905
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 49,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 426.56069700001353
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 50,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 304.51140400009535
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 51,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 485.1676739999675
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 52,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 374.7911899999963
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 53,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 440.6146220001119
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 54,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 321.6029810000691
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 55,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 437.7053439998235
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 56,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 332.91857800008984
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 57,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 423.78673700000036
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 58,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 357.1269750000283
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 59,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 412.2214359999816
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 60,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 340.88993199998185
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 61,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 482.4608490000628
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 62,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 366.170307999937
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 63,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 426.1372979999578
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 64,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 345.87133400009407
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 65,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 480.4372930000227
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 66,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 335.9983129998909
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 67,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 411.02164299991273
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 68,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 356.9663620000938
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 69,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 411.0729019998871
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 70,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 323.52514099989094
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 71,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 445.14117299991085
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 72,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 316.08910399995693
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 73,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 435.9758040000088
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 74,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 328.6545579999256
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 75,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 481.8589620001603
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 76,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 396.6550869999992
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 77,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 434.16909000006854
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 78,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 309.69572999993034
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 79,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 472.43838099984714
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 80,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 304.545877999999
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 81,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 448.6343930000203
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 82,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 367.7577010000732
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 83,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 467.7903750000496
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 84,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 303.46495399999185
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 85,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 382.77645499988466
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 86,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 329.708761999882
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 87,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 379.0546309999172
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 88,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 343.12781099993117
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 89,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 477.31007099991984
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 90,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 387.39544099985324
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 91,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 428.04762400010077
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 92,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 319.36005099987597
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 93,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 450.64255800002684
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 94,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 392.2607279998829
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 95,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 775.3187679998064
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 96,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 325.7980549999502
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 97,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 417.02497999995103
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 98,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 359.56569800009675
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 99,
+      "winner_depth": 2,
+      "total_moves": 39,
+      "duration_ms": 452.0516420000149
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "game_number": 100,
+      "winner_depth": 5,
+      "total_moves": 17,
+      "duration_ms": 307.2596090000843
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 1,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1640.1394009999422
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 2,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 791.9293909999396
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 3,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1690.013915999998
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 4,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 784.6208160001424
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 5,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1627.570432000084
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 6,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 685.3107329998238
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 7,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1673.916239999926
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 8,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 697.2252580001168
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 9,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1646.7565919999743
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 10,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 693.7951840000096
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 11,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1665.8770319997984
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 12,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 815.0720999999521
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 13,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1589.4765549999192
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 14,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 606.0716520000824
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 15,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1849.5386029999281
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 16,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 666.9484980000107
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 17,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1542.2780700000658
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 18,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 725.2445569999963
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 19,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1677.7684950000094
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 20,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 630.4227729999639
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 21,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1764.0284470001006
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 22,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 637.5227149999318
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 23,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1873.342096999977
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 24,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 800.4707679999683
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 25,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1943.6687180000263
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 26,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 703.6910850001732
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 27,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1851.4189550000992
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 28,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 843.5362780001014
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 29,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1648.6299359999066
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 30,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 753.4011109999028
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 31,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1817.1495450001203
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 32,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 681.7647160000888
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 33,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1760.074030999931
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 34,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 699.1158559999349
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 35,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1713.0993290002152
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 36,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 776.4053040000363
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 37,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1701.3616699998693
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 38,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 683.4266449998267
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 39,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1799.6924890001083
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 40,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 795.1597710000442
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 41,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1850.6260890001158
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 42,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 768.0752589999429
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 43,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1579.312095999967
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 44,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 637.5562870000522
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 45,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1649.4942699998774
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 46,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 685.6841929998154
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 47,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1711.1558939998304
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 48,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 710.3212819999953
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 49,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1587.0937760000743
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 50,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 699.0184779999709
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 51,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1532.5195489999714
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 52,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 630.6441039998845
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 53,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1681.4139399998567
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 54,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 659.1756140001053
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 55,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1725.40783799991
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 56,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 660.5370429999766
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 57,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1709.4995069999186
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 58,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 786.3863949999086
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 59,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1793.898338999952
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 60,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 681.822110999974
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 61,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1636.066294999864
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 62,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 731.7634579999321
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 63,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1650.3896170002008
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 64,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 802.6125579999643
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 65,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1622.793301999991
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 66,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 849.4273990002057
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 67,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1746.2754229998154
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 68,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 623.2571099999404
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 69,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1533.534242999849
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 70,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 602.8955360000054
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 71,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1798.9166770000793
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 72,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 732.5362669998867
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 73,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1645.2194099999815
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 74,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 683.131461999892
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 75,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1536.072507999961
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 76,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 714.5968500001345
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 77,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1692.5343370000974
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 78,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 635.9118519999356
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 79,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1826.8279800001892
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 80,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 675.4696250000052
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 81,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1570.8122300000014
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 82,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 690.8463370000391
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 83,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1653.8859969998612
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 84,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 631.8506600000546
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 85,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1519.0096809999432
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 86,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 1050.2392439998403
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 87,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1652.0451379999486
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 88,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 693.6872270000549
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 89,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1859.2080169999008
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 90,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 893.1801789999554
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 91,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1640.4939049998575
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 92,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 800.079604000075
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 93,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 2161.64142599996
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 94,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 705.7271379999293
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 95,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1704.633197000021
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 96,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 620.9413760000189
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 97,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1696.559827000101
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 98,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 683.4787630000392
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 99,
+      "winner_depth": 6,
+      "total_moves": 40,
+      "duration_ms": 1519.3985319999683
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "game_number": 100,
+      "winner_depth": 6,
+      "total_moves": 27,
+      "duration_ms": 607.0080960000723
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 1,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 123.50819399989632
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 2,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 173.9348460000656
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 3,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 112.79296799989424
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 4,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 171.99470199989264
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 5,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 121.48315099989304
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 6,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 190.91700899980424
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 7,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 113.19577400013259
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 8,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 178.36334999992687
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 9,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 112.4534410000706
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 10,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 170.09650699992562
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 11,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 124.97907100009797
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 12,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 172.70189700002447
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 13,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 149.9212419998912
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 14,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 176.42458099999203
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 15,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 116.70712800014371
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 16,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 200.64682900010666
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 17,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 163.66183400009504
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 18,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 175.25035699986802
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 19,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 115.45990200011147
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 20,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 166.2146839998968
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 21,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 123.17998799994712
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 22,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 169.93451100006496
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 23,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 112.8838550000637
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 24,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 166.3261500000317
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 25,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 114.54432000004999
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 26,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 212.01911399998608
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 27,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 151.06421199993747
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 28,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 226.72979100002522
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 29,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 131.8238509998082
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 30,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 166.59991400001672
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 31,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 135.3480729999319
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 32,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 170.3530279999086
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 33,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 121.47739500005628
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 34,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 206.87668000005033
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 35,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 146.72395499997037
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 36,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 168.98565800011056
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 37,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 112.71438699986902
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 38,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 167.68616300009853
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 39,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 115.40386199999375
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 40,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 187.58697799989932
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 41,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 167.12598900016928
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 42,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 194.29245700007414
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 43,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 137.16712600012215
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 44,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 222.98797899998135
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 45,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 131.4418530000694
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 46,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 210.7428679998975
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 47,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 113.43475800003944
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 48,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 173.01815199994053
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 49,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 130.11855799982186
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 50,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 321.58522300005643
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 51,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 139.27499000010357
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 52,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 167.88918900010685
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 53,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 138.9286749999883
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 54,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 177.00866000018323
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 55,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 112.29680299993561
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 56,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 168.55385999997452
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 57,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 114.42038399991361
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 58,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 168.73238900006982
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 59,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 145.2587940000285
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 60,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 189.0233439999065
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 61,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 124.79851500006589
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 62,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 166.47199499993803
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 63,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 121.3832480000292
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 64,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 186.04135600003247
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 65,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 122.78268000000025
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 66,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 198.18730699989828
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 67,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 127.81304700001783
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 68,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 171.8234819998088
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 69,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 112.15134500002932
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 70,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 166.91985200009185
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 71,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 127.69939599979807
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 72,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 210.14868400015985
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 73,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 111.66532899983395
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 74,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 170.87500699994962
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 75,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 119.49190499990436
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 76,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 192.80450499991275
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 77,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 136.3551770000413
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 78,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 201.0821040000792
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 79,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 133.6632960001225
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 80,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 235.1818639999692
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 81,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 192.8843160001179
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 82,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 238.57919900001434
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 83,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 146.49396100003287
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 84,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 242.35161799992966
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 85,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 117.93376599985095
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 86,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 252.23883099988598
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 87,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 161.38756700001977
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 88,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 172.76123200008442
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 89,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 119.270429999915
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 90,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 168.85654799989425
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 91,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 136.90565399997467
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 92,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 199.2076399999405
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 93,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 113.06964200002767
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 94,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 166.58352600006765
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 95,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 113.59044999994694
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 96,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 169.7085270000116
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 97,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 111.53235999995559
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 98,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 170.61728099997708
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 99,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 111.8793780001397
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "game_number": 100,
+      "winner_depth": 4,
+      "total_moves": 41,
+      "duration_ms": 177.33906299986302
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 1,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 433.7105709998923
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 2,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 301.58602400001655
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 3,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 316.61464700005126
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 4,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 309.6389760000875
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 5,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 319.98069999986
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 6,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 296.10886999989816
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 7,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 328.2096460000048
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 8,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 344.60690599985355
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 9,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 382.3039650001192
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 10,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 414.2214370001511
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 11,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 438.6091670000951
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 12,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 309.0433429999848
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 13,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 330.30133700003717
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 14,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 296.8923390001237
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 15,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 316.6488570000183
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 16,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 373.0314790000193
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 17,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 321.68720600020606
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 18,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 312.06186600002184
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 19,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 321.1890929999299
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 20,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 342.6461040000959
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 21,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 503.35042699998667
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 22,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 296.81724800002485
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 23,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 318.0019500000526
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 24,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 315.82539500004714
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 25,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 326.65178900015235
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 26,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 322.6992390000305
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 27,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 410.39360900003885
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 28,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 352.3817279999548
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 29,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 341.9708209999044
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 30,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 421.0335070001747
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 31,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 355.98304599989206
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 32,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 373.8169169998855
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 33,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 319.7818769999685
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 34,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 310.87370599993847
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 35,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 358.77367500006585
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 36,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 310.6003119999059
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 37,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 316.73049200003334
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 38,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 345.22711900012837
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 39,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 325.4213969999
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 40,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 330.38655300015307
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 41,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 342.3559820000719
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 42,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 302.39547199994377
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 43,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 317.83674899998005
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 44,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 334.23799899992446
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 45,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 342.83503500000734
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 46,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 295.0331649999498
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 47,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 316.8348479998713
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 48,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 339.8216810001031
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 49,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 375.70682400018995
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 50,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 301.5851760001169
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 51,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 364.7732960000667
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 52,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 379.1300699999738
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 53,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 483.2049350000034
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 54,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 331.9922630000747
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 55,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 322.8931010000906
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 56,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 349.36199200001283
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 57,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 370.9127299998727
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 58,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 347.8635660001146
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 59,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 346.26112599994485
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 60,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 356.8320270001095
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 61,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 330.70095099992614
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 62,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 330.25479000002633
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 63,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 362.13822900003834
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 64,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 379.67737700000725
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 65,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 324.1786730000058
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 66,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 300.60513300009006
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 67,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 421.65547600006903
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 68,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 342.6064730001599
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 69,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 315.609730999995
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 70,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 296.5313590000278
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 71,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 427.47779399996944
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 72,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 340.7507980000446
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 73,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 325.2405359999102
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 74,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 306.2742319998506
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 75,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 417.16080899982444
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 76,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 303.06083900018166
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 77,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 345.5809170000066
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 78,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 299.57362200002535
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 79,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 404.30154399996354
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 80,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 317.60190299996793
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 81,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 355.3334130001531
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 82,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 322.4280310000722
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 83,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 335.9356589999152
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 84,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 348.50812600006975
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 85,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 318.9391789999263
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 86,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 309.2502389999936
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 87,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 359.97753099991314
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 88,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 395.1578689998314
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 89,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 320.51041500017163
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 90,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 327.04121000006126
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 91,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 370.4746819998945
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 92,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 393.6452279999685
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 93,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 315.2850359999775
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 94,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 320.2729160000217
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 95,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 352.02870600005554
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 96,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 354.6529840000403
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 97,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 351.0713970001689
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 98,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 353.5619009999209
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 99,
+      "winner_depth": 3,
+      "total_moves": 29,
+      "duration_ms": 375.356851999868
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "game_number": 100,
+      "winner_depth": 5,
+      "total_moves": 19,
+      "duration_ms": 301.67738999989524
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 1,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1533.0729849999898
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 2,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 928.1660899998769
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 3,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1386.3733569999113
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 4,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 705.5896389999816
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 5,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1379.3099819999952
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 6,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 766.8409830000655
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 7,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1557.2155099998781
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 8,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 875.228037999932
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 9,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1365.8083750001424
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 10,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 795.1387069999782
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 11,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1605.4751970000325
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 12,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 783.5451239998292
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 13,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1512.7192140000716
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 14,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 887.2917730000154
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 15,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1549.9873439998737
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 16,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 788.5279380000156
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 17,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1354.3086719998882
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 18,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 829.6570410000186
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 19,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1416.4687120000963
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 20,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1132.6690010000675
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 21,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1531.0722419999365
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 22,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 815.5606709999574
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 23,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1546.9635350000317
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 24,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1040.1931659998809
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 25,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1664.5516649998626
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 26,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 925.4767340000853
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 27,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 2697.14236599998
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 28,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1534.5778359999258
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 29,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1710.112565999907
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 30,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 872.3959880001075
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 31,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1634.8843670000406
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 32,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 756.6235819999747
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 33,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1295.304791000035
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 34,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 738.6569710001822
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 35,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1253.6401790000582
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 36,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 863.1305640001301
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 37,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1718.1570790000933
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 38,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1379.0808139999626
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 39,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1779.2203199999221
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 40,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 999.2293860000245
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 41,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 2023.7523189998683
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 42,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1033.613134999996
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 43,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1841.2045590000616
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 44,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1320.8747529999982
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 45,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 2188.1526330000725
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 46,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1091.1306890000105
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 47,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1602.8616069997952
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 48,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1122.8269340001589
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 49,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1627.1774960000585
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 50,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 776.2932769999225
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 51,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1503.731923000032
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 52,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 945.1826310000797
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 53,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1810.6322260000525
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 54,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1368.5123810000732
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 55,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1662.457983999957
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 56,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 796.1537469998348
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 57,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1571.071578999863
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 58,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1153.3058610000353
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 59,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1724.8671229999673
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 60,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1384.2204379998293
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 61,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1694.2489180000848
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 62,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 957.2437189999619
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 63,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1510.6573569999
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 64,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 870.2623500000755
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 65,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1472.2558839998783
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 66,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 1141.6995360000328
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 67,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1889.9451409999983
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 68,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 743.1022490000032
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 69,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1364.169497000148
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 70,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 796.505469000067
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 71,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1385.8886739999434
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 72,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 747.4533109998447
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 73,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1295.7239779998417
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 74,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 720.6255710000278
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 75,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1280.8399079999617
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 76,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 673.8204729999779
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 77,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1508.9659590000792
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 78,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 773.8067870000123
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 79,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1230.8665010000368
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 80,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 714.1315589999522
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 81,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1298.0746519999684
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 82,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 681.8894619998446
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 83,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1277.2036110000045
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 84,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 680.7751350002036
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 85,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1288.423400000056
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 86,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 738.7494750000769
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 87,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1209.8165170000357
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 88,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 671.407249999902
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 89,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1270.607415000086
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 90,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 778.0564100000902
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 91,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1266.7312439998568
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 92,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 731.1551899999813
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 93,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1218.7789439999506
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 94,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 686.2013649999881
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 95,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1266.134245999865
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 96,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 726.791411000022
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 97,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1279.8520450000979
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 98,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 750.840068999878
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 99,
+      "winner_depth": 3,
+      "total_moves": 31,
+      "duration_ms": 1316.7711640001016
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "game_number": 100,
+      "winner_depth": 6,
+      "total_moves": 21,
+      "duration_ms": 740.0372790000347
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 1,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 546.2013329999991
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 2,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 730.9124680000423
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 3,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 512.1086740000464
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 4,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 688.1362280000758
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 5,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 523.500107000018
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 6,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 690.7207920000928
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 7,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 519.9478720001025
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 8,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 624.046910999823
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 9,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 545.8208720001494
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 10,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 646.0723000000144
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 11,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 578.2287499998802
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 12,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 698.9897240000573
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 13,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 516.2560579999536
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 14,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 641.1897439998029
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 15,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 492.8577349999159
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 16,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 734.7171420001359
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 17,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 512.9743059999328
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 18,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 754.748051000206
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 19,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 537.0330470000226
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 20,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 857.0279210000535
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 21,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 605.2783039999667
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 22,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 787.116855000022
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 23,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 567.3738979999143
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 24,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 734.8469649998606
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 25,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 523.8786050001636
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 26,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 628.202581999858
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 27,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 524.1556230000697
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 28,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 657.7957340000467
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 29,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 495.44021100018654
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 30,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 682.6961219999248
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 31,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 572.2697279998101
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 32,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 624.9890369999775
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 33,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 533.5421100000985
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 34,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 671.9640039998467
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 35,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 493.3020559999477
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 36,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 620.8201120000467
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 37,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 499.39573100004964
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 38,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 620.9705500000382
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 39,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 493.33455900000445
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 40,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 664.2181439999604
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 41,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 521.8363609999415
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 42,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 641.9708869998431
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 43,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 501.6485260000536
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 44,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 687.837189999982
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 45,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 596.8229150000752
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 46,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 645.4823120000128
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 47,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 490.71161899996696
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 48,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 644.029283000009
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 49,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 553.5926219999965
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 50,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 620.0268059999416
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 51,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 532.603047000066
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 52,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 658.1246920000012
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 53,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 488.6316289998831
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 54,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 651.2287389998619
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 55,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 492.8189519998796
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 56,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 684.3949920000796
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 57,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 557.860890000029
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 58,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 622.2301620000508
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 59,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 506.6794000001664
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 60,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 634.8961290000261
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 61,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 590.9174460000486
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 62,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 666.6325849998884
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 63,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 498.23861599998054
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 64,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 637.856144999887
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 65,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 504.14006699998026
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 66,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 617.9470739998578
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 67,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 490.97292299984474
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 68,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 668.5024829998838
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 69,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 506.76086299995404
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 70,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 628.3028799998647
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 71,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 501.56216700020195
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 72,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 632.6063880001129
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 73,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 492.757390999941
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 74,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 702.0639200000005
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 75,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 558.3814479998637
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 76,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 619.4746270000451
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 77,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 492.823676999933
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 78,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 616.2037070000679
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 79,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 536.8287619999137
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 80,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 678.2014870000239
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 81,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 554.3506700000762
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 82,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 671.7855070000951
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 83,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 519.7283320001134
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 84,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 691.8873020001683
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 85,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 499.40886200010937
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 86,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 633.5218529998201
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 87,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 489.42643499981386
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 88,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 634.5851420001054
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 89,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 533.6217560000023
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 90,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 644.1959180001504
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 91,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 537.747852000166
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 92,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 621.671403999926
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 93,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 545.9166170001026
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 94,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 662.3871459999009
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 95,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 491.6339290000451
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 96,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 656.4156160000039
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 97,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 491.068327999983
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 98,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 625.6419160001769
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 99,
+      "winner_depth": 4,
+      "total_moves": 39,
+      "duration_ms": 507.296752000002
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "game_number": 100,
+      "winner_depth": 5,
+      "total_moves": 37,
+      "duration_ms": 621.0105620000377
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 1,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1505.684792000011
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 2,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1571.676540999988
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 3,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1611.721371000158
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 4,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1453.4809570000107
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 5,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1848.5854959999415
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 6,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1587.4800650001362
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 7,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1612.1359759999905
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 8,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1435.5092969999532
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 9,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1505.1462970000102
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 10,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1478.9018980000037
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 11,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1533.8384189999488
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 12,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1428.5861529999693
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 13,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1504.5003920001818
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 14,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1452.2232079998503
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 15,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1492.6623769997605
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 16,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1480.773580999994
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 17,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1593.4509050002816
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 18,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1438.2085870001902
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 19,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1493.7860870004442
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 20,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1433.678448000137
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 21,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1551.7584750000424
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 22,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1441.0070280000582
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 23,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1503.3113489998868
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 24,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1585.0431589997243
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 25,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1694.443567000235
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 26,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1445.4561190000277
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 27,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1475.7555740002317
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 28,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1437.9999499997211
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 29,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1499.323013999856
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 30,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1510.987914999987
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 31,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1676.638135000303
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 32,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1461.249713000143
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 33,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1523.4901799999534
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 34,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1429.376886999762
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 35,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1486.3708249999945
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 36,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1416.0154950000106
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 37,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1506.1490329999287
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 38,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1500.3604419998737
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 39,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1510.1239290002013
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 40,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1435.6606889996328
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 41,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1519.987528999991
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 42,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1504.6605140000793
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 43,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1556.336839999858
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 44,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1438.1007629999658
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 45,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1557.6772869999331
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 46,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1424.5107870001448
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 47,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1564.0034909997667
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 48,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1436.3927430003969
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 49,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1499.4515459998183
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 50,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1410.0432000000183
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 51,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1528.4551620002276
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 52,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1422.8286429997752
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 53,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1530.7920459999877
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 54,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1433.2117130002189
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 55,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1518.7419079998108
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 56,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1459.0003970001817
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 57,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1570.0879209998675
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 58,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1524.9224029998913
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 59,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1508.4554909999497
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 60,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1479.2581729998346
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 61,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1652.0178089999717
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 62,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1436.4237449999564
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 63,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1486.7922620001082
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 64,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1468.1380600000011
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 65,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1508.4802710002805
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 66,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1448.7046119998013
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 67,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1476.6455090002637
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 68,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1541.6324309999254
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 69,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1482.3774460001005
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 70,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1459.9711410000964
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 71,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1520.6053069996415
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 72,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1474.6504300001106
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 73,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1508.1534730002204
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 74,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1634.6616069999982
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 75,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1627.0243799999662
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 76,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1443.9420329999848
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 77,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1532.0590260002973
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 78,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1468.171509000058
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 79,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1546.1947499998132
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 80,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1527.6507290000154
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 81,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1604.3616010001642
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 82,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1667.4824329998046
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 83,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1602.5350700001582
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 84,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1424.7405870000875
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 85,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1510.080544000175
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 86,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1460.0712640003621
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 87,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1536.2800079997214
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 88,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1663.190086999748
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 89,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1562.4416290002046
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 90,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1540.028705000168
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 91,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1633.8015199999063
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 92,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1502.4211740001192
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 93,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1530.8615989997634
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 94,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1544.292748999851
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 95,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1602.3671909997574
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 96,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1494.3347000003087
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 97,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1569.663120000314
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 98,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1485.2739610000754
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 99,
+      "winner_depth": 4,
+      "total_moves": 31,
+      "duration_ms": 1529.7065609997844
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "game_number": 100,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1465.0264919996516
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 1,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2530.248638000103
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 2,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1785.1218260002497
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 3,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2538.456261000192
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 4,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1693.314150000333
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 5,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2450.2938280002127
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 6,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1679.9367909998182
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 7,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2391.0580359997766
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 8,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1739.0170930002569
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 9,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2505.3732989999844
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 10,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1689.2423549998057
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 11,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2553.3041959997718
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 12,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1692.012032999628
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 13,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2451.4395440000953
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 14,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2174.799013000211
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 15,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2929.1280940001343
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 16,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1841.2034749999293
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 17,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2647.8595050002696
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 18,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2174.905191000107
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 19,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2926.73009300006
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 20,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1904.790334000154
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 21,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2483.0275069998606
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 22,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1735.6661920002807
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 23,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2534.358348999831
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 24,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1662.0085660001678
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 25,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2557.5942499999655
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 26,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1738.406073999613
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 27,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2755.6062349999593
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 28,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1873.0537259998528
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 29,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2394.434775999798
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 30,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1710.2147580003475
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 31,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2602.0077919997675
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 32,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1725.5080229997475
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 33,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2494.0735350000978
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 34,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1688.513434000015
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 35,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2437.730799000292
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 36,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1741.9188310000209
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 37,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2448.717865999697
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 38,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1680.008239000017
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 39,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2390.701197999988
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 40,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1669.8635329998979
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 41,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2482.4823310000284
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 42,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1727.790394999829
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 43,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2424.2759479998313
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 44,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1702.476039999965
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 45,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2360.9669500001473
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 46,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1702.5427539997509
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 47,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2402.5684819998787
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 48,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1711.6402080000626
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 49,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2404.729562999819
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 50,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1657.0843720000994
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 51,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2526.404490999994
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 52,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1679.7831619996941
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 53,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2374.9219970000013
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 54,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1696.0699399996884
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 55,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2378.2024940001065
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 56,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2137.485174000176
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 57,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2656.4166049997766
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 58,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1767.5873090001915
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 59,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2760.606436999751
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 60,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1764.4193760002054
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 61,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2660.6997359999696
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 62,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1750.011409000308
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 63,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2418.8633080002546
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 64,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1890.2813380000225
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 65,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2523.4088739998697
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 66,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1830.62126599998
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 67,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2442.630544000167
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 68,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1676.8703190000451
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 69,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2398.7400080000043
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 70,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2012.889689000076
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 71,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2508.74223899973
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 72,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1785.9294580002825
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 73,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2525.844280000001
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 74,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1931.848632999845
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 75,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2430.63578400006
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 76,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1653.7593599996399
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 77,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2449.1068629999972
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 78,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1752.9648019999513
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 79,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2402.4690239998563
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 80,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1658.4150290000252
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 81,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2462.755105999804
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 82,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1754.593094000029
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 83,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2386.9071100002657
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 84,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1676.0722500002885
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 85,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2377.7231079998273
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 86,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1744.6324160000586
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 87,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2727.5682189997497
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 88,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1927.9185880000114
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 89,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2409.2897400000766
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 90,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2104.3075679999674
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 91,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2559.5173879996764
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 92,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1822.4470629997995
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 93,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2586.967853999795
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 94,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1737.8572890002033
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 95,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2865.64800799988
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 96,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1698.775459999979
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 97,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2479.3616090000796
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 98,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1748.594559999674
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 99,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 2524.8665839999376
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "game_number": 100,
+      "winner_depth": null,
+      "total_moves": 42,
+      "duration_ms": 1802.216490000319
+    }
+  ],
+  "scenario_results": [
+    {
+      "scenario_name": "empty_board",
+      "depth": 3,
+      "latency_ms": 0.004075999868291547,
+      "move_chosen": 3,
+      "nodes_evaluated": 0,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "empty_board",
+      "depth": 4,
+      "latency_ms": 0.003628000058597536,
+      "move_chosen": 3,
+      "nodes_evaluated": 0,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "empty_board",
+      "depth": 5,
+      "latency_ms": 0.0017009999737638282,
+      "move_chosen": 3,
+      "nodes_evaluated": 0,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "early_game_1",
+      "depth": 3,
+      "latency_ms": 0.002477999942129827,
+      "move_chosen": 3,
+      "nodes_evaluated": 0,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "early_game_1",
+      "depth": 4,
+      "latency_ms": 0.0014509998891298892,
+      "move_chosen": 3,
+      "nodes_evaluated": 0,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "early_game_1",
+      "depth": 5,
+      "latency_ms": 0.0012190000688860891,
+      "move_chosen": 3,
+      "nodes_evaluated": 0,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "early_game_2",
+      "depth": 3,
+      "latency_ms": 0.00175300010596402,
+      "move_chosen": 3,
+      "nodes_evaluated": 0,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "early_game_2",
+      "depth": 4,
+      "latency_ms": 0.0011800000265793642,
+      "move_chosen": 3,
+      "nodes_evaluated": 0,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "early_game_2",
+      "depth": 5,
+      "latency_ms": 0.0011409999842726393,
+      "move_chosen": 3,
+      "nodes_evaluated": 0,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "early_game_3",
+      "depth": 3,
+      "latency_ms": 2.4882770001113386,
+      "move_chosen": 3,
+      "nodes_evaluated": 87,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "early_game_3",
+      "depth": 4,
+      "latency_ms": 8.92345700003716,
+      "move_chosen": 3,
+      "nodes_evaluated": 294,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "early_game_3",
+      "depth": 5,
+      "latency_ms": 21.66426999997384,
+      "move_chosen": 3,
+      "nodes_evaluated": 662,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "mid_game_1",
+      "depth": 3,
+      "latency_ms": 2.9914480001025368,
+      "move_chosen": 3,
+      "nodes_evaluated": 79,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "mid_game_1",
+      "depth": 4,
+      "latency_ms": 9.271605000094496,
+      "move_chosen": 3,
+      "nodes_evaluated": 232,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "mid_game_1",
+      "depth": 5,
+      "latency_ms": 23.893951999980345,
+      "move_chosen": 3,
+      "nodes_evaluated": 624,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "mid_game_2",
+      "depth": 3,
+      "latency_ms": 2.841002999957709,
+      "move_chosen": 3,
+      "nodes_evaluated": 56,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "mid_game_2",
+      "depth": 4,
+      "latency_ms": 2.288858999918375,
+      "move_chosen": 3,
+      "nodes_evaluated": 98,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "mid_game_2",
+      "depth": 5,
+      "latency_ms": 16.381417999809855,
+      "move_chosen": 3,
+      "nodes_evaluated": 386,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "win_opportunity_horizontal",
+      "depth": 3,
+      "latency_ms": 2.9118550000930554,
+      "move_chosen": 3,
+      "nodes_evaluated": 56,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "win_opportunity_horizontal",
+      "depth": 4,
+      "latency_ms": 4.4961910000438365,
+      "move_chosen": 3,
+      "nodes_evaluated": 98,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "win_opportunity_horizontal",
+      "depth": 5,
+      "latency_ms": 19.61919800010037,
+      "move_chosen": 3,
+      "nodes_evaluated": 392,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "win_opportunity_vertical",
+      "depth": 3,
+      "latency_ms": 2.9816859998845757,
+      "move_chosen": 3,
+      "nodes_evaluated": 56,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "win_opportunity_vertical",
+      "depth": 4,
+      "latency_ms": 2.4214340000980883,
+      "move_chosen": 3,
+      "nodes_evaluated": 98,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "win_opportunity_vertical",
+      "depth": 5,
+      "latency_ms": 16.988066000067192,
+      "move_chosen": 3,
+      "nodes_evaluated": 386,
+      "expected_optimal": 3,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "must_block_horizontal",
+      "depth": 3,
+      "latency_ms": 18.569790999890756,
+      "move_chosen": 6,
+      "nodes_evaluated": 344,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "must_block_horizontal",
+      "depth": 4,
+      "latency_ms": 69.54074300006141,
+      "move_chosen": 6,
+      "nodes_evaluated": 1549,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "must_block_horizontal",
+      "depth": 5,
+      "latency_ms": 329.1349490000357,
+      "move_chosen": 6,
+      "nodes_evaluated": 9948,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "must_block_vertical",
+      "depth": 3,
+      "latency_ms": 0.9671589998561103,
+      "move_chosen": 3,
+      "nodes_evaluated": 44,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "must_block_vertical",
+      "depth": 4,
+      "latency_ms": 5.732287000000724,
+      "move_chosen": 3,
+      "nodes_evaluated": 202,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "must_block_vertical",
+      "depth": 5,
+      "latency_ms": 29.526417999932164,
+      "move_chosen": 3,
+      "nodes_evaluated": 784,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "complex_1",
+      "depth": 3,
+      "latency_ms": 8.236639999950057,
+      "move_chosen": 6,
+      "nodes_evaluated": 237,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "complex_1",
+      "depth": 4,
+      "latency_ms": 58.938667000120404,
+      "move_chosen": 6,
+      "nodes_evaluated": 1699,
+      "expected_optimal": null,
+      "is_optimal": true
+    },
+    {
+      "scenario_name": "complex_1",
+      "depth": 5,
+      "latency_ms": 145.12427499994374,
+      "move_chosen": 6,
+      "nodes_evaluated": 5066,
+      "expected_optimal": null,
+      "is_optimal": true
+    }
+  ]
+}

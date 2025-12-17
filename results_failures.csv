@@ -1,0 +1,6 @@
+Method,Name,Error,Occurrences
+GET,/leaderboard,"ReadTimeout(ReadTimeoutError(""HTTPConnectionPool(host='localhost', port=5000): Read timed out. (read timeout=5)""))",302
+GET,/leaderboard,CatchResponseError('HTTP 0'),435
+POST,/signup,CatchResponseError('HTTP 0'),86
+GET,/active_games,"ReadTimeout(ReadTimeoutError(""HTTPConnectionPool(host='localhost', port=5000): Read timed out. (read timeout=5)""))",302
+GET,/active_games,CatchResponseError('HTTP 0'),222
