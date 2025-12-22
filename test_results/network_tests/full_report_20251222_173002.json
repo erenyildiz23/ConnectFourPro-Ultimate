@@ -1,0 +1,178 @@
+{
+  "timestamp": "20251222_173002",
+  "server_url": "http://localhost:5000",
+  "config": {
+    "warmup_requests": 10,
+    "requests_per_test": 100,
+    "payload_sizes": [
+      64,
+      256,
+      1024,
+      4096
+    ],
+    "concurrent_levels": [
+      1,
+      5,
+      10,
+      20,
+      50
+    ]
+  },
+  "test_results": [
+    {
+      "test_name": "websocket_payload_64b",
+      "test_type": "websocket",
+      "sample_count": 100,
+      "success_count": 100,
+      "failure_count": 0,
+      "min_ms": 2.0577370000864903,
+      "max_ms": 43.49315699982981,
+      "mean_ms": 14.110297959978197,
+      "median_ms": 20.760204999987764,
+      "stdev_ms": 9.450602105955864,
+      "p50_ms": 20.761272000072495,
+      "p95_ms": 21.202685999924142,
+      "p99_ms": 43.49315699982981,
+      "jitter_ms": 0.5729382929355853,
+      "throughput_rps": 48.88130129215796
+    },
+    {
+      "test_name": "websocket_payload_256b",
+      "test_type": "websocket",
+      "sample_count": 100,
+      "success_count": 100,
+      "failure_count": 0,
+      "min_ms": 2.0467859999371285,
+      "max_ms": 3.529953999986901,
+      "mean_ms": 2.4076307699942845,
+      "median_ms": 2.334345999997822,
+      "stdev_ms": 0.2926986477515636,
+      "p50_ms": 2.3366420000456856,
+      "p95_ms": 3.0532270002368023,
+      "p99_ms": 3.529953999986901,
+      "jitter_ms": 0.20606346462881622,
+      "throughput_rps": 49.82229344516346
+    },
+    {
+      "test_name": "websocket_payload_1024b",
+      "test_type": "websocket",
+      "sample_count": 100,
+      "success_count": 100,
+      "failure_count": 0,
+      "min_ms": 1.9829430002573645,
+      "max_ms": 4.1666530000838975,
+      "mean_ms": 2.396906950016273,
+      "median_ms": 2.316913000186105,
+      "stdev_ms": 0.29906201611742467,
+      "p50_ms": 2.3172050000539457,
+      "p95_ms": 2.8622200002246245,
+      "p99_ms": 4.1666530000838975,
+      "jitter_ms": 0.2148929696923373,
+      "throughput_rps": 49.872687621357485
+    },
+    {
+      "test_name": "websocket_payload_4096b",
+      "test_type": "websocket",
+      "sample_count": 100,
+      "success_count": 100,
+      "failure_count": 0,
+      "min_ms": 2.118639000400435,
+      "max_ms": 3.856358000120963,
+      "mean_ms": 2.5026132700213566,
+      "median_ms": 2.429166499950952,
+      "stdev_ms": 0.30401799745614905,
+      "p50_ms": 2.4369239999941783,
+      "p95_ms": 3.0659700000796875,
+      "p99_ms": 3.856358000120963,
+      "jitter_ms": 0.22031679797848225,
+      "throughput_rps": 49.80564452908126
+    },
+    {
+      "test_name": "rest_get_leaderboard",
+      "test_type": "rest_get",
+      "sample_count": 100,
+      "success_count": 100,
+      "failure_count": 0,
+      "min_ms": 2.2221220001483744,
+      "max_ms": 3.2187430001613393,
+      "mean_ms": 2.483651760007888,
+      "median_ms": 2.445606500032227,
+      "stdev_ms": 0.1770520092919976,
+      "p50_ms": 2.446523999878991,
+      "p95_ms": 2.8234129999873403,
+      "p99_ms": 3.2187430001613393,
+      "jitter_ms": 0.15993753538967928,
+      "throughput_rps": 79.78713341737591
+    },
+    {
+      "test_name": "rest_get_active_games",
+      "test_type": "rest_get",
+      "sample_count": 100,
+      "success_count": 100,
+      "failure_count": 0,
+      "min_ms": 217.6629860000503,
+      "max_ms": 282.6375320000807,
+      "mean_ms": 231.5873246900037,
+      "median_ms": 227.4843674999829,
+      "stdev_ms": 12.193663123651623,
+      "p50_ms": 227.49875899990002,
+      "p95_ms": 252.4531960002605,
+      "p99_ms": 282.6375320000807,
+      "jitter_ms": 9.13031653535103,
+      "throughput_rps": 4.178979692879161
+    }
+  ],
+  "concurrency_results": [
+    {
+      "concurrent_connections": 1,
+      "total_requests": 20,
+      "successful_requests": 20,
+      "failed_requests": 0,
+      "total_time_seconds": 0.03983592199983832,
+      "avg_latency_ms": 1.9275437499572945,
+      "throughput_rps": 502.05942265077164,
+      "error_rate_percent": 0.0
+    },
+    {
+      "concurrent_connections": 5,
+      "total_requests": 100,
+      "successful_requests": 100,
+      "failed_requests": 0,
+      "total_time_seconds": 0.37205170600009296,
+      "avg_latency_ms": 18.21706696001911,
+      "throughput_rps": 268.77984534755774,
+      "error_rate_percent": 0.0
+    },
+    {
+      "concurrent_connections": 10,
+      "total_requests": 200,
+      "successful_requests": 200,
+      "failed_requests": 0,
+      "total_time_seconds": 0.8392396430003828,
+      "avg_latency_ms": 41.56424552999397,
+      "throughput_rps": 238.31095404999687,
+      "error_rate_percent": 0.0
+    },
+    {
+      "concurrent_connections": 20,
+      "total_requests": 400,
+      "successful_requests": 400,
+      "failed_requests": 0,
+      "total_time_seconds": 1.1552275899998676,
+      "avg_latency_ms": 56.881915062501776,
+      "throughput_rps": 346.2521181649114,
+      "error_rate_percent": 0.0
+    },
+    {
+      "concurrent_connections": 50,
+      "total_requests": 1000,
+      "successful_requests": 1000,
+      "failed_requests": 0,
+      "total_time_seconds": 1.3308726980003485,
+      "avg_latency_ms": 64.10704188700629,
+      "throughput_rps": 751.386666435123,
+      "error_rate_percent": 0.0
+    }
+  ],
+  "raw_measurements_count": 700
+}
