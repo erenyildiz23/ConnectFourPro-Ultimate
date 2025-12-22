@@ -1,0 +1,119 @@
+@startuml state_diagram
+
+title Connect Four - Game State Diagram
+
+skinparam stateBackgroundColor white
+skinparam stateBorderColor black
+
+[*] --> Login : Application Start
+
+state "Authentication" as Auth {
+    state Login
+    state Register
+    
+    Login --> Register : Click "Register"
+    Register --> Login : Registration Success
+    Login --> Login : Invalid Credentials
+}
+
+Login --> MainMenu : Login Success
+
+state "Main Menu" as MainMenu {
+    state Idle
+    state ViewingLeaderboard
+    state SelectingAI
+    
+    Idle --> ViewingLeaderboard : View Leaderboard
+    ViewingLeaderboard --> Idle : Back
+    Idle --> SelectingAI : vs AI
+    SelectingAI --> Idle : Back
+}
+
+MainMenu --> Lobby : Online Mode
+MainMenu --> PlayingAI : Select Difficulty
+
+state "Online Lobby" as Lobby {
+    state BrowsingRooms
+    state CreatingRoom
+    state WaitingForOpponent
+    
+    BrowsingRooms --> CreatingRoom : Create Game
+    CreatingRoom --> WaitingForOpponent : Room Created
+    BrowsingRooms --> BrowsingRooms : Refresh
+    WaitingForOpponent --> BrowsingRooms : Cancel
+}
+
+Lobby --> MainMenu : Back
+
+state "Playing vs AI" as PlayingAI {
+    state PlayerTurn as PT_AI
+    state AIThinking
+    state AnimatingMove as AM_AI
+    
+    PT_AI --> AM_AI : Valid Move
+    AM_AI --> AIThinking : Animation Done\n[not game over]
+    AIThinking --> AM_AI : AI Move Calculated
+    AM_AI --> PT_AI : Animation Done\n[not game over]
+}
+
+PlayingAI --> GameOver : Win/Loss/Draw
+
+state "Playing Online" as PlayingOnline {
+    state WaitingForStart
+    state MyTurn
+    state OpponentTurn
+    state AnimatingMove as AM_ON
+    state Spectating
+    
+    WaitingForStart --> MyTurn : game_start\n[I'm player 1]
+    WaitingForStart --> OpponentTurn : game_start\n[I'm player 2]
+    WaitingForStart --> Spectating : game_joined\n[as spectator]
+    
+    MyTurn --> AM_ON : Make Move
+    AM_ON --> OpponentTurn : move_made\n[not game over]
+    OpponentTurn --> AM_ON : move_made (opponent)
+    AM_ON --> MyTurn : Animation Done\n[my turn]
+    
+    Spectating --> Spectating : move_made\n(observe only)
+}
+
+Lobby --> PlayingOnline : Join Room
+WaitingForOpponent --> PlayingOnline : Opponent Joined
+
+PlayingOnline --> GameOver : game_over event
+
+state "Game Over" as GameOver {
+    state DisplayResult
+    state UpdatingELO
+    
+    DisplayResult --> UpdatingELO : [online game]
+}
+
+GameOver --> MainMenu : Return to Menu
+GameOver --> PlayingAI : Rematch (AI)
+GameOver --> Lobby : Find New Game
+
+MainMenu --> [*] : Logout / Exit
+
+note right of PlayingAI
+    **AI Difficulty Levels:**
+    - Easy: Depth 2 (~2ms)
+    - Medium: Depth 4 (~20ms)
+    - Hard: Depth 6 (~355ms)
+end note
+
+note right of PlayingOnline
+    **Real-time Sync:**
+    - WebSocket events
+    - Server authoritative
+    - Spectator support
+end note
+
+note bottom of GameOver
+    **ELO Update:**
+    Winner: +15 points
+    Loser: -15 points
+    Draw: No change
+end note
+
+@enduml

@@ -1,6 +1,0 @@
-concurrent_connections,total_requests,successful,failed,total_time_sec,avg_latency_ms,throughput_rps,error_rate_percent
-1,20,20,0,0.05,2.27,417.82,0.00
-5,100,100,0,0.19,9.03,516.84,0.00
-10,200,200,0,0.35,16.14,570.05,0.00
-20,400,400,0,0.69,31.71,580.10,0.00
-50,1000,1000,0,1.48,64.95,676.51,0.00

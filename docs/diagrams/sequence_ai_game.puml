@@ -1,0 +1,146 @@
+@startuml sequence_ai_game
+
+title AI vs Human Game - Sequence Diagram
+
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "Human Player\n(Red)" as Human
+participant "GUI\n(Pygame)" as GUI
+participant "ConnectFourGame\n(game_core.py)" as Game
+participant "AIEngine\n(ai_vs_human.py)" as AI
+
+== Game Initialization ==
+
+Human -> GUI: Select "vs AI"\n→ Hard (Depth 6)
+activate GUI
+GUI -> Game: __init__()
+activate Game
+Game -> Game: Initialize bitboards\nplayer1 = 0\nplayer2 = 0
+Game --> GUI: Game ready
+deactivate Game
+
+GUI -> AI: __init__(piece=YELLOW,\ndepth=6)
+activate AI
+AI --> GUI: AI ready
+deactivate AI
+
+GUI --> Human: Display empty board\n"Your turn (Red)"
+deactivate GUI
+
+== Human Move ==
+
+Human -> GUI: Click column 3
+activate GUI
+
+GUI -> Game: is_valid_location(col=3)
+activate Game
+Game -> Game: Check heights[3] < ROWS
+Game --> GUI: True
+deactivate Game
+
+GUI -> GUI: animate_drop(col=3,\npiece=RED)
+
+GUI -> Game: make_move(col=3)
+activate Game
+Game -> Game: row = heights[3]\nUpdate bitboard:\nplayer1 |= (1 << position)
+Game -> Game: heights[3]++\nmove_history.append(3)
+Game -> Game: check_winner()
+note right
+  Bitboard win check:
+  4 directions × 2 ops
+  = 8 bitwise operations
+  O(1) complexity
+end note
+Game --> GUI: Move applied\n(game_over=False)
+deactivate Game
+
+GUI --> Human: Board updated\n"AI thinking..."
+
+== AI Move ==
+
+GUI -> AI: get_best_move(game_state)
+activate AI
+
+AI -> AI: Start timer
+
+loop For each valid column (0-6)
+    AI -> Game: copy_state()
+    activate Game
+    Game --> AI: state_copy
+    deactivate Game
+    
+    AI -> AI: minimax(state_copy,\ndepth=6, α=-∞, β=+∞,\nmaximizing=False)
+    
+    note right of AI
+      Alpha-Beta Pruning:
+      - Track α (best for MAX)
+      - Track β (best for MIN)
+      - Prune when α ≥ β
+      
+      Avg nodes at D6: ~11,400
+      (vs 117,649 without pruning)
+    end note
+    
+    AI -> AI: score = evaluate(state)
+    
+    alt score > best_score
+        AI -> AI: best_score = score\nbest_col = col
+    end
+    
+    alt α ≥ β
+        AI -> AI: PRUNE remaining\nsubtree (cutoff)
+    end
+end
+
+AI -> AI: Stop timer\n(avg: 355ms @ D6)
+
+AI --> GUI: best_col = 3
+deactivate AI
+
+GUI -> GUI: animate_drop(col=3,\npiece=YELLOW)
+
+GUI -> Game: make_move(col=3)
+activate Game
+Game -> Game: Update bitboard:\nplayer2 |= (1 << position)
+Game -> Game: check_winner()
+Game --> GUI: Move applied
+deactivate Game
+
+GUI --> Human: Board updated\n"Your turn"
+deactivate GUI
+
+== Game Continues ==
+
+note over Human,AI
+  Loop continues until:
+  - Win detected (4 in a row)
+  - Draw (board full, 42 moves)
+end note
+
+== Win Detection ==
+
+Human -> GUI: Click winning move
+activate GUI
+GUI -> Game: make_move(col)
+activate Game
+
+Game -> Game: Update bitboard
+Game -> Game: check_winner()
+
+note right of Game
+  Win check algorithm:
+  for direction in [H, V, D1, D2]:
+    temp = board & (board >> shift)
+    if temp & (temp >> 2*shift):
+      return WIN
+end note
+
+Game --> GUI: game_over=True\nwinner=PLAYER1
+deactivate Game
+
+GUI -> GUI: draw_game_over()\n"RED WINS!"
+GUI --> Human: Victory screen
+deactivate GUI
+
+@enduml

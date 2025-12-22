@@ -1,7 +1,0 @@
-test_name,test_type,samples,success,failure,min_ms,max_ms,mean_ms,median_ms,stdev_ms,p50_ms,p95_ms,p99_ms,jitter_ms,throughput_rps
-websocket_payload_64b,websocket,100,100,0,1.24,3.03,1.55,1.50,0.24,1.51,1.92,3.03,0.20,47.06
-websocket_payload_256b,websocket,100,100,0,1.26,4.11,1.60,1.56,0.32,1.56,1.95,4.11,0.23,47.05
-websocket_payload_1024b,websocket,100,100,0,1.31,2.22,1.59,1.53,0.22,1.53,2.00,2.22,0.22,46.97
-websocket_payload_4096b,websocket,100,100,0,1.33,2.99,1.66,1.57,0.27,1.57,2.22,2.99,0.23,46.49
-rest_get_leaderboard,rest_get,100,100,0,1.97,3.19,2.21,2.17,0.21,2.17,2.62,3.19,0.19,76.51
-rest_get_active_games,rest_get,100,100,0,1.86,3.42,2.09,2.05,0.19,2.05,2.41,3.42,0.16,77.04

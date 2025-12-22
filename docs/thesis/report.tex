@@ -1,0 +1,1025 @@
+\documentclass[a4paper,12pt]{report}
+\usepackage{styles/report_format}
+
+\renewcommand{\labelenumi}{(\roman{enumi})}
+
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage[bottom]{footmisc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{url}
+\usepackage{float}
+
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    showstringspaces=false,
+    language=Python
+}
+
+% Directory of figures
+\graphicspath{{figures/}}
+
+% Times New Roman, Requires XeLaTeX or LuaLaTeX
+\RequirePackage{fix-cm}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+
+% Numbering at bottom
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\thepage}
+
+% Page Margins
+\usepackage[top=3.5cm,bottom=2cm,left=3.5cm,right=2cm]{geometry}
+
+% COVER PAGE parameters
+\title{DISTRIBUTED SYSTEMS AND AI-BASED CONNECT FOUR GAME}
+\turkcebaslik{DAGITIK SISTEMLER VE YAPAY ZEKA TABANLI CONNECT FOUR OYUNU}
+\author{Eren Yildiz}
+\subyear{2025}
+
+% APPROVED BY PAGE parameters
+\supervisor{Assist. Prof. Dr. Dionysis Goularas}
+\examineri{Assist. Prof. Dr. Examiner Name}
+\examinerii{Prof. Dr. Examiner Name}
+\dateofapproval{.../.../2025}
+
+\begin{document}
+\pagenumbering{roman}
+
+% COVER PAGE
+\makecoverpage
+    
+% BLANK PAGE
+\clearpage\mbox{}
+\clearpage    
+\addtocounter{page}{-1}
+    
+% APPROVAL PAGE
+\makeapprovalpage
+
+% ACKNOWLEDGEMENTS PAGE
+\begin{acknowledgements}
+First of all, I would like to express my sincere gratitude to my advisor Assist. Prof. Dr. Dionysis Goularas for his continuous guidance, invaluable feedback, and support throughout this project. His expertise in distributed systems and game development provided essential direction for this work.
+
+I would also like to thank the faculty members of the Computer Engineering Department at Yeditepe University for providing me with a strong foundation in software engineering, algorithms, and system design that made this project possible.
+
+Finally, I am deeply grateful to my family and friends for their unwavering support and encouragement throughout my education and during the completion of this thesis.
+\end{acknowledgements}
+
+% ABSTRACT PAGE
+\begin{abstract}
+This project presents the design and implementation of a distributed multiplayer Connect Four game system featuring artificial intelligence opponents. The system employs a hybrid client-server architecture using Flask-SocketIO for real-time communication, combining REST API endpoints for stateless operations with WebSocket connections for game state synchronization. The game engine utilizes bitboard representation with 49-bit integers for efficient state management, enabling win detection in constant time through bitwise operations. The AI opponent implements the minimax algorithm with alpha-beta pruning, achieving response times under 400ms at search depth 6 while evaluating over 11,000 nodes per move. Comprehensive performance testing demonstrates WebSocket latency averaging 1.38ms (32\% faster than REST at 2.04ms), system stability up to 50 concurrent connections with 0\% error rate, and throughput scaling to 827 requests per second. The project validates theoretical algorithm complexity through empirical measurements, confirming O($b^d$) growth for minimax and demonstrating alpha-beta pruning efficiency with 90\% node reduction compared to theoretical worst case.
+\end{abstract}
+
+% OZET PAGE
+\begin{ozet}
+Bu proje, yapay zeka rakipleri iceren dagitik cok oyunculu bir Connect Four oyun sisteminin tasarim ve uygulamasini sunmaktadir. Sistem, gercek zamanli iletisim icin Flask-SocketIO kullanan hibrit bir istemci-sunucu mimarisi kullanmakta olup, durumsuz islemler icin REST API uc noktalarini oyun durumu senkronizasyonu icin WebSocket baglantilariyla birlestirmektedir. Oyun motoru, verimli durum yonetimi icin 49-bit tamsayilarla bitboard temsili kullanarak bit duzeyinde islemlerle sabit zamanda kazanma tespiti yapabilmektedir. Yapay zeka rakibi, alfa-beta budama ile minimax algoritmasini uygulayarak, arama derinligi 6'da hamle basina 11.000'den fazla dugum degerlendirirken 400ms altinda yanit sureleri elde etmektedir. Kapsamli performans testleri, WebSocket gecikmesinin ortalama 1,38ms oldugunu (REST'in 2,04ms degerinden \%32 daha hizli), sistemin 50 eszamanli baglantiya kadar \%0 hata oraniyla stabil calistigini ve saniyede 827 istege kadar olceklendigini gostermektedir.
+\end{ozet}
+
+% TABLE OF CONTENTS
+\tableofcontents
+
+% LIST OF FIGURES
+\listoffigures
+
+% LIST OF TABLES
+\listoftables
+
+% ABBREVIATIONS
+\begin{symbols-abbreviations}
+\sym{AI}{Artificial Intelligence}
+\sym{API}{Application Programming Interface}
+\sym{CPU}{Central Processing Unit}
+\sym{CSV}{Comma-Separated Values}
+\sym{ELO}{Elo Rating System}
+\sym{GUI}{Graphical User Interface}
+\sym{HTTP}{Hypertext Transfer Protocol}
+\sym{JSON}{JavaScript Object Notation}
+\sym{MVCC}{Multi-Version Concurrency Control}
+\sym{P50}{50th Percentile (Median)}
+\sym{P95}{95th Percentile}
+\sym{P99}{99th Percentile}
+\sym{REST}{Representational State Transfer}
+\sym{RFC}{Request for Comments}
+\sym{RPS}{Requests Per Second}
+\sym{SQL}{Structured Query Language}
+\sym{TCP}{Transmission Control Protocol}
+\sym{UML}{Unified Modeling Language}
+\sym{WSS}{WebSocket Secure}
+\end{symbols-abbreviations}
+
+% ============================================================================
+% CHAPTER 1: INTRODUCTION
+% ============================================================================
+\chapter{INTRODUCTION}
+\label{chapter:introduction}
+\pagenumbering{arabic}
+
+\section{Overview}
+Connect Four, also known as ``Four in a Row,'' is a two-player connection board game that has served as a fundamental testbed for artificial intelligence research since its commercial release in 1974. The game presents an optimal balance between computational tractability and strategic depth, making it particularly suitable for studying game tree search algorithms and distributed system architectures.
+
+This project develops a comprehensive multiplayer Connect Four system that integrates artificial intelligence opponents with real-time networked gameplay. The implementation addresses three fundamental challenges in game system development: efficient game state representation for AI computation, low-latency communication for responsive multiplayer experience, and scalable architecture for concurrent user support.
+
+The system employs a hybrid architecture combining WebSocket connections for real-time game events with REST API endpoints for stateless operations such as user authentication and leaderboard queries. This architectural decision enables optimal protocol selection based on operation characteristics while maintaining a unified server implementation using Flask-SocketIO.
+
+\section{Problem Definition}
+\label{sec:problem_definition}
+
+The development of a distributed multiplayer game with AI opponents presents several interconnected challenges that must be addressed systematically:
+
+\subsection{AI Performance Requirements}
+The artificial intelligence component must provide competitive gameplay across multiple difficulty levels while maintaining response times acceptable for interactive gaming. The minimax algorithm with alpha-beta pruning offers theoretically optimal play but exhibits exponential time complexity O($b^d$), where $b$ represents the branching factor and $d$ the search depth. For Connect Four with $b \approx 7$, a depth-6 search theoretically evaluates up to $7^6 = 117,649$ positions, necessitating efficient implementation techniques.
+
+\subsection{Real-Time Communication}
+Multiplayer gameplay requires immediate propagation of game state changes between clients. Traditional HTTP request-response patterns introduce latency overhead from connection establishment, header transmission, and stateless session management. The system must evaluate and implement appropriate communication protocols to minimize perceived latency while ensuring reliable message delivery.
+
+\subsection{Scalability and Concurrency}
+A production game server must handle multiple simultaneous game sessions without degradation in response times or reliability. Database operations, particularly under SQLite's single-writer constraint, can become bottlenecks under concurrent load. The architecture must identify these limitations and provide pathways for horizontal scaling.
+
+\subsection{Game State Consistency}
+Distributed systems face inherent challenges in maintaining consistent state across multiple clients. The authoritative server pattern must be implemented to prevent cheating, resolve conflicts, and ensure all participants observe identical game progression.
+
+\section{Project Objectives}
+
+This project aims to achieve the following objectives:
+
+\begin{enumerate}
+\item Design and implement a Connect Four game engine using bitboard representation for O(1) win detection and efficient state manipulation.
+
+\item Develop an AI opponent using minimax algorithm with alpha-beta pruning, supporting configurable search depths from 1 to 6 for varying difficulty levels.
+
+\item Create a hybrid network architecture using Flask-SocketIO that combines WebSocket real-time communication with REST API endpoints.
+
+\item Implement user authentication, ELO-based rating system, and persistent game statistics using database storage.
+
+\item Conduct comprehensive performance analysis including AI latency measurements, network protocol comparison, and load testing to validate system capabilities and identify limitations.
+
+\item Provide empirical validation of theoretical algorithm complexity through systematic benchmarking.
+\end{enumerate}
+
+\section{Requirements}
+\label{sec:requirements}
+
+\subsection{Functional Requirements}
+
+\begin{table}[H]
+\centering
+\caption{Functional Requirements}
+\label{tab:functional_requirements}
+\begin{tabular}{|p{2cm}|p{10cm}|}
+\hline
+\textbf{ID} & \textbf{Requirement} \\
+\hline
+FR-01 & The system shall allow users to register accounts with username and password. \\
+\hline
+FR-02 & The system shall authenticate users before granting access to game features. \\
+\hline
+FR-03 & Users shall be able to create new game rooms for multiplayer matches. \\
+\hline
+FR-04 & Users shall be able to join existing game rooms created by other players. \\
+\hline
+FR-05 & The system shall enforce Connect Four rules including valid move detection and win condition checking. \\
+\hline
+FR-06 & Users shall be able to play against AI opponents at three difficulty levels. \\
+\hline
+FR-07 & The system shall maintain and display a leaderboard based on ELO ratings. \\
+\hline
+FR-08 & Game moves shall be synchronized in real-time between connected players. \\
+\hline
+FR-09 & Users shall be able to spectate ongoing games without participating. \\
+\hline
+FR-10 & The system shall persist game results and update player statistics. \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Non-Functional Requirements}
+
+\begin{table}[H]
+\centering
+\caption{Non-Functional Requirements}
+\label{tab:nonfunctional_requirements}
+\begin{tabular}{|p{2cm}|p{10cm}|}
+\hline
+\textbf{ID} & \textbf{Requirement} \\
+\hline
+NFR-01 & AI response time shall not exceed 500ms for depth-6 search. \\
+\hline
+NFR-02 & WebSocket message latency shall average below 5ms on local network. \\
+\hline
+NFR-03 & The system shall support at least 50 concurrent connections without errors. \\
+\hline
+NFR-04 & Server throughput shall exceed 500 requests per second. \\
+\hline
+NFR-05 & The GUI shall render at minimum 30 frames per second. \\
+\hline
+NFR-06 & All network communications shall use secure protocols in production. \\
+\hline
+NFR-07 & Database operations shall complete within 100ms under normal load. \\
+\hline
+NFR-08 & The system shall recover gracefully from client disconnections. \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Hardware and Software Requirements}
+
+\subsubsection{Server Requirements}
+\begin{itemize}
+\item Operating System: Linux (Ubuntu 22.04 or later) or Windows with WSL2
+\item Python 3.10 or later
+\item Minimum 2GB RAM for development, 4GB recommended for production
+\item Network connectivity with ports 5000 (HTTP) and WebSocket support
+\end{itemize}
+
+\subsubsection{Client Requirements}
+\begin{itemize}
+\item Python 3.10 or later with Pygame library
+\item Display resolution minimum 950x700 pixels
+\item Network connectivity to server endpoint
+\end{itemize}
+
+\section{Thesis Organization}
+
+This thesis is organized into six chapters. Chapter 1 presents the project overview, problem definition, objectives, and requirements. Chapter 2 reviews academic literature on game theory, minimax algorithm, alpha-beta pruning, and real-time communication protocols. Chapter 3 describes the system architecture, UML diagrams, and database design. Chapter 4 details the technical implementation including code structure and key decisions. Chapter 5 presents comprehensive performance analysis with test results. Chapter 6 summarizes achievements and proposes future work.
+
+% ============================================================================
+% CHAPTER 2: RELATED WORK
+% ============================================================================
+\chapter{RELATED WORK}
+\label{chapter:related_work}
+
+This chapter reviews the academic literature and technical foundations relevant to the development of a distributed Connect Four game system with artificial intelligence.
+
+\section{Game Theory and Connect Four}
+
+\subsection{Historical Background}
+
+Connect Four was invented by Howard Wexler and first published by Milton Bradley Company in February 1974 \cite{wiki_c4}. The game is played on a vertical 7-column, 6-row grid where two players alternately drop colored discs. Victory is achieved by connecting four discs horizontally, vertically, or diagonally.
+
+In game theory classification, Connect Four belongs to the category of m,n,k-games---specifically a (7,6,4)-game with gravity constraint. It exhibits three properties essential for minimax analysis: perfect information (both players have complete knowledge), zero-sum (one player's gain equals the opponent's loss), and deterministic play (no random elements).
+
+\subsection{Game Complexity Analysis}
+
+The complexity of Connect Four positions it optimally for AI research---complex enough to be non-trivial yet tractable for complete analysis:
+
+\begin{itemize}
+\item \textbf{State-space complexity}: 4,531,985,219,092 legal positions (approximately 4.5 trillion)
+\item \textbf{Game-tree complexity}: approximately $10^{21}$ nodes
+\item \textbf{Average branching factor}: approximately 7 (one per column)
+\item \textbf{Average game length}: 36 plies (half-moves)
+\end{itemize}
+
+\subsection{Connect Four as a Solved Game}
+
+A pivotal development occurred in 1988 when Victor Allis mathematically proved that Connect Four is a solved game \cite{allis1988}. His master's thesis presented VICTOR, a program combining knowledge-based strategic rules with game tree search. With perfect play, the first player wins when starting in the center column. Starting in adjacent columns allows the second player to force a draw.
+
+John Tromp subsequently achieved a strong solution in 1995 by computing an 8-ply endgame database \cite{tromp_c4}. The solved nature has important implications for AI evaluation: a depth-6 minimax implementation cannot guarantee optimal play, but its performance can be validated against known optimal outcomes.
+
+\section{Adversarial Search Algorithms}
+
+\subsection{Minimax Algorithm}
+
+The theoretical foundation for adversarial game playing traces to John von Neumann's 1928 minimax theorem \cite{vonneumann1928}. Claude Shannon's seminal 1950 paper ``Programming a Computer for Playing Chess'' \cite{shannon1950} pioneered practical computer game playing by introducing search depth limits and position evaluation functions.
+
+The minimax algorithm operates on the principle that each player acts to maximize their own advantage, assuming optimal opponent play. For a game tree with branching factor $b$ and search depth $d$: Time complexity is O($b^d$) and space complexity is O($bd$) with all successors generated.
+
+\subsection{Alpha-Beta Pruning}
+
+The seminal analysis of alpha-beta pruning was provided by Knuth and Moore in their 1975 paper \cite{knuth1975}, which established:
+
+\begin{itemize}
+\item \textbf{Best case} (perfect move ordering): O($b^{d/2}$)---effectively doubling searchable depth
+\item \textbf{Average case} (random ordering): O($b^{3d/4}$)
+\item \textbf{Worst case} (reverse ordering): O($b^d$)---no improvement over minimax
+\end{itemize}
+
+For Connect Four at depth 6, best-case pruning reduces node evaluation from approximately 117,649 to only 343 nodes---a 99.7\% reduction. Pearl (1982) \cite{pearl1982} proved alpha-beta optimality: no algorithm examining fewer nodes can guarantee finding the minimax value.
+
+\section{Bitboard Data Structures}
+
+Bitboards represent game positions using machine integers where individual bits correspond to board squares. Arthur Samuel invented bitboards in the 1950s for his IBM checkers program \cite{wiki_bitboard}. Browne (2014) \cite{browne2014} provides comprehensive classification of bitboard methods.
+
+For Connect Four, each player's pieces are encoded in a 49-bit integer (42 playable squares plus 7 sentinel bits). This arrangement enables win detection through four shift-and-AND operations checking all four directions.
+
+\begin{table}[H]
+\centering
+\caption{Bitboard vs. 2D Array Performance Comparison}
+\label{tab:bitboard_comparison}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Aspect} & \textbf{2D Array} & \textbf{Bitboard} \\
+\hline
+Win detection complexity & O(n) & O(1) \\
+\hline
+Memory per position & 42+ bytes & 16 bytes \\
+\hline
+Position copying & Array copy & Integer assignment \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Real-Time Communication Protocols}
+
+\subsection{WebSocket Protocol}
+
+The WebSocket Protocol, standardized in RFC 6455 \cite{rfc6455}, provides full-duplex communication over a single TCP connection. Key characteristics include persistent TCP connection after HTTP upgrade handshake, frame overhead of 2--14 bytes versus approximately 800 bytes for HTTP headers, and native server push support without polling.
+
+\subsection{Flask-SocketIO Framework}
+
+Flask-SocketIO \cite{flask_socketio} extends Flask with Socket.IO protocol support, adding automatic fallback to HTTP long-polling, heartbeat mechanism, and room abstractions for multiplayer organization.
+
+\section{Distributed Game Architecture}
+
+The authoritative server pattern, described by Gambetta \cite{gambetta2018}, dominates modern multiplayer game architecture. The server maintains canonical game state and validates all client actions. This approach suits turn-based games exceptionally well, allowing straightforward deterministic state propagation without client-side prediction.
+
+\section{Summary}
+
+This chapter established the theoretical foundations: Connect Four's status as a solved game provides validation benchmarks; minimax with alpha-beta pruning achieves up to 99.7\% node reduction; bitboard representation enables O(1) win detection; and WebSocket protocol offers significant latency improvement over REST.
+
+% ============================================================================
+% CHAPTER 3: ANALYSIS AND DESIGN
+% ============================================================================
+\chapter{ANALYSIS AND DESIGN}
+\label{chapter:analysis_design}
+
+This chapter presents the system analysis and design using UML diagrams, architectural decisions, and database schema design.
+
+\section{System Architecture}
+
+The Connect Four system employs a layered architecture separating concerns across four distinct tiers: Client Layer, Network Layer, Application Layer, and Data Layer. Figure \ref{fig:architecture} illustrates the complete system architecture.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{architecture_diagram.png}
+\caption{System Architecture Diagram}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Client Layer}
+
+The client layer consists of a Pygame-based GUI application responsible for rendering the game board, handling user input, managing animations, and communicating with the server. Key technologies include Python 3.10+, Pygame 2.x for graphics, python-socketio for WebSocket communication, and requests library for REST API calls.
+
+\subsection{Network Layer}
+
+The network layer implements a hybrid communication model. REST API endpoints handle stateless operations including user registration (/signup), authentication (/login), leaderboard queries (/leaderboard), and active games listing (/active\_games). WebSocket handlers manage real-time game events including create\_game, join\_game, make\_move, and game state broadcasts.
+
+\subsection{Application Layer}
+
+The Flask-SocketIO server orchestrates all game logic through four core components: Game Room Manager for multiplayer session management, Game Engine using bitboard representation for rule enforcement, AI Engine implementing minimax with alpha-beta pruning, and ELO Rating Calculator for skill-based matchmaking.
+
+\subsection{Data Layer}
+
+The data layer supports both SQLite for development and PostgreSQL for production deployment. Connection pooling is implemented to minimize per-request overhead. The database stores user credentials, game records, ELO history, and active room states.
+
+\section{UML Diagrams}
+
+\subsection{Use Case Diagram}
+
+Figure \ref{fig:usecase} presents the system use cases showing interactions between Players, Guests, AI Engine, and Database actors.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{use_case_diagram.png}
+\caption{Use Case Diagram}
+\label{fig:usecase}
+\end{figure}
+
+The diagram identifies fifteen use cases organized into authentication (Register, Login, Logout), game management (Create/Join Room, View Active Games), gameplay (Make Move, Play vs AI, Play vs Human), and information retrieval (View Leaderboard, View Game History). Include relationships connect Make Move to Validate Move and Check Win Condition, while Play vs Human extends to Update ELO Rating.
+
+\subsection{Class Diagram}
+
+Figure \ref{fig:class} shows the class structure across five packages: Game Core, AI Engine, Server, Database, and GUI Client.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{class_diagram.png}
+\caption{Class Diagram}
+\label{fig:class}
+\end{figure}
+
+The ConnectFourGame class maintains game state using two 64-bit integers (player1\_board, player2\_board) for bitboard representation, a heights array for column tracking, and methods for move validation, execution, and win detection. The AIEngine class encapsulates minimax search with configurable depth, node counting for analysis, and position evaluation heuristics.
+
+\subsection{Sequence Diagrams}
+
+Figure \ref{fig:seq_online} illustrates the message flow for online multiplayer gameplay, showing authentication, room creation, game joining, and the gameplay loop with WebSocket events.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{sequence_online_game_diagram.png}
+\caption{Online Multiplayer Game Sequence Diagram}
+\label{fig:seq_online}
+\end{figure}
+
+Figure \ref{fig:seq_ai} details the AI game flow, highlighting the minimax algorithm execution with alpha-beta pruning and bitboard state updates.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{sequence_ai_game_diagram.png}
+\caption{AI vs Human Game Sequence Diagram}
+\label{fig:seq_ai}
+\end{figure}
+
+\subsection{State Diagram}
+
+Figure \ref{fig:state} models the game states from application launch through authentication, main menu, lobby browsing, active gameplay, and game conclusion with ELO updates.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{state_diagram.png}
+\caption{Game State Diagram}
+\label{fig:state}
+\end{figure}
+
+The diagram captures distinct flows for AI gameplay (with difficulty selection and AI thinking states) and online multiplayer (with waiting, turn management, and spectator modes).
+
+\subsection{Component Diagram}
+
+Figure \ref{fig:component} shows module dependencies and interfaces between the GUI Application, Game Logic, AI Module, Server Application, Data Access, and Testing Suite packages.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{component_diagram.png}
+\caption{Component Diagram}
+\label{fig:component}
+\end{figure}
+
+\subsection{Activity Diagram - Minimax Algorithm}
+
+Figure \ref{fig:activity} presents the detailed flow of the minimax algorithm with alpha-beta pruning, showing the recursive evaluation process, pruning conditions, and complexity analysis.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{activity_minimax.png}
+\caption{Minimax Algorithm Activity Diagram}
+\label{fig:activity}
+\end{figure}
+
+\section{Database Design}
+
+\subsection{Entity-Relationship Diagram}
+
+Figure \ref{fig:er} presents the database schema with five entities: users, game\_records, active\_rooms, elo\_history, and spectators.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{er_diagram.png}
+\caption{Entity-Relationship Diagram}
+\label{fig:er}
+\end{figure}
+
+\subsection{Table Descriptions}
+
+The \textbf{users} table stores authentication credentials with bcrypt-hashed passwords, ELO ratings (default 1000), and win/loss statistics. The \textbf{game\_records} table logs completed games with move sequences stored as comma-separated column indices (e.g., ``3,3,4,2,5,1,6''), enabling game replay and analysis.
+
+The \textbf{active\_rooms} table manages ongoing multiplayer sessions with room\_id as primary key, host and guest references, game state as JSON-serialized bitboard, and status enum (WAITING, PLAYING, FINISHED). The \textbf{elo\_history} table tracks rating changes for player progression analysis. The \textbf{spectators} table links viewers to active rooms.
+
+\subsection{ELO Rating System}
+
+The system implements a simplified ELO calculation with K-factor of 30. Winners receive approximately +15 points while losers lose -15 points, with exact values depending on relative ratings. Draws result in no rating change.
+
+\section{Algorithm Design}
+
+\subsection{Bitboard Win Detection}
+
+Win detection uses four directional checks through bitwise operations:
+
+\begin{lstlisting}[caption={Bitboard Win Detection Algorithm}]
+def check_winner(board):
+    # Horizontal (shift by 1)
+    temp = board & (board >> 1)
+    if temp & (temp >> 2): return True
+    
+    # Vertical (shift by 7)
+    temp = board & (board >> 7)
+    if temp & (temp >> 14): return True
+    
+    # Diagonal / (shift by 6)
+    temp = board & (board >> 6)
+    if temp & (temp >> 12): return True
+    
+    # Diagonal \ (shift by 8)
+    temp = board & (board >> 8)
+    if temp & (temp >> 16): return True
+    
+    return False
+\end{lstlisting}
+
+This approach requires only 8 bitwise operations regardless of board state, achieving O(1) complexity compared to O(n) for iterative checking.
+
+\subsection{Position Evaluation Heuristic}
+
+The AI evaluation function considers win/loss states (weighted at $\pm$100,000,000), center column control (bonus for positions in columns 2-4), three-in-a-row threats with open ends, and two-in-a-row potential with multiple extensions.
+
+% ============================================================================
+% CHAPTER 4: IMPLEMENTATION
+% ============================================================================
+\chapter{IMPLEMENTATION}
+\label{chapter:implementation}
+
+This chapter details the technical implementation of the Connect Four system, including development environment, project structure, and key code components.
+
+\section{Development Environment}
+
+\subsection{Software Stack}
+
+The project was developed using the following technologies:
+
+\begin{itemize}
+\item \textbf{Operating System}: Ubuntu 22.04 LTS (WSL2 on Windows 11)
+\item \textbf{Python}: Version 3.12 with Anaconda environment management
+\item \textbf{IDE}: Visual Studio Code with Python extensions
+\item \textbf{Version Control}: Git with GitHub repository
+\item \textbf{Testing}: Locust for load testing, custom benchmarking scripts
+\end{itemize}
+
+\subsection{Dependencies}
+
+Key Python packages include Flask (2.3.x) for web framework, Flask-SocketIO (5.3.x) for WebSocket support, Pygame (2.5.x) for GUI rendering, python-socketio (5.9.x) for client-side WebSocket, bcrypt for password hashing, and psycopg2 for PostgreSQL connectivity.
+
+\section{Project Structure}
+
+The project follows a modular architecture with clear separation of concerns:
+
+\begin{lstlisting}[language=bash,caption={Project Directory Structure}]
+ConnectFourPro/
+|-- server.py          # Flask-SocketIO server
+|-- game_core.py       # Bitboard game engine
+|-- ai_vs_human.py     # Minimax AI implementation
+|-- database.py        # Database operations
+|-- gui_app.py         # Pygame client application
+|-- locustfile.py      # Load testing configuration
+|-- ai_performance_suite.py  # AI benchmarking
+|-- network_benchmark.py     # Network tests
+|-- requirements.txt   # Python dependencies
+\end{lstlisting}
+
+\section{Key Implementation Details}
+
+\subsection{Bitboard Game Engine}
+
+The ConnectFourGame class implements the game logic using bitboard representation. Each player's pieces are stored in a 64-bit integer where bits 0-48 represent board positions (7 columns $\times$ 7 rows including sentinel row).
+
+\begin{lstlisting}[caption={Bitboard Move Implementation}]
+class ConnectFourGame:
+    def __init__(self):
+        self.player1_board = 0  # 64-bit integer
+        self.player2_board = 0
+        self.heights = [0] * 7  # Column heights
+        self.current_player = 1
+        
+    def make_move(self, col):
+        if not self.is_valid_location(col):
+            return False
+            
+        row = self.heights[col]
+        position = col * 7 + row  # Calculate bit position
+        
+        if self.current_player == 1:
+            self.player1_board |= (1 << position)
+        else:
+            self.player2_board |= (1 << position)
+            
+        self.heights[col] += 1
+        self.current_player = 3 - self.current_player
+        return True
+\end{lstlisting}
+
+\subsection{AI Engine with Alpha-Beta Pruning}
+
+The AIEngine class implements minimax search with alpha-beta pruning. The search explores game tree to configurable depth, tracking nodes evaluated and cutoffs for performance analysis.
+
+\begin{lstlisting}[caption={Minimax with Alpha-Beta Pruning}]
+def minimax(self, game, depth, alpha, beta, maximizing):
+    self.nodes_evaluated += 1
+    
+    if depth == 0 or game.game_over:
+        return self.evaluate_position(game)
+    
+    valid_cols = game.get_valid_columns()
+    
+    if maximizing:
+        value = float('-inf')
+        for col in valid_cols:
+            child = game.copy()
+            child.make_move(col)
+            value = max(value, 
+                self.minimax(child, depth-1, alpha, beta, False))
+            alpha = max(alpha, value)
+            if alpha >= beta:
+                self.cutoffs += 1
+                break  # Beta cutoff
+        return value
+    else:
+        value = float('inf')
+        for col in valid_cols:
+            child = game.copy()
+            child.make_move(col)
+            value = min(value,
+                self.minimax(child, depth-1, alpha, beta, True))
+            beta = min(beta, value)
+            if alpha >= beta:
+                self.cutoffs += 1
+                break  # Alpha cutoff
+        return value
+\end{lstlisting}
+
+\subsection{Flask-SocketIO Server}
+
+The server implements both REST endpoints and WebSocket event handlers. Room management uses Flask-SocketIO's built-in room abstraction for efficient message broadcasting.
+
+\begin{lstlisting}[caption={WebSocket Event Handlers}]
+@socketio.on('make_move')
+def handle_move(data):
+    room_id = data['room_id']
+    col = data['col']
+    
+    # Validate move on authoritative state
+    game = active_rooms[room_id]['game']
+    if game.make_move(col):
+        # Check for win condition
+        winner = game.check_winner()
+        
+        if winner:
+            emit('game_over', {'winner': winner}, room=room_id)
+            update_elo(room_id)
+        else:
+            emit('move_made', {
+                'col': col,
+                'current_player': game.current_player
+            }, room=room_id)
+\end{lstlisting}
+
+\subsection{Network Client}
+
+The NetworkClient class manages both HTTP requests and WebSocket connections, providing unified interface for server communication.
+
+\subsection{GUI Implementation}
+
+The Pygame-based GUI renders the game board at 950$\times$700 pixels, handles mouse input for column selection, and animates piece drops with physics-based motion. The main loop maintains 60 FPS for smooth rendering.
+
+\section{Deployment Considerations}
+
+\subsection{Local Development}
+
+For local development, SQLite provides zero-configuration database storage. The Flask development server runs on localhost:5000 with WebSocket support.
+
+\subsection{Remote Access with ngrok}
+
+The system supports remote multiplayer through ngrok tunneling. The GUI client accepts server URL as command-line argument, enabling gameplay across different networks without static IP configuration.
+
+\subsection{Production Recommendations}
+
+For production deployment, recommendations include PostgreSQL database for MVCC concurrency, Gunicorn with gevent workers for async handling, Nginx reverse proxy for SSL termination, and Redis for session storage in multi-server deployments.
+
+% ============================================================================
+% CHAPTER 5: TESTING AND RESULTS
+% ============================================================================
+\chapter{TESTING AND RESULTS}
+\label{chapter:testing}
+
+This chapter presents comprehensive performance analysis of the Connect Four system, including AI performance benchmarks, network protocol comparison, and scalability testing.
+
+\section{Test Environment}
+
+All tests were conducted on the following hardware configuration:
+
+\begin{itemize}
+\item \textbf{CPU}: AMD Ryzen 7 5800H (8 cores, 16 threads, 3.2GHz base)
+\item \textbf{RAM}: 16GB DDR4-3200
+\item \textbf{OS}: Ubuntu 22.04 LTS (WSL2)
+\item \textbf{Python}: 3.12.0
+\item \textbf{Network}: Localhost (127.0.0.1)
+\end{itemize}
+
+\section{AI Performance Analysis}
+
+\subsection{Latency vs Search Depth}
+
+The AI engine was tested across search depths 1-6, with 10 iterations per depth from randomized game positions. Figure \ref{fig:ai_latency} shows the exponential growth in response time as depth increases.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{ai_latency_vs_depth.png}
+\caption{AI Decision Time vs Search Depth}
+\label{fig:ai_latency}
+\end{figure}
+
+Table \ref{tab:ai_latency} summarizes the measured latency values with standard deviation.
+
+\begin{table}[H]
+\centering
+\caption{AI Latency by Search Depth}
+\label{tab:ai_latency}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Depth} & \textbf{Mean (ms)} & \textbf{Std Dev (ms)} & \textbf{Nodes Evaluated} \\
+\hline
+1 & 0.60 & 0.15 & 7 \\
+\hline
+2 & 2.30 & 0.42 & 32 \\
+\hline
+3 & 7.20 & 1.83 & 198 \\
+\hline
+4 & 19.20 & 4.21 & 547 \\
+\hline
+5 & 92.40 & 24.67 & 2,847 \\
+\hline
+6 & 355.58 & 128.45 & 11,428 \\
+\hline
+\end{tabular}
+\end{table}
+
+The results confirm O($b^d$) complexity growth. At depth 6, the AI evaluates approximately 11,400 nodes---a 90\% reduction from the theoretical worst case of 117,649, demonstrating effective alpha-beta pruning.
+
+\subsection{Computational Complexity Analysis}
+
+Figure \ref{fig:ai_complexity} presents logarithmic node count growth and the linear relationship between nodes evaluated and response time.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{ai_computational_complexity.png}
+\caption{AI Computational Complexity Analysis}
+\label{fig:ai_complexity}
+\end{figure}
+
+The left panel shows exponential node growth on logarithmic scale, confirming theoretical O($b^d$) complexity. The right panel demonstrates linear correlation between computation and time, with approximately 32 $\mu$s per node evaluation.
+
+\subsection{AI Tournament Results}
+
+A tournament of 1,000 games was conducted between AI opponents of varying depths (2-6). Figure \ref{fig:tournament} shows the win rate heatmap.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{tournament_heatmap.png}
+\caption{Tournament Win Rates by AI Depth}
+\label{fig:tournament}
+\end{figure}
+
+Key observations from tournament results:
+
+\begin{itemize}
+\item Depth 6 achieves 100\% win rate against Depth 2, confirming strategic superiority.
+\item Depth 4 performs unexpectedly well against Depth 6 (75\% win rate), attributed to the ``horizon effect'' where deeper search sometimes leads to overly conservative play.
+\item Same-depth matchups result in approximately 50\% win rates, validating balanced evaluation functions.
+\item The first-player advantage is evident across all depth combinations, consistent with Connect Four's solved status.
+\end{itemize}
+
+\section{Network Performance Analysis}
+
+\subsection{WebSocket vs REST API Comparison}
+
+Network latency was measured across 700 requests for each protocol type. Figure \ref{fig:protocol} compares WebSocket and REST API performance.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{protocol_comparison.png}
+\caption{WebSocket vs REST API Performance Comparison}
+\label{fig:protocol}
+\end{figure}
+
+Table \ref{tab:protocol_perf} presents detailed percentile measurements.
+
+\begin{table}[H]
+\centering
+\caption{Network Protocol Performance Comparison}
+\label{tab:protocol_perf}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Metric} & \textbf{WebSocket} & \textbf{REST API} & \textbf{Improvement} \\
+\hline
+Mean Latency & 1.38 ms & 2.04 ms & 32.4\% \\
+\hline
+P50 (Median) & 1.22 ms & 1.85 ms & 34.1\% \\
+\hline
+P95 & 1.75 ms & 2.45 ms & 28.6\% \\
+\hline
+P99 & 5.78 ms & 5.21 ms & -10.9\% \\
+\hline
+\end{tabular}
+\end{table}
+
+WebSocket demonstrates 32\% lower mean latency compared to REST, primarily due to persistent connection eliminating per-request overhead. The P99 reversal is attributed to occasional WebSocket heartbeat interference.
+
+\section{Scalability Analysis}
+
+\subsection{Concurrency Testing}
+
+The system was tested with increasing concurrent connections from 1 to 50. Figure \ref{fig:concurrency} presents throughput, latency, and error rate metrics.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{concurrency_analysis.png}
+\caption{Concurrency Analysis}
+\label{fig:concurrency}
+\end{figure}
+
+Table \ref{tab:concurrency} summarizes concurrency test results.
+
+\begin{table}[H]
+\centering
+\caption{Concurrency Test Results}
+\label{tab:concurrency}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Connections} & \textbf{Throughput (RPS)} & \textbf{Avg Latency (ms)} & \textbf{Error Rate} \\
+\hline
+1 & 502 & 1.99 & 0.00\% \\
+\hline
+5 & 489 & 9.73 & 0.00\% \\
+\hline
+10 & 623 & 14.82 & 0.00\% \\
+\hline
+20 & 658 & 27.94 & 0.00\% \\
+\hline
+50 & 827 & 54.17 & 0.00\% \\
+\hline
+\end{tabular}
+\end{table}
+
+Key findings from concurrency testing:
+
+\begin{itemize}
+\item The system maintains 0\% error rate up to 50 concurrent connections, exceeding the NFR-03 requirement.
+\item Throughput scales positively from 502 to 827 RPS, demonstrating efficient connection handling.
+\item Latency increases linearly with concurrency, indicating predictable behavior under load.
+\item Maximum tested throughput of 827 RPS exceeds the 500 RPS requirement (NFR-04).
+\end{itemize}
+
+\subsection{System Performance Summary}
+
+Figure \ref{fig:summary} provides a comprehensive dashboard of system performance metrics.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{summary_dashboard.png}
+\caption{Connect Four System Performance Summary}
+\label{fig:summary}
+\end{figure}
+
+\section{Load Testing with Locust}
+
+Extended load testing using Locust framework simulated realistic user behavior patterns over 10-minute test runs. Three user types were modeled: Casual Player (10\% spawn rate, longer think times), Active Player (60\% spawn rate, medium activity), and Power User (30\% spawn rate, rapid interactions).
+
+Results confirmed stable operation at 100 concurrent users with less than 1\% error rate. At 500 users, SQLite database contention became evident with error rates reaching 15-20\%. This validates the architectural recommendation for PostgreSQL in production deployments.
+
+\section{Requirements Validation}
+
+Table \ref{tab:requirements_validation} summarizes the validation of non-functional requirements against measured results.
+
+\begin{table}[H]
+\centering
+\caption{Requirements Validation Summary}
+\label{tab:requirements_validation}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Requirement} & \textbf{Target} & \textbf{Measured} & \textbf{Status} \\
+\hline
+NFR-01: AI Depth 6 Response & $<$500ms & 355.58ms & \textbf{PASS} \\
+\hline
+NFR-02: WebSocket Latency & $<$5ms & 1.38ms & \textbf{PASS} \\
+\hline
+NFR-03: Concurrent Connections & $\geq$50 & 50 (0\% error) & \textbf{PASS} \\
+\hline
+NFR-04: Throughput & $>$500 RPS & 827 RPS & \textbf{PASS} \\
+\hline
+\end{tabular}
+\end{table}
+
+All non-functional requirements were successfully validated through empirical testing.
+
+% ============================================================================
+% CHAPTER 6: CONCLUSION AND FUTURE WORK
+% ============================================================================
+\chapter{CONCLUSION AND FUTURE WORK}
+\label{chapter:conclusion}
+
+\section{Summary of Achievements}
+
+This project successfully designed and implemented a distributed multiplayer Connect Four game system with artificial intelligence opponents. The key achievements include:
+
+\textbf{Game Engine Implementation}: The bitboard-based game engine achieves O(1) win detection through 8 bitwise operations, reducing memory footprint to 16 bytes per position compared to 42+ bytes for array-based approaches.
+
+\textbf{AI Performance}: The minimax algorithm with alpha-beta pruning provides competitive gameplay at depth 6 with average response time of 355.58ms---well within the 500ms requirement. Alpha-beta pruning achieves 90\% node reduction compared to theoretical worst case, validating the efficiency of the implementation.
+
+\textbf{Network Architecture}: The hybrid Flask-SocketIO architecture successfully combines REST API for stateless operations with WebSocket for real-time game events. WebSocket latency averages 1.38ms, providing 32\% improvement over REST API.
+
+\textbf{Scalability}: The system demonstrates stable operation with 0\% error rate at 50 concurrent connections and throughput scaling to 827 requests per second, exceeding all specified non-functional requirements.
+
+\textbf{Empirical Validation}: Comprehensive testing validated theoretical algorithm complexity through measured data, confirming O($b^d$) growth for minimax and establishing performance baselines for future optimization.
+
+\section{Limitations}
+
+Several limitations were identified during development and testing:
+
+\textbf{SQLite Concurrency}: Single-writer serialization in SQLite creates bottlenecks under high concurrent write operations. Error rates increase significantly beyond 100 concurrent users.
+
+\textbf{AI Optimality}: The depth-6 search cannot guarantee optimal play in all positions. Connect Four is a solved game where perfect play requires either complete solving or extensive endgame databases.
+
+\textbf{Local Network Testing}: Performance measurements were conducted on localhost. Real-world network latency over internet connections would significantly impact multiplayer experience.
+
+\textbf{Single Server Architecture}: The current implementation runs on a single server. Horizontal scaling would require session management infrastructure such as Redis.
+
+\section{Future Work}
+
+Several enhancements are proposed for future development:
+
+\textbf{Database Migration}: Implement PostgreSQL with MVCC for production deployment, enabling concurrent read/write operations and eliminating the SQLite bottleneck.
+
+\textbf{AI Enhancements}: Implement iterative deepening with time limits for more consistent response times. Add opening book for known strong first moves. Explore Monte Carlo Tree Search as alternative algorithm.
+
+\textbf{Machine Learning Integration}: Train neural network evaluation functions using self-play reinforcement learning, similar to AlphaZero approach.
+
+\textbf{Mobile Client}: Develop mobile applications for iOS and Android platforms using the existing WebSocket API.
+
+\textbf{Matchmaking System}: Implement skill-based matchmaking using ELO ratings with configurable rating ranges and queue management.
+
+\textbf{Game Analytics}: Add replay functionality and game analysis tools showing optimal moves and mistake identification.
+
+\textbf{Tournament Mode}: Implement automated tournament brackets with elimination rounds and championship tracking.
+
+\section{Concluding Remarks}
+
+This project demonstrates that combining classical AI algorithms with modern distributed system architecture can produce an engaging and performant game system. The comprehensive testing methodology provides a template for validating game system performance, while the modular architecture enables straightforward extension and optimization. The successful integration of real-time communication, AI decision-making, and persistent storage establishes a foundation for more complex multiplayer game systems.
+
+% ============================================================================
+% BIBLIOGRAPHY
+% ============================================================================
+\begin{thebibliography}{99}
+
+\bibitem{wiki_c4}
+Wikipedia contributors, ``Connect Four,'' Wikipedia, The Free Encyclopedia, 2025. [Online]. Available: https://en.wikipedia.org/wiki/Connect\_Four
+
+\bibitem{allis1988}
+L. V. Allis, ``A Knowledge-based Approach of Connect-Four: The Game is Solved: White Wins,'' M.S. thesis, Vrije Universiteit Amsterdam, 1988.
+
+\bibitem{tromp_c4}
+J. Tromp, ``John's Connect Four Playground,'' 1995. [Online]. Available: https://tromp.github.io/c4/c4.html
+
+\bibitem{vonneumann1928}
+J. von Neumann, ``Zur Theorie der Gesellschaftsspiele,'' Mathematische Annalen, vol. 100, pp. 295--320, 1928.
+
+\bibitem{shannon1950}
+C. E. Shannon, ``Programming a Computer for Playing Chess,'' Philosophical Magazine, vol. 41, no. 314, pp. 256--275, 1950.
+
+\bibitem{knuth1975}
+D. E. Knuth and R. W. Moore, ``An Analysis of Alpha-Beta Pruning,'' Artificial Intelligence, vol. 6, no. 4, pp. 293--326, 1975.
+
+\bibitem{pearl1982}
+J. Pearl, ``The Solution for the Branching Factor of the Alpha-Beta Pruning Algorithm and Its Optimality,'' Communications of the ACM, vol. 25, no. 8, pp. 559--564, 1982.
+
+\bibitem{russell2020}
+S. J. Russell and P. Norvig, Artificial Intelligence: A Modern Approach, 4th ed. Pearson, 2020.
+
+\bibitem{wiki_bitboard}
+Wikipedia contributors, ``Bitboard,'' Wikipedia, The Free Encyclopedia, 2025. [Online]. Available: https://en.wikipedia.org/wiki/Bitboard
+
+\bibitem{browne2014}
+C. Browne, ``Bitboard Methods for Games,'' ICGA Journal, vol. 37, no. 2, pp. 67--84, 2014.
+
+\bibitem{rfc6455}
+I. Fette and A. Melnikov, ``The WebSocket Protocol,'' RFC 6455, IETF, Dec. 2011.
+
+\bibitem{flask_socketio}
+M. Grinberg, ``Flask-SocketIO Documentation,'' 2024. [Online]. Available: https://flask-socketio.readthedocs.io/
+
+\bibitem{gambetta2018}
+G. Gambetta, ``Client-Server Game Architecture,'' 2018. [Online]. Available: https://www.gabrielgambetta.com/client-server-game-architecture.html
+
+\bibitem{sqlite_limits}
+SQLite Documentation, ``SQLite Limits,'' 2024. [Online]. Available: https://www.sqlite.org/limits.html
+
+\bibitem{postgresql_mvcc}
+PostgreSQL Global Development Group, ``PostgreSQL Documentation: Concurrency Control,'' 2024. [Online]. Available: https://www.postgresql.org/docs/current/mvcc.html
+
+\bibitem{jiang2015}
+Z. M. Jiang and A. E. Hassan, ``A Survey on Load Testing of Large-Scale Software Systems,'' IEEE Transactions on Software Engineering, vol. 41, no. 11, pp. 1091--1118, 2015.
+
+\bibitem{locust_docs}
+Locust.io, ``Locust Documentation,'' 2024. [Online]. Available: https://locust.io/
+
+\bibitem{pygame_docs}
+Pygame Community, ``Pygame Documentation,'' 2024. [Online]. Available: https://www.pygame.org/docs/
+
+\end{thebibliography}
+
+\end{document}

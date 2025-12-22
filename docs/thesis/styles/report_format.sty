@@ -1,0 +1,448 @@
+%
+% Definitions for title and approval pages
+%
+\def\turkcebaslik#1{\gdef\@turkcebaslik{#1}}
+\def\subyear#1{\gdef\@subyear{#1}}
+\def\supervisor#1{\gdef\@supervisor{#1}}
+\def\examineri#1{\gdef\@examineri{#1}}
+\def\examinerii#1{\gdef\@examinerii{#1}}
+\def\dateofapproval#1{\gdef\@dateofapproval{#1}}
+%
+\global\let\@turkcebaslik\empty
+\global\let\@supervisor\empty
+\global\let\@examineri\empty
+\global\let\@examinerii\empty
+\global\let\@dateofapproval\empty
+\def\nyear{\number\year}
+\global\let\@subyear\nyear
+%
+% Other definitions
+%
+\xdef\@singlespaced{1}
+\xdef\@onehalfspaced{1.5}
+%
+\newlength{\spv}
+\newlength{\ei}
+\newlength{\eii}
+\newlength{\ev}
+\let\@app\empty
+\newcounter{thsfootcnt}
+%
+% Title page
+%
+\newcommand\covermiddle{
+	\fontsize{18}{18}\selectfont
+	by \\ \@author \\
+	\vspace{\fill}
+	Engineering Project Report \\
+	\vspace{\fill}
+}
+%
+\newcommand\covertop{
+  \fontsize{22}{22}\selectfont
+  \@title \\
+  \vspace{\fill} 
+}
+
+%
+\newcommand\coverbottom{
+	\fontsize{16}{16}\selectfont
+	Yeditepe University \\
+ 	Faculty of Engineering  \\
+ 	Department of Computer Engineering \\ 
+ 	\@subyear\\
+}
+
+\newcommand\makecoverpage{
+  \begin{titlepage}
+  \begin{center}
+  \textbf{\covertop\covermiddle\coverbottom}
+  \normalfont
+  \end{center}
+  \end{titlepage}
+}
+%
+
+%
+% Approval page - FIXED VERSION
+%
+\newcommand\makeapprovalpage{%
+  \addtocounter{page}{1}
+  \ifx\@dateofapproval\empty \@@warning{No \string\dateofapproval\space given}\fi
+  \begin{center} \fontsize{22}{22} \textbf{\@title} \par \end{center}
+  \vskip 154pt
+  \fontsize{18}{18}\selectfont APPROVED BY: \par
+  \vskip 1\baselineskip
+  \fontsize{14}{14}\selectfont
+  \settowidth{\spv}{\@supervisor}
+  \settowidth{\ei}{\@examineri}
+  \settowidth{\eii}{\@examinerii}
+  \ifdim\ei>\spv \spv\ei \fi
+  \ifdim\eii>\spv \spv\eii \fi
+    
+  \begin{tabbing}
+  \hspace*{1cm} \= \hspace*{\spv}\hspace*{1em} \= \kill
+  \ifx\@supervisor\empty
+     \@@warning{No \string\supervisor\space given}
+  \else 
+     \> \@supervisor \> \makebox[35mm]\dotfill \\ 
+     \> (Supervisor) \\ \> \\ 
+  \fi
+  \ifx\@examineri\empty \else \> \@examineri \> \makebox[35mm]\dotfill \\ \> \\ \fi
+  \ifx\@examinerii\empty \else \> \@examinerii \> \makebox[35mm]\dotfill \\ \> \\ \fi
+  \end{tabbing}
+  \vskip8\baselineskip
+  DATE OF APPROVAL:\hspace{0.3em}
+  \ifx\@dateofapproval\empty
+    \@@warning{No \string\dateofapproval\space given}
+  \else
+    \@dateofapproval
+  \fi
+  \vskip1\baselineskip
+  \normalsize
+\global\let\@dateofapproval\@empty
+\global\let\dateofapproval\relax
+\global\let\@supervisor\@empty
+\global\let\supervisor\relax
+\global\let\@examineri\@empty
+\global\let\examineri\relax
+\global\let\@examinerii\@empty
+\global\let\examinerii\relax
+}
+%
+% Abstract, Acknowledgements, Ozet, etc.
+%
+
+\usepackage[compact]{titlesec}
+
+\renewenvironment{abstract}{%
+	\bgroup
+	\titlespacing*{\chapter}{0pt}{0pt}{0pt}
+	\titleformat{\chapter}{\filcenter}{}{0pt}{\fontsize{22}{22}\selectfont}
+	\chapter*{\normalfont\abstractname}
+	\egroup
+   \begin{center}
+   {\normalfont\vskip0.8\baselineskip
+    \interlinepenalty\@M \vskip-4pt
+    \fontsize{18}{18}\selectfont\@title\par\nobreak
+    \vskip0.8\baselineskip}
+   \end{center}\hspace\parindent}
+   {\par\vfil\null}
+%
+\newenvironment{acknowledgements}{\chapter*{\ackname}}
+   {\par\vfil\null}
+%
+
+\newenvironment{ozet}{%
+    \bgroup
+    \titlespacing*{\chapter}{0pt}{0pt}{0pt}
+	\titleformat{\chapter}{\filcenter}{}{0pt}{\fontsize{22}{22}\selectfont}
+	\chapter*{\normalfont\ozetname}
+	\egroup
+   \begin{center}
+   { \normalfont\vskip0.8\baselineskip
+    \interlinepenalty\@M \vskip-4pt
+    \fontsize{18}{18}\selectfont\@turkcebaslik\par\nobreak
+    \vskip0.8\baselineskip
+   }\end{center}\hspace\parindent}
+   {\par\vfil\null}
+   
+%
+
+\newenvironment{symbols-abbreviations}{%
+   \clearpage
+   \chapter*{\listsymabbname}
+   \beginsymlist}
+  {\closesymlist}
+%
+
+\newcommand{\beginsymlist}{%
+   \begin{tabbing}
+   \hspace*{\symtabi}\=\hspace*{\symtabii}\=\kill}
+%
+\newcommand{\closesymlist}{\end{tabbing}}
+%
+\newcommand{\sym}[2]{\>#1 \>\parbox[t]{11cm}{#2} \\}
+\newlength{\symtabi}
+\newlength{\symtabii}
+\setlength{\symtabi}{1em}
+\setlength{\symtabii}{10em}
+%
+
+\newcommand\ackname{ACKNOWLEDGEMENTS}
+\newcommand\ozetname{\"OZET}
+\newcommand{\listsymabbname}{LIST OF SYMBOLS/ABBREVIATIONS}
+\renewcommand\appendixname{APPENDIX}
+\renewcommand\abstractname{ABSTRACT}
+%
+% Sectional Units
+%
+\renewcommand\chapter{\clearpage
+                    \global\@topnum\z@
+                    \@afterindenttrue
+                    \secdef\@chapter\@schapter}
+%
+\renewcommand\@makechapterhead[1]{
+  {\normalfont
+    \ifnum \c@secnumdepth >\m@ne
+    \ifx\@app\empty
+        \fontsize{14}{14}\selectfont \bfseries \thechapter.\hspace{1ex}
+    \else
+        \fontsize{14}{14}\selectfont \bfseries \appendixname\ \thechapter:\hspace{1ex}
+    \fi
+    \fi
+    \interlinepenalty\@M
+    \bfseries #1\par\nobreak
+    \vskip0.8\baselineskip
+  }}
+%
+\renewcommand\@makeschapterhead[1]{\begin{center}
+  { \normalfont
+    \interlinepenalty\@M
+    \fontsize{14}{14}\selectfont \bfseries  #1\par\nobreak
+    \vskip0.8\baselineskip
+  }\end{center}}
+%
+\def\@chapter[#1]#2{\ifnum \c@secnumdepth >\m@ne
+                      \refstepcounter{chapter}%
+                      \typeout{\@chapapp\space\thechapter.}%
+                      \ifx\@app\empty
+                        \addcontentsline{toc}{chapter}%
+                            {\protect\numberline{\chaptocapp}#1}%
+                      \else
+                        \addtocontents{toc}{%
+                        \noindent
+                        \appendixname\ \thechapter:\hspace{1.6ex}#1
+                        \nobreak\leaders
+                        \hbox{$\m@th \mkern \@dotsep mu.\mkern
+                              \@dotsep mu$}
+                        \hfill \nobreak
+                        \hb@xt@\@pnumwidth{\hss \thepage}\par}
+                      \fi
+                    \else
+                      \addcontentsline{toc}{chapter}{#1}%
+                    \fi
+                    \chaptermark{#1}%
+                      \@makechapterhead{#2}%
+                      \@afterheading
+                   }
+%
+\renewcommand\@schapter[1]{\addcontentsline{toc}{chapter}{#1}%
+     \@makeschapterhead{#1} \@afterheading}
+%
+\def\chaptocapp{\thechapter.}
+%
+\renewcommand\section{%
+  \@startsection{section}{1}{\z@}
+   {1pt}{0.1pt}{\bfseries\normalsize}
+  }
+\renewcommand\subsection{%
+  \@startsection{subsection}{2}{\z@}
+   {1pt}{0.1pt}{\bfseries\normalsize}
+  }
+\renewcommand\subsubsection[1]{%
+  \@startsection{subsubsection}{3}{\z@}
+   {7pt}{-0.5em}{\normalfont\normalsize}[#1]{\underbar{#1.}}
+  }
+\renewcommand\paragraph{%
+  \@startsection{paragraph}{4}{\z@}
+   {3.25ex \@plus1ex \@minus.2ex}{-0.5em}
+   {\normalfont\normalsize\itshape\hskip\parindent}
+  }
+%
+\addtocounter{secnumdepth}{1}
+\addtocounter{tocdepth}{1}
+%
+% Figures and Tables
+%
+\renewcommand\listfigurename{LIST OF FIGURES}
+\renewcommand\listtablename{LIST OF TABLES}
+\renewcommand\figurename{Figure}
+\renewcommand\tablename{Table}
+%
+\renewcommand\listoffigures{%
+\setlength{\ev}{\parskip}
+\parskip0pt
+    \chapter*{\listfigurename
+      \@mkboth{\MakeUppercase\listfigurename}%
+              {\MakeUppercase\listfigurename}}%
+    \vskip\baselineskip
+    \@starttoc{lof}%
+\parskip\ev}
+%
+\renewcommand\listoftables{%
+\setlength{\ev}{\parskip}
+\parskip0pt
+    \chapter*{\listtablename
+      \@mkboth{%
+          \MakeUppercase\listtablename}{\MakeUppercase\listtablename}}%
+    \vskip\baselineskip
+    \@starttoc{lot}%
+\parskip\ev}
+%
+\long\def\@caption#1[#2]#3{\par\addcontentsline{\csname
+  ext@#1\endcsname}{#1}
+  {\protect\numberline{\textbf{\csname #1name\endcsname \space
+  \csname the#1\endcsname .}}{\ignorespaces #2}\vspace\baselineskip}\begingroup
+    \@parboxrestore
+    \normalsize
+    \@makecaption{\textbf{\csname fnum@#1\endcsname}}{\ignorespaces #3}\par
+  \endgroup}
+%
+\setlength\abovecaptionskip{0\p@}
+%
+\long\def\@makecaption#1#2{%
+  \vskip\abovecaptionskip
+  \centering{
+  \sbox\@tempboxa{#1. #2}%
+  \ifdim \wd\@tempboxa >\hsize
+    #1. #2\par
+  \else
+    \global \@minipagefalse
+    \hb@xt@\hsize{\hfil\box\@tempboxa\hfil}%
+  \fi
+  }
+  \vskip\belowcaptionskip}
+%
+\renewcommand\l@figure{\@dottedtocline{1}{0em}{6em}}
+\renewcommand\l@table{\@dottedtocline{1}{0em}{5.8em}}
+%
+% Table of Contents
+%
+\renewcommand\contentsname{TABLE OF CONTENTS}
+\renewcommand\tableofcontents{%
+\setlength{\ev}{\parskip}
+\parskip0pt
+     \clearpage  \global\@topnum\z@
+     \@afterindenttrue
+     \begin{center}
+      { \normalfont
+       \interlinepenalty\@M
+       \large \bfseries  \contentsname\par\nobreak
+       \vskip21pt \vskip0.8\baselineskip
+      }\end{center}
+     \@afterheading
+     \@starttoc{toc}%
+\parskip\ev}
+%
+\renewcommand\l@chapter[2]{%
+  \ifnum \c@tocdepth >\m@ne
+    \addpenalty{-\@highpenalty}%
+    \setlength\@tempdima{1.5em}%
+    \begingroup
+      \parindent \z@ \rightskip \@pnumwidth
+      \parfillskip -\@pnumwidth
+      \leavevmode
+      \advance\leftskip\@tempdima
+      \hskip -\leftskip
+      #1\nobreak\leaders\hbox{$\m@th \mkern \@dotsep mu.\mkern \@dotsep
+       mu$}\hfil \nobreak\hb@xt@\@pnumwidth{\hss #2}\par
+      \penalty\@highpenalty
+    \endgroup
+  \fi}
+%
+\renewcommand*\l@section{\@dottedtocline{1}{1.5em}{2.em}}
+\renewcommand*\l@subsection{\@dottedtocline{2}{3.8em}{2.9em}}
+\renewcommand*\l@subsubsection{\@dottedtocline{3}{7em}{3.8em}}
+\renewcommand*\l@paragraph{\@dottedtocline{4}{11.1em}{4.7em}}
+\renewcommand*\l@subparagraph{\@dottedtocline{5}{16.1em}{5.7em}}
+%
+% Appendix
+%
+\renewcommand\appendix{\par
+  \setcounter{chapter}{0}%
+  \setcounter{section}{0}%
+  \renewcommand\@chapapp{\appendixname}
+  \renewcommand\thechapter{\@Alph\c@chapter}%
+  \let\@app1
+  
+}
+%
+% References
+%
+\def\@biblabel#1{#1.}
+%
+\renewenvironment{thebibliography}[1]
+     {\chapter*{\bibname}  \vskip0.5\baselineskip
+      \list{\@biblabel{\@arabic\c@enumiv}}%
+           {\settowidth\labelwidth{\@biblabel{#1}}%
+            \leftmargin\labelwidth
+            \advance\leftmargin\labelsep
+            \itemsep17pt
+            \@openbib@code
+            \usecounter{enumiv}%
+            \let\p@enumiv\@empty
+            \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+      \sloppy
+      \clubpenalty4000
+      \@clubpenalty \clubpenalty
+      \widowpenalty4000%
+      \sfcode`\.\@m}
+     {\def\@noitemerr
+       {\@latex@warning{Empty `thebibliography' environment}}%
+      \endlist}
+%
+%
+\def\footnote#1{%
+   \@ifnextchar[{\@xfootnote}{%
+\setcounter{footnote}{\value{thsfootcnt}}%
+\addtocounter{thsfootcnt}{1}%
+   \stepcounter{\@mpfn}%
+     \begingroup\let\protect\noexpand
+       \xdef\@thefnmark{\thempfn}\endgroup
+\let\baselinestretch\@singlespaced 
+     \@footnotemark\@footnotetext{#1}
+\let\baselinestretch\@onehalfspaced}
+}
+%
+\renewenvironment{quotation}{%
+     \par
+     \list{}{%
+\let\baselinestretch\@singlespaced
+      \listparindent 1.5em%
+      \itemindent    \listparindent
+      \rightmargin   \leftmargin
+      \parsep        \z@ \@plus\p@}%
+      \small
+      \item\relax}
+     {\par
+\let\baselinestretch\@onehalfspaced
+      \endlist}
+\renewenvironment{quote}{%
+      \par
+\let\baselinestretch\@singlespaced
+      \list{}{%
+       \baselineskip0.67\baselineskip
+       \listparindent 1.5em%
+       \itemindent\listparindent
+       \rightmargin\leftmargin}%
+       \small
+       \item\relax}
+     {\par
+\let\baselinestretch\@onehalfspaced
+      \endlist}
+%
+\renewcommand{\normalsize}{%
+   \@setsize\normalsize{12pt}\xiipt\@xiipt
+   \abovedisplayskip 22pt
+   \belowdisplayskip \abovedisplayskip
+   \abovedisplayshortskip  \abovedisplayskip
+   \belowdisplayshortskip  \abovedisplayskip
+   \let\@listi\@listI
+}
+\renewcommand\footnotesize{%
+   \@setfontsize\footnotesize\@xpt\@xiipt
+   \abovedisplayskip 10pt
+   \belowdisplayskip \abovedisplayskip
+   \abovedisplayshortskip  \abovedisplayskip
+   \belowdisplayshortskip  \abovedisplayskip
+   \def\@listi{\leftmargin\leftmargini
+            \parsep 0pt
+            \topsep 0pt
+            \itemsep 0pt}
+}
+
+%
+\renewcommand{\baselinestretch}{1.5}
+\setlength{\parskip}{21pt}
+\renewcommand{\labelenumi}{(\roman{enumi})}
