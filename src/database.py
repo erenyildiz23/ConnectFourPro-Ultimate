@@ -118,5 +118,40 @@ def update_game_result(p1_id: int, p2_id: int, winner_id: Optional[int], moves: 
     except Exception:
         pass
 
+def delete_test_users() -> int:
+    """Delete all test users created by Locust load testing"""
+    try:
+        with get_db_cursor() as c:
+            if not c: return 0
+            # Delete games with test users first
+            c.execute('''
+                DELETE FROM games 
+                WHERE player1_id IN (SELECT user_id FROM users WHERE username LIKE 'locust_user_%%' OR username LIKE 'test_user_%%' OR username LIKE 'user_%%')
+                OR player2_id IN (SELECT user_id FROM users WHERE username LIKE 'locust_user_%%' OR username LIKE 'test_user_%%' OR username LIKE 'user_%%')
+            ''')
+            # Delete test users
+            c.execute('''
+                DELETE FROM users 
+                WHERE username LIKE 'locust_user_%%' 
+                OR username LIKE 'test_user_%%' 
+                OR username LIKE 'user_%%'
+            ''')
+            deleted = c.rowcount
+            print(f"[DATABASE] Deleted {deleted} test users")
+            return deleted
+    except Exception as e:
+        print(f"[DATABASE ERROR] Failed to delete test users: {e}")
+        return 0
+
+def get_user_count() -> int:
+    """Get total user count"""
+    try:
+        with get_db_cursor() as c:
+            if not c: return 0
+            c.execute('SELECT COUNT(*) as count FROM users')
+            return c.fetchone()['count']
+    except Exception:
+        return 0
+
 if __name__ == "__main__":
     init_db()
