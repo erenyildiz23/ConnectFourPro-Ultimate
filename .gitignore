@@ -26,3 +26,7 @@ connect4.db
 # OS
 .DS_Store
 Thumbs.db
+
+# Test Results
+test_results/
+ai_test_results/

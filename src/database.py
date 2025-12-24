@@ -1,5 +1,6 @@
 # =============================================================================
 # MODULE: database.py
+# Connect Four Pro - Database Layer with PostgreSQL
 # =============================================================================
 
 import os
@@ -15,7 +16,6 @@ from psycopg2.extras import RealDictCursor
 DB_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost/connect4")
 
 # GLOBAL CONNECTION POOL
-# Min 1, Max 10.
 try:
     pg_pool = psycopg2.pool.ThreadedConnectionPool(1, 10, dsn=DB_URL)
     print("[DATABASE] Connection Pool created.")
@@ -28,14 +28,19 @@ def get_db_cursor():
     """Context manager for safe connection handling."""
     conn = None
     try:
+        if pg_pool is None:
+            yield None
+            return
         conn = pg_pool.getconn()
         conn.autocommit = True
         yield conn.cursor(cursor_factory=RealDictCursor)
     except Exception as e:
         print(f"[DB ERROR] {e}")
-        if conn: conn.rollback()
+        if conn: 
+            conn.rollback()
+        yield None
     finally:
-        if conn:
+        if conn and pg_pool:
             pg_pool.putconn(conn)
 
 def init_db() -> None:
@@ -96,40 +101,144 @@ def verify_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     except Exception:
         return None
 
+def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
+    """Get user by username"""
+    try:
+        with get_db_cursor() as c:
+            if not c: return None
+            c.execute('SELECT user_id, username, rating, wins, losses FROM users WHERE username = %s', (username,))
+            row = c.fetchone()
+            return dict(row) if row else None
+    except Exception:
+        return None
+
+def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+    """Get user by user_id"""
+    try:
+        with get_db_cursor() as c:
+            if not c: return None
+            c.execute('SELECT user_id, username, rating, wins, losses FROM users WHERE user_id = %s', (user_id,))
+            row = c.fetchone()
+            return dict(row) if row else None
+    except Exception:
+        return None
+
 def get_top_players(limit: int = 10) -> List[Dict[str, Any]]:
     try:
         with get_db_cursor() as c:
             if not c: return []
-            c.execute('SELECT username, rating, wins, losses FROM users ORDER BY rating DESC LIMIT %s', (limit,))
+            c.execute('SELECT user_id, username, rating, wins, losses FROM users ORDER BY rating DESC LIMIT %s', (limit,))
             return [dict(row) for row in c.fetchall()]
     except Exception:
         return []
 
-def update_game_result(p1_id: int, p2_id: int, winner_id: Optional[int], moves: str) -> None:
+def update_elo_by_username(winner_username: str, loser_username: str, k_factor: int = 30) -> Dict[str, int]:
+    """
+    Update ELO ratings by username.
+    Returns dict with 'winner_change' and 'loser_change'.
+    """
     try:
         with get_db_cursor() as c:
-            if not c: return
+            if not c: 
+                return {'winner_change': 0, 'loser_change': 0}
+            
+            # Get current ratings
+            c.execute('SELECT user_id, rating FROM users WHERE username = %s', (winner_username,))
+            winner = c.fetchone()
+            
+            c.execute('SELECT user_id, rating FROM users WHERE username = %s', (loser_username,))
+            loser = c.fetchone()
+            
+            if not winner or not loser:
+                print(f"[ELO] User not found: winner={winner_username}, loser={loser_username}")
+                return {'winner_change': 0, 'loser_change': 0}
+            
+            winner_rating = winner['rating']
+            loser_rating = loser['rating']
+            
+            # Calculate ELO change
+            expected_winner = 1 / (1 + 10 ** ((loser_rating - winner_rating) / 400))
+            change = int(k_factor * (1 - expected_winner))
+            change = max(change, 10)  # Minimum 10 points
+            
+            # Update ratings
+            c.execute('UPDATE users SET rating = rating + %s, wins = wins + 1 WHERE user_id = %s', 
+                     (change, winner['user_id']))
+            c.execute('UPDATE users SET rating = rating - %s, losses = losses + 1 WHERE user_id = %s', 
+                     (change, loser['user_id']))
+            
+            print(f"[ELO] {winner_username} +{change}, {loser_username} -{change}")
+            
+            return {'winner_change': change, 'loser_change': -change}
+    except Exception as e:
+        print(f"[ELO ERROR] {e}")
+        return {'winner_change': 0, 'loser_change': 0}
+
+def record_game(p1_username: str, p2_username: str, winner_username: Optional[str], moves: str) -> bool:
+    """Record a game with usernames"""
+    try:
+        with get_db_cursor() as c:
+            if not c: return False
+            
+            # Get user IDs
+            c.execute('SELECT user_id FROM users WHERE username = %s', (p1_username,))
+            p1 = c.fetchone()
+            
+            c.execute('SELECT user_id FROM users WHERE username = %s', (p2_username,))
+            p2 = c.fetchone()
+            
+            if not p1 or not p2:
+                return False
+            
+            winner_id = None
+            if winner_username:
+                c.execute('SELECT user_id FROM users WHERE username = %s', (winner_username,))
+                winner = c.fetchone()
+                if winner:
+                    winner_id = winner['user_id']
+            
             c.execute('INSERT INTO games (player1_id, player2_id, winner_id, moves) VALUES (%s, %s, %s, %s)',
-                      (p1_id, p2_id, winner_id, moves))
-            if winner_id:
-                loser_id = p1_id if winner_id == p2_id else p2_id
-                c.execute('UPDATE users SET rating = rating + 15, wins = wins + 1 WHERE user_id = %s', (winner_id,))
-                c.execute('UPDATE users SET rating = rating - 15, losses = losses + 1 WHERE user_id = %s', (loser_id,))
-    except Exception:
-        pass
+                      (p1['user_id'], p2['user_id'], winner_id, moves))
+            return True
+    except Exception as e:
+        print(f"[GAME RECORD ERROR] {e}")
+        return False
+
+def update_game_result(p1_id, p2_id, winner_id, moves: str) -> None:
+    """Legacy function - works with both user_id (int) and username (str)"""
+    try:
+        # Check if these are usernames or IDs
+        if isinstance(p1_id, str) and not p1_id.isdigit():
+            # These are usernames
+            winner_username = winner_id if winner_id else None
+            loser_username = p1_id if winner_id == p2_id else p2_id
+            
+            if winner_username and loser_username:
+                update_elo_by_username(winner_username, loser_username)
+            record_game(p1_id, p2_id, winner_username, moves)
+        else:
+            # These are user IDs (legacy behavior)
+            with get_db_cursor() as c:
+                if not c: return
+                c.execute('INSERT INTO games (player1_id, player2_id, winner_id, moves) VALUES (%s, %s, %s, %s)',
+                          (p1_id, p2_id, winner_id, moves))
+                if winner_id:
+                    loser_id = p1_id if winner_id == p2_id else p2_id
+                    c.execute('UPDATE users SET rating = rating + 15, wins = wins + 1 WHERE user_id = %s', (winner_id,))
+                    c.execute('UPDATE users SET rating = rating - 15, losses = losses + 1 WHERE user_id = %s', (loser_id,))
+    except Exception as e:
+        print(f"[UPDATE RESULT ERROR] {e}")
 
 def delete_test_users() -> int:
     """Delete all test users created by Locust load testing"""
     try:
         with get_db_cursor() as c:
             if not c: return 0
-            # Delete games with test users first
             c.execute('''
                 DELETE FROM games 
                 WHERE player1_id IN (SELECT user_id FROM users WHERE username LIKE 'locust_user_%%' OR username LIKE 'test_user_%%' OR username LIKE 'user_%%')
                 OR player2_id IN (SELECT user_id FROM users WHERE username LIKE 'locust_user_%%' OR username LIKE 'test_user_%%' OR username LIKE 'user_%%')
             ''')
-            # Delete test users
             c.execute('''
                 DELETE FROM users 
                 WHERE username LIKE 'locust_user_%%' 
