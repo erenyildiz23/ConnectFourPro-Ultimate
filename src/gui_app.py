@@ -730,10 +730,50 @@ class ConnectFourGUI:
     
     def on_move_made(self, data):
         col = data.get('col')
-        if col is not None:
-            log(f"Network move: col={col}, state={self.state}")
-            row = self.game.heights[col] - col * (ROWS + 1)
-            self.animate_drop(col, row, self.game.current_player, lambda: self.apply_network_move(data))
+        if col is None:
+            return
+        
+        log(f"Network move received: col={col}")
+        
+        # ═══════════════════════════════════════════════════════════════════════
+        # CRITICAL FIX: Çift işleme (double-processing) sorununun çözümü
+        # 
+        # Problem: Server broadcast ile move_made event'ini TÜM odaya gönderiyor.
+        # Bu da hamle yapan oyuncunun kendi hamlesini TEKRAR alması demek.
+        # Oyuncu zaten finish_move()'da local state'i güncelledi ve animasyonu
+        # oynatı - tekrar işlemek çift animasyon ve state bozulmasına yol açar.
+        #
+        # Çözüm: Server'dan gelen history uzunluğu ile local history'yi karşılaştır.
+        # Eğer eşitlerse, bu hamleyi BEN yaptım demektir - animasyon atla.
+        # ═══════════════════════════════════════════════════════════════════════
+        
+        server_history = data.get('history', [])
+        local_history_len = len(self.game.move_history)
+        server_history_len = len(server_history)
+        
+        # Eğer local ve server history uzunlukları eşitse -> bu hamleyi ben yaptım
+        # (çünkü finish_move'da önce make_move çağrıldı, sonra server'a gönderildi)
+        if local_history_len == server_history_len:
+            log(f"Skipping animation - I made this move (local={local_history_len}, server={server_history_len})")
+            # Sadece server state'i ile sync et, animasyon YAPMA
+            self.game.from_dict(data)
+            if self.game.game_over:
+                self.handle_game_over()
+            else:
+                self.set_status("Rakibin sirasi...")
+            return
+        
+        # Rakibin hamlesi - animasyon göster
+        # Server'dan gelen 'current' değeri hamle SONRASI sırayı gösterir
+        # Hamleyi yapan = current'ın tersi
+        incoming_current = data.get('current')
+        move_maker = PLAYER2_PIECE if incoming_current == PLAYER1_PIECE else PLAYER1_PIECE
+        
+        # Row hesabı: LOCAL heights kullan (henüz güncellenmedi, rakibin hamlesi için doğru)
+        row = self.game.heights[col] - col * (ROWS + 1)
+        
+        log(f"Opponent move - animating: col={col}, row={row}, piece={move_maker}")
+        self.animate_drop(col, row, move_maker, lambda: self.apply_network_move(data))
     
     def apply_network_move(self, data):
         # Get current state BEFORE updating (for analysis)
