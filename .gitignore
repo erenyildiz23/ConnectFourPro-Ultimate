@@ -30,3 +30,9 @@ Thumbs.db
 # Test Results
 test_results/
 ai_test_results/
+
+# Build outputs
+build/
+dist/
+*.spec
+*.exe
