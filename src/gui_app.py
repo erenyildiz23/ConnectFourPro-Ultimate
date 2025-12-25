@@ -1,11 +1,11 @@
 # =============================================================================
 # MODULE: gui_app.py
-# Connect Four Pro - Pygame GUI Client v4.1
-# Features: Login/Register, Online Lobby, Spectate, FIXED AI
+# Connect Four Pro - Pygame GUI Client v5.0
+# Features: Login/Register, Online Lobby, Spectate, COMPLETELY FIXED AI
+# Debug: Extensive logging to find AI interference bug
 # =============================================================================
 
 import os
-# Disable audio BEFORE importing pygame
 os.environ['SDL_AUDIODRIVER'] = 'dummy'
 
 import pygame
@@ -19,6 +19,15 @@ from game_core import ConnectFourGame, ROWS, COLS, PLAYER1_PIECE, PLAYER2_PIECE
 from ai_vs_human import AIEngine
 
 # =============================================================================
+# DEBUG FLAG - Set to False to disable console logs
+# =============================================================================
+DEBUG = True
+
+def log(msg):
+    if DEBUG:
+        print(f"[GUI] {msg}")
+
+# =============================================================================
 # CONFIGURATION
 # =============================================================================
 
@@ -30,7 +39,6 @@ WINDOW_HEIGHT = BOARD_HEIGHT + 150
 
 SERVER_URL = 'http://localhost:5000'
 
-# Colors
 COLORS = {
     'bg': (26, 26, 46),
     'board': (15, 52, 96),
@@ -48,6 +56,7 @@ COLORS = {
     'playing': (46, 204, 113),
     'input_bg': (44, 62, 80),
     'input_active': (52, 152, 219),
+    'win_highlight': (0, 255, 128),  # Winning pieces glow
 }
 
 AI_DEPTHS = {'Kolay': 2, 'Orta': 4, 'Zor': 6}
@@ -69,45 +78,55 @@ class NetworkManager:
         @self.sio.event
         def connect():
             self.connected = True
+            log("Network connected")
         
         @self.sio.event
         def disconnect():
             self.connected = False
+            log("Network disconnected")
         
         @self.sio.on('game_created')
         def on_game_created(data):
+            log(f"Game created: {data.get('room_id')}")
             self.room_id = data['room_id']
             self.my_piece = data['player_piece']
             self.gui.on_game_created(data)
         
         @self.sio.on('game_joined')
         def on_game_joined(data):
+            log(f"Game joined: {data.get('room_id')}, role={data.get('role')}")
             self.room_id = data['room_id']
             self.my_piece = data['player_piece']
             self.gui.on_game_joined(data)
         
         @self.sio.on('game_start')
         def on_game_start(data):
+            log("Game start received!")
             self.gui.on_game_start(data)
         
         @self.sio.on('move_made')
         def on_move_made(data):
+            log(f"Move received: col={data.get('col')}")
             self.gui.on_move_made(data)
         
         @self.sio.on('game_over')
         def on_game_over(data):
+            log(f"Game over: winner={data.get('winner')}")
             self.gui.on_game_over_network(data)
         
         @self.sio.on('elo_update')
         def on_elo_update(data):
+            log(f"ELO update: {data}")
             self.gui.on_elo_update(data)
         
         @self.sio.on('opponent_disconnected')
         def on_opponent_disconnected(data):
+            log("Opponent disconnected")
             self.gui.on_opponent_disconnected()
         
         @self.sio.on('error')
         def on_error(data):
+            log(f"Server error: {data}")
             self.gui.set_status(f"Hata: {data.get('msg', '')}")
     
     def connect_to_server(self):
@@ -117,7 +136,8 @@ class NetworkManager:
             self.sio.connect(SERVER_URL, wait_timeout=5)
             time.sleep(0.5)
             return self.connected
-        except:
+        except Exception as e:
+            log(f"Connection failed: {e}")
             return False
     
     def create_game(self, user_id):
@@ -134,6 +154,7 @@ class NetworkManager:
     
     def send_move(self, col):
         if self.connected and self.room_id:
+            log(f"Sending move: col={col}")
             self.sio.emit('make_move', {'room_id': self.room_id, 'col': col, 'player_piece': self.my_piece})
     
     def disconnect(self):
@@ -165,7 +186,10 @@ class ConnectFourGUI:
         self.ai = None
         self.ai_thinking = False
         self.is_spectator = False
+        
+        # AI SESSION MANAGEMENT - Key to preventing stale moves
         self.ai_session_id = 0
+        self.ai_lock = threading.Lock()  # Thread safety
         
         self.username = ""
         self.user_id = None
@@ -196,8 +220,22 @@ class ConnectFourGUI:
         self.anim_target_y = 0
         self.anim_piece = PLAYER1_PIECE
         self.anim_callback = None
+        
+        # Pending AI move with session check
         self.pending_ai_move = None
         self.pending_ai_session = -1
+        
+        # Background Analysis (Lichess-style) - runs silently during online games
+        self.analysis_enabled = True  # Enable/disable analysis
+        self.analysis_data = []       # List of {move_num, player, col, best_move, eval_score}
+        self.analysis_thread = None
+        self.analysis_lock = threading.Lock()
+        
+        log("GUI initialized")
+    
+    # =========================================================================
+    # DRAWING
+    # =========================================================================
     
     def draw_text(self, text, font, color, x, y, center=True):
         surface = font.render(str(text), True, color)
@@ -224,26 +262,66 @@ class ConnectFourGUI:
         self.draw_text(display_text, self.font_medium, COLORS['white'], x + w//2, y + h//2)
         field['rect'] = pygame.Rect(x, y, w, h)
     
+    def get_winning_positions(self):
+        """Get list of (col, row) tuples for winning pieces"""
+        if not self.game.game_over or self.game.winner is None:
+            return []
+        
+        positions = []
+        mask = self.game.winning_mask
+        if mask == 0:
+            return []
+        
+        for col in range(COLS):
+            for row in range(ROWS):
+                idx = col * (ROWS + 1) + row
+                if (mask >> idx) & 1:
+                    positions.append((col, row))
+        return positions
+    
     def draw_board(self):
         bx, by = 20, 80
         pygame.draw.rect(self.screen, COLORS['board'], (bx-10, by-10, BOARD_WIDTH+20, BOARD_HEIGHT+20), border_radius=10)
+        
+        # Get winning positions for highlight
+        winning_positions = self.get_winning_positions()
+        
         for col in range(COLS):
             for row in range(ROWS):
                 x = bx + col * CELL_SIZE + CELL_SIZE // 2
                 y = by + (ROWS - 1 - row) * CELL_SIZE + CELL_SIZE // 2
+                
+                # Check if this is a winning position
+                is_winning = (col, row) in winning_positions
+                
+                # Cell background (with glow effect for winners)
+                if is_winning:
+                    # Pulsing glow effect
+                    pulse = abs((time.time() * 3) % 2 - 1)  # 0 to 1 oscillation
+                    glow_size = int(CELL_SIZE // 2 + 5 + pulse * 5)
+                    pygame.draw.circle(self.screen, COLORS['win_highlight'], (x, y), glow_size)
+                
                 pygame.draw.circle(self.screen, COLORS['cell_bg'], (x, y), CELL_SIZE // 2 - 5)
+                
+                # Pieces
                 idx = col * (ROWS + 1) + row
                 if (self.game.bitboards[PLAYER1_PIECE] >> idx) & 1:
                     pygame.draw.circle(self.screen, COLORS['red'], (x, y), CELL_SIZE // 2 - 8)
+                    if is_winning:
+                        pygame.draw.circle(self.screen, COLORS['white'], (x, y), CELL_SIZE // 2 - 8, 3)
                 elif (self.game.bitboards[PLAYER2_PIECE] >> idx) & 1:
                     pygame.draw.circle(self.screen, COLORS['yellow'], (x, y), CELL_SIZE // 2 - 8)
+                    if is_winning:
+                        pygame.draw.circle(self.screen, COLORS['white'], (x, y), CELL_SIZE // 2 - 8, 3)
         
+        # Hover indicator
         if self.hover_col >= 0 and not self.animating and not self.game.game_over and not self.is_spectator:
             can_play = (self.state == "PLAYING_AI" and self.game.current_player == PLAYER1_PIECE and not self.ai_thinking) or \
                        (self.state == "PLAYING_ONLINE" and self.game.current_player == self.my_piece)
             if can_play:
                 pygame.draw.circle(self.screen, COLORS['hover'], (bx + self.hover_col * CELL_SIZE + CELL_SIZE//2, 50), CELL_SIZE//2 - 10)
         
+        # Animating piece
         if self.animating:
             color = COLORS['red'] if self.anim_piece == PLAYER1_PIECE else COLORS['yellow']
             pygame.draw.circle(self.screen, color, (bx + self.anim_col * CELL_SIZE + CELL_SIZE//2, int(self.anim_y)), CELL_SIZE//2 - 8)
@@ -277,7 +355,17 @@ class ConnectFourGUI:
         if self.room_id:
             self.draw_text(f"Oda: {self.room_id}", self.font_medium, COLORS['hover'], px+125, py+200)
         self.draw_text(f"Hamle: {len(self.game.move_history)}", self.font_small, COLORS['gray'], px+125, py+240)
-        return self.draw_button("Menu", px+50, py+270, 150, 40)
+        
+        # Debug info
+        if DEBUG:
+            self.draw_text(f"State: {self.state}", self.font_tiny, COLORS['gray'], px+125, py+280)
+            self.draw_text(f"AI: {'ON' if self.ai else 'OFF'}", self.font_tiny, COLORS['gray'], px+125, py+295)
+        
+        return self.draw_button("Menu", px+50, py+270 if not DEBUG else py+310, 150, 40)
+    
+    # =========================================================================
+    # SCREENS
+    # =========================================================================
     
     def draw_login(self):
         self.screen.fill(COLORS['bg'])
@@ -338,8 +426,8 @@ class ConnectFourGUI:
             ('BACK', self.draw_button("Geri", WINDOW_WIDTH-150, 80, 100, 45))
         ]
         pygame.draw.rect(self.screen, COLORS['panel'], (30, 140, WINDOW_WIDTH-60, 35), border_radius=5)
-        for i, (txt, x) in enumerate([("ODA",80),("OYUNCU 1",200),("OYUNCU 2",380),("DURUM",530),("ISLEM",680)]):
-            self.draw_text(txt, self.font_small, COLORS['white'], x, 157)
+        for txt, xpos in [("ODA",80),("OYUNCU 1",200),("OYUNCU 2",380),("DURUM",530),("ISLEM",680)]:
+            self.draw_text(txt, self.font_small, COLORS['white'], xpos, 157)
         y = 185
         if not self.active_games:
             self.draw_text("Aktif oyun yok. Yeni bir oyun olusturun!", self.font_medium, COLORS['gray'], WINDOW_WIDTH//2, 280)
@@ -399,6 +487,10 @@ class ConnectFourGUI:
         pygame.draw.rect(self.screen, COLORS['panel'], (0, WINDOW_HEIGHT-50, WINDOW_WIDTH, 50))
         self.draw_text(self.status_text, self.font_small, COLORS['white'], WINDOW_WIDTH//2, WINDOW_HEIGHT-25)
     
+    # =========================================================================
+    # NETWORK
+    # =========================================================================
+    
     def refresh_active_games(self):
         try:
             r = requests.get(f"{SERVER_URL}/active_games", timeout=2)
@@ -413,9 +505,16 @@ class ConnectFourGUI:
         try:
             r = requests.get(f"{SERVER_URL}/user/{self.username}", timeout=2)
             if r.status_code == 200:
-                self.user_elo = r.json().get('user', {}).get('rating', self.user_elo)
+                new_elo = r.json().get('user', {}).get('rating', self.user_elo)
+                if new_elo != self.user_elo:
+                    log(f"ELO updated: {self.user_elo} -> {new_elo}")
+                    self.user_elo = new_elo
         except:
             pass
+    
+    # =========================================================================
+    # AUTH
+    # =========================================================================
     
     def do_login(self):
         u, p = self.input_fields['username']['value'].strip(), self.input_fields['password']['value']
@@ -431,6 +530,7 @@ class ConnectFourGUI:
                 self.state = "MENU"
                 self.set_status(f"Hosgeldin {self.username}!")
                 self.clear_inputs()
+                log(f"Logged in as {self.username}, ELO={self.user_elo}")
             else:
                 self.set_status("Yanlis kullanici adi veya sifre!")
         except:
@@ -451,6 +551,7 @@ class ConnectFourGUI:
                 self.state = "MENU"
                 self.set_status(f"Kayit basarili! Hosgeldin {u}!")
                 self.clear_inputs()
+                log(f"Registered as {self.username}")
             elif r.status_code == 409:
                 self.set_status("Bu kullanici adi zaten alinmis!")
             else:
@@ -464,8 +565,10 @@ class ConnectFourGUI:
         self.state = "MENU"
         self.set_status("")
         self.clear_inputs()
+        log(f"Guest login: {self.username}")
     
     def logout(self):
+        log("Logout")
         self.username, self.user_id, self.user_elo, self.is_guest = "", None, 1200, False
         self.state = "LOGIN"
         self.set_status("")
@@ -476,47 +579,121 @@ class ConnectFourGUI:
             f['value'], f['active'] = '', False
         self.active_input = None
     
+    # =========================================================================
+    # AI MANAGEMENT - CRITICAL SECTION
+    # =========================================================================
+    
     def invalidate_ai_session(self):
-        """Completely disable and invalidate any pending AI operations"""
-        self.ai_session_id += 1
-        self.pending_ai_move = None
-        self.pending_ai_session = -1
-        self.ai_thinking = False
-        self.ai = None  # CRITICAL: Set AI to None to prevent any operations
+        """Thread-safe AI invalidation"""
+        with self.ai_lock:
+            self.ai_session_id += 1
+            self.pending_ai_move = None
+            self.pending_ai_session = -1
+            self.ai_thinking = False
+            self.ai = None
+            log(f"AI invalidated, new session: {self.ai_session_id}")
     
     def start_ai_game(self, depth):
+        log(f"Starting AI game, depth={depth}")
         self.invalidate_ai_session()
         self.game = ConnectFourGame()
-        self.ai = AIEngine(PLAYER2_PIECE, depth=depth)
+        with self.ai_lock:
+            self.ai = AIEngine(PLAYER2_PIECE, depth=depth)
         self.my_piece = PLAYER1_PIECE
         self.state = "PLAYING_AI"
         self.is_spectator = False
+        self.analysis_data = []  # Clear analysis
         self.status_text = "Senin siran!"
     
+    # =========================================================================
+    # BACKGROUND ANALYSIS (Lichess-style)
+    # =========================================================================
+    
+    def start_background_analysis(self, game_state, move_num, player_piece, actual_col):
+        """Start background analysis for a position (non-blocking)"""
+        if not self.analysis_enabled:
+            return
+        
+        def analyze():
+            try:
+                # Create a temporary AI for analysis (depth 6 for good analysis)
+                analyzer = AIEngine(player_piece, depth=6)
+                game_copy = game_state.clone()
+                
+                # Find best move for this position
+                best_col = analyzer.find_best_move(game_copy)
+                
+                # Calculate evaluation score
+                eval_score = analyzer.score_position(game_copy, player_piece)
+                
+                # Store analysis result
+                with self.analysis_lock:
+                    self.analysis_data.append({
+                        'move_num': move_num,
+                        'player': player_piece,
+                        'actual_col': actual_col,
+                        'best_col': best_col,
+                        'eval_score': eval_score,
+                        'was_best': actual_col == best_col
+                    })
+                    log(f"Analysis: Move {move_num}, Actual={actual_col}, Best={best_col}, {'✓' if actual_col == best_col else '✗'}")
+            except Exception as e:
+                log(f"Analysis error: {e}")
+        
+        # Run in background thread (daemon so it won't block shutdown)
+        threading.Thread(target=analyze, daemon=True).start()
+    
+    def get_analysis_summary(self):
+        """Get summary of game analysis"""
+        with self.analysis_lock:
+            if not self.analysis_data:
+                return None
+            
+            total_moves = len(self.analysis_data)
+            best_moves = sum(1 for d in self.analysis_data if d['was_best'])
+            accuracy = (best_moves / total_moves * 100) if total_moves > 0 else 0
+            
+            # Separate by player
+            p1_moves = [d for d in self.analysis_data if d['player'] == PLAYER1_PIECE]
+            p2_moves = [d for d in self.analysis_data if d['player'] == PLAYER2_PIECE]
+            
+            p1_accuracy = (sum(1 for d in p1_moves if d['was_best']) / len(p1_moves) * 100) if p1_moves else 0
+            p2_accuracy = (sum(1 for d in p2_moves if d['was_best']) / len(p2_moves) * 100) if p2_moves else 0
+            
+            return {
+                'total_moves': total_moves,
+                'best_moves': best_moves,
+                'accuracy': accuracy,
+                'p1_accuracy': p1_accuracy,
+                'p2_accuracy': p2_accuracy,
+                'mistakes': [d for d in self.analysis_data if not d['was_best']]
+            }
+    
     def create_online_game(self):
+        log("Creating online game")
         self.invalidate_ai_session()
-        self.ai = None  # Explicitly clear AI
-        self.pending_ai_move = None  # Clear any pending moves
         if not self.network.create_game(self.username):
             self.set_status("Sunucuya baglanilamadi!")
     
     def join_online_game(self, room_id):
+        log(f"Joining game: {room_id}")
         self.invalidate_ai_session()
-        self.ai = None  # Explicitly clear AI
-        self.pending_ai_move = None  # Clear any pending moves
         self.room_id = room_id.upper()
         self.is_spectator = False
         if not self.network.join_game(self.room_id, self.username):
             self.set_status("Odaya katilamadi!")
     
     def spectate_game(self, room_id):
+        log(f"Spectating game: {room_id}")
         self.invalidate_ai_session()
-        self.ai = None  # Explicitly clear AI
-        self.pending_ai_move = None  # Clear any pending moves
         self.room_id = room_id.upper()
         self.is_spectator = True
         if self.network.join_game(self.room_id, self.username):
             self.state = "SPECTATING"
+    
+    # =========================================================================
+    # NETWORK EVENTS
+    # =========================================================================
     
     def on_game_created(self, data):
         self.room_id, self.my_piece = data['room_id'], data['player_piece']
@@ -535,27 +712,43 @@ class ConnectFourGUI:
             self.opponent_name, self.opponent_elo = oi.get('username', 'Rakip'), oi.get('rating', 1200)
     
     def on_game_start(self, data):
-        # CRITICAL: Completely disable AI for online games
+        log("=== ONLINE GAME STARTING ===")
+        # CRITICAL: Completely disable AI
         self.invalidate_ai_session()
-        self.ai = None
-        self.pending_ai_move = None
-        self.ai_thinking = False
         
         self.game = ConnectFourGame()
-        self.state, self.is_spectator = "PLAYING_ONLINE", False
+        self.state = "PLAYING_ONLINE"
+        self.is_spectator = False
+        self.analysis_data = []  # Clear previous analysis
+        
         oi = data.get('p2_info' if self.my_piece == PLAYER1_PIECE else 'p1_info', {})
         self.opponent_name = data.get('opponent_name', oi.get('username', 'Rakip'))
         self.opponent_elo = oi.get('rating', 1200)
+        
+        log(f"State={self.state}, AI={self.ai}, opponent={self.opponent_name}")
         self.set_status("Oyun basladi!" + (" Senin siran." if self.game.current_player == self.my_piece else " Rakibin sirasi."))
     
     def on_move_made(self, data):
         col = data.get('col')
         if col is not None:
+            log(f"Network move: col={col}, state={self.state}")
             row = self.game.heights[col] - col * (ROWS + 1)
             self.animate_drop(col, row, self.game.current_player, lambda: self.apply_network_move(data))
     
     def apply_network_move(self, data):
+        # Get current state BEFORE updating (for analysis)
+        move_num = len(self.game.move_history)
+        current_player = self.game.current_player
+        col = data.get('col')
+        
+        # Start background analysis BEFORE applying move
+        if self.state == "PLAYING_ONLINE" and col is not None:
+            game_before_move = self.game.clone()
+            self.start_background_analysis(game_before_move, move_num, current_player, col)
+        
+        # Apply the move
         self.game.from_dict(data)
+        
         if self.game.game_over:
             self.handle_game_over()
         elif self.game.current_player == self.my_piece:
@@ -574,20 +767,39 @@ class ConnectFourGUI:
     def on_elo_update(self, data):
         self.user_elo = data.get('new_elo', self.user_elo)
         c = data.get('change', 0)
+        log(f"ELO changed: {c}, new={self.user_elo}")
         self.set_status(f"{'Kazandin' if c>0 else 'Kaybettin'}! ELO {'+' if c>0 else ''}{c} ({self.user_elo})")
     
     def on_opponent_disconnected(self):
         self.set_status("Rakip baglantisi koptu!")
     
+    # =========================================================================
+    # GAME LOGIC
+    # =========================================================================
+    
     def handle_click(self, col):
         if self.animating or self.game.game_over or self.is_spectator:
             return
-        if self.state == "PLAYING_AI" and (self.game.current_player != PLAYER1_PIECE or self.ai_thinking):
+        
+        # STRICT STATE CHECKS
+        if self.state == "PLAYING_AI":
+            if self.game.current_player != PLAYER1_PIECE:
+                return
+            if self.ai_thinking:
+                return
+            with self.ai_lock:
+                if self.ai is None:
+                    return
+        elif self.state == "PLAYING_ONLINE":
+            if self.game.current_player != self.my_piece:
+                return
+        else:
             return
-        if self.state == "PLAYING_ONLINE" and self.game.current_player != self.my_piece:
-            return
+        
         if not self.game.is_valid_location(col):
             return
+        
+        log(f"Player click: col={col}, state={self.state}")
         row = self.game.heights[col] - col * (ROWS + 1)
         self.animate_drop(col, row, self.game.current_player, lambda: self.finish_move(col))
     
@@ -606,64 +818,106 @@ class ConnectFourGUI:
                 self.anim_callback()
     
     def finish_move(self, col):
+        log(f"finish_move: col={col}, state={self.state}")
+        
         if not self.game.make_move(col):
             return
-        if self.game.game_over:
-            self.handle_game_over()
-            return
-        # ONLINE MODE - NO AI!
+        
+        # ONLINE MODE - ALWAYS SEND MOVE FIRST (even if game over!)
         if self.state == "PLAYING_ONLINE":
+            log("Online mode - sending move to server")
             self.network.send_move(col)
-            self.set_status("Rakibin sirasi...")
+            
+            if self.game.game_over:
+                log("Game ended - waiting for server confirmation")
+                # Don't call handle_game_over here - wait for server's game_over event
+            else:
+                self.set_status("Rakibin sirasi...")
             return
-        # AI MODE ONLY - with strict checks
-        if self.state == "PLAYING_AI" and self.ai is not None and self.game.current_player == PLAYER2_PIECE:
-            self.set_status("AI dusunuyor...")
-            self.ai_thinking = True
-            sid = self.ai_session_id
-            threading.Thread(target=self.ai_move, args=(sid,), daemon=True).start()
+        
+        # AI MODE
+        if self.state == "PLAYING_AI":
+            if self.game.game_over:
+                self.handle_game_over()
+                return
+            
+            with self.ai_lock:
+                if self.ai is not None and self.game.current_player == PLAYER2_PIECE:
+                    log("AI mode - starting AI thread")
+                    self.set_status("AI dusunuyor...")
+                    self.ai_thinking = True
+                    sid = self.ai_session_id
+                    threading.Thread(target=self.ai_move, args=(sid,), daemon=True).start()
     
     def ai_move(self, sid):
+        """AI calculation thread with extensive safety checks"""
+        log(f"AI thread started, session={sid}")
         time.sleep(0.3)
-        # AGGRESSIVE CHECKS - AI must exist and state must be correct
-        if self.ai is None:
-            return
-        if sid != self.ai_session_id:
-            return
-        if self.state != "PLAYING_AI":
-            return
         
-        col = self.ai.find_best_move(self.game)
+        # PRE-CHECK
+        with self.ai_lock:
+            if self.ai is None:
+                log(f"AI thread aborted: ai is None")
+                return
+            if sid != self.ai_session_id:
+                log(f"AI thread aborted: session mismatch ({sid} vs {self.ai_session_id})")
+                return
+            if self.state != "PLAYING_AI":
+                log(f"AI thread aborted: wrong state ({self.state})")
+                return
+            ai_ref = self.ai  # Get reference while locked
         
-        # RE-CHECK after calculation (state may have changed during calculation)
-        if self.ai is None:
-            return
-        if sid != self.ai_session_id:
-            return
-        if self.state != "PLAYING_AI":
-            return
+        # CALCULATE (outside lock)
+        try:
+            col = ai_ref.find_best_move(self.game)
+        except Exception as e:
+            log(f"AI error: {e}")
+            col = None
         
-        self.ai_thinking = False
-        if col is not None and not self.game.game_over:
-            self.pending_ai_move, self.pending_ai_session = col, sid
+        # POST-CHECK
+        with self.ai_lock:
+            if self.ai is None:
+                log(f"AI thread post-check: ai is None")
+                self.ai_thinking = False
+                return
+            if sid != self.ai_session_id:
+                log(f"AI thread post-check: session mismatch")
+                self.ai_thinking = False
+                return
+            if self.state != "PLAYING_AI":
+                log(f"AI thread post-check: wrong state ({self.state})")
+                self.ai_thinking = False
+                return
+            
+            self.ai_thinking = False
+            if col is not None and not self.game.game_over:
+                log(f"AI move ready: col={col}")
+                self.pending_ai_move = col
+                self.pending_ai_session = sid
     
     def execute_ai_move(self, col):
-        # STRICT CHECKS
-        if self.ai is None:
-            return
-        if self.state != "PLAYING_AI":
-            return
+        log(f"execute_ai_move: col={col}")
+        with self.ai_lock:
+            if self.ai is None:
+                log("execute_ai_move aborted: ai is None")
+                return
+            if self.state != "PLAYING_AI":
+                log(f"execute_ai_move aborted: wrong state ({self.state})")
+                return
         if self.game.game_over or not self.game.is_valid_location(col):
             return
         row = self.game.heights[col] - col * (ROWS + 1)
         self.animate_drop(col, row, PLAYER2_PIECE, lambda: self.finish_ai_move(col))
     
     def finish_ai_move(self, col):
-        # STRICT CHECKS
-        if self.ai is None:
-            return
-        if self.state != "PLAYING_AI":
-            return
+        log(f"finish_ai_move: col={col}")
+        with self.ai_lock:
+            if self.ai is None:
+                log("finish_ai_move aborted: ai is None")
+                return
+            if self.state != "PLAYING_AI":
+                log(f"finish_ai_move aborted: wrong state ({self.state})")
+                return
         if not self.game.make_move(col):
             return
         if self.game.game_over:
@@ -673,6 +927,18 @@ class ConnectFourGUI:
     
     def handle_game_over(self):
         w = self.game.winner
+        log(f"Game over: winner={w}")
+        
+        # Show analysis summary for online games
+        if self.state == "PLAYING_ONLINE" and self.analysis_data:
+            summary = self.get_analysis_summary()
+            if summary:
+                log(f"Analysis Summary: {summary['total_moves']} moves, {summary['accuracy']:.1f}% accuracy")
+                log(f"  P1 Accuracy: {summary['p1_accuracy']:.1f}%")
+                log(f"  P2 Accuracy: {summary['p2_accuracy']:.1f}%")
+                if summary['mistakes']:
+                    log(f"  Mistakes: {len(summary['mistakes'])}")
+        
         if w == PLAYER1_PIECE:
             self.set_status("Kazandin!" if self.state=="PLAYING_AI" or self.my_piece==1 else f"{self.opponent_name} kazandi!")
         elif w == PLAYER2_PIECE:
@@ -684,14 +950,18 @@ class ConnectFourGUI:
         self.status_text = text
     
     def reset_to_menu(self):
+        log("Reset to menu")
         self.invalidate_ai_session()
-        self.ai = None
         self.network.disconnect()
         self.network = NetworkManager(self)
         self.room_id, self.is_spectator = None, False
         self.game = ConnectFourGame()
         self.state = "MENU"
         self.refresh_user_elo()
+    
+    # =========================================================================
+    # EVENTS
+    # =========================================================================
     
     def handle_events(self):
         for e in pygame.event.get():
@@ -743,7 +1013,8 @@ class ConnectFourGUI:
     def handle_button_click(self, bid):
         actions = {
             'DO_LOGIN': self.do_login, 'DO_REGISTER': self.do_register, 'GUEST': self.guest_login,
-            'LOGOUT': self.logout, 'BACK': self.reset_to_menu, 'REFRESH': lambda: (self.refresh_active_games(), self.set_status("Yenilendi")),
+            'LOGOUT': self.logout, 'BACK': self.reset_to_menu, 
+            'REFRESH': lambda: (self.refresh_active_games(), self.set_status("Yenilendi")),
             'AI': lambda: setattr(self, 'state', 'AI_SELECT'),
             'LOBBY': lambda: (setattr(self, 'state', 'LOBBY'), self.refresh_active_games()),
             'LEADERBOARD': lambda: setattr(self, 'state', 'LEADERBOARD'),
@@ -759,25 +1030,41 @@ class ConnectFourGUI:
         elif bid.startswith('SPECTATE_'):
             self.spectate_game(bid.replace('SPECTATE_', ''))
     
+    # =========================================================================
+    # MAIN LOOP
+    # =========================================================================
+    
     def run(self):
+        log("Main loop starting")
         while True:
             self.handle_events()
             self.update_animation()
+            
             # AI move with STRICT VALIDATION
             if self.pending_ai_move is not None:
-                if self.ai is not None and self.state == "PLAYING_AI" and self.pending_ai_session == self.ai_session_id:
+                with self.ai_lock:
+                    valid = (self.ai is not None and 
+                            self.state == "PLAYING_AI" and 
+                            self.pending_ai_session == self.ai_session_id)
+                
+                if valid:
                     col = self.pending_ai_move
-                    self.pending_ai_move = self.pending_ai_session = None
+                    self.pending_ai_move = None
+                    self.pending_ai_session = -1
                     self.execute_ai_move(col)
                 else:
-                    # Discard stale/invalid AI move
-                    self.pending_ai_move = self.pending_ai_session = None
+                    log(f"Discarding stale AI move (state={self.state}, ai={self.ai is not None})")
+                    self.pending_ai_move = None
+                    self.pending_ai_session = -1
+            
+            # Draw
             screens = {'LOGIN': self.draw_login, 'MENU': self.draw_menu, 'AI_SELECT': self.draw_ai_select,
                       'LOBBY': self.draw_lobby, 'WAITING': self.draw_waiting, 'LEADERBOARD': self.draw_leaderboard}
             if self.state in screens:
                 screens[self.state]()
             elif self.state in ["PLAYING_AI", "PLAYING_ONLINE", "SPECTATING"]:
                 self.draw_game()
+            
             pygame.display.flip()
             self.clock.tick(60)
 
