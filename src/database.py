@@ -13,7 +13,7 @@ from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 
 # DATABASE URL
-DB_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost/connect4")
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:230198@localhost/connect4")
 
 # GLOBAL CONNECTION POOL
 try:

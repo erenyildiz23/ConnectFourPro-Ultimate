@@ -1,3 +1,8 @@
+# =============================================================================
+# CONNECT FOUR TEST SUITE - REQUIREMENTS
+# =============================================================================
+
+# Core Dependencies
 Flask==3.0.3
 Flask-SocketIO==5.3.6
 python-socketio>=5.13.0
@@ -6,5 +11,14 @@ psycopg2-binary==2.9.9
 requests>=2.32.2
 Werkzeug==3.0.3
 gunicorn==22.0.0
+
+# Testing
 locust==2.29.0
+
+# Visualization
+matplotlib>=3.7.0
+numpy>=1.24.0
+seaborn>=0.12.0
+
+# Game Client
 pygame>=2.5.0

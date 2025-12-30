@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
 # =============================================================================
-# AI PERFORMANCE TEST SUITE v3.0 - Bug Fixed Edition
-# Connect Four Bitirme Projesi - Tez Veri Toplama
+# AI PERFORMANCE TEST SUITE v3.1 - THESIS EDITION
+# Connect Four Bitirme Projesi - AI Performans Analizi
+# =============================================================================
+#
+# Bu test suite aşağıdaki metrikleri ölçer:
+# 1. Minimax + Alpha-Beta Latency (Depth 1-7)
+# 2. Node Evaluation Count & Alpha-Beta Cutoff Efficiency
+# 3. AI vs AI Tournament (Round-Robin)
+# 4. Critical Position Scenario Tests
+#
+# Kullanım: python ai_performance_suite.py
+# Çıktılar: ./test_results/ dizinine kaydedilir
 # =============================================================================
 
 import sys
@@ -16,7 +26,7 @@ from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, asdict
 
 # =============================================================================
-# GAME CORE - Embedded (Standalone için)
+# GAME CORE - Embedded (Standalone)
 # =============================================================================
 
 ROWS = 6
@@ -30,7 +40,7 @@ STATE_WIN = 1
 STATE_DRAW = 2
 
 class ConnectFourGame:
-    """Bitboard tabanlı Connect Four oyun motoru."""
+    """Bitboard-based Connect Four game engine."""
     
     def __init__(self, starting_player=PLAYER1_PIECE):
         self.reset(starting_player)
@@ -103,7 +113,7 @@ class ConnectFourGame:
 
 
 # =============================================================================
-# AI ENGINE - Embedded (Standalone için)
+# AI ENGINE - Embedded with Node Counting
 # =============================================================================
 
 SCORE_WIN = 10000000000
@@ -121,13 +131,20 @@ OPENING_BOOK = {
     (0,): 3, (1,): 3, (2,): 3, (4,): 3, (5,): 3, (6,): 3,
 }
 
-class AIEngine:
-    """Minimax + Alpha-Beta AI Engine."""
+class AIEngineWithMetrics:
+    """Minimax + Alpha-Beta AI with performance metrics."""
     
     def __init__(self, player_id, depth=4):
         self.player_id = player_id
         self.opp_player_id = PLAYER1_PIECE if player_id == PLAYER2_PIECE else PLAYER2_PIECE
         self.depth = depth
+        # Metrics
+        self.nodes_evaluated = 0
+        self.cutoffs = 0
+
+    def reset_metrics(self):
+        self.nodes_evaluated = 0
+        self.cutoffs = 0
 
     def evaluate_window(self, window, piece):
         score = 0
@@ -143,7 +160,7 @@ class AIEngine:
         return score
 
     def score_position(self, game, piece):
-        """Pozisyon değerlendirmesi - Heuristik fonksiyon."""
+        """Heuristic evaluation function."""
         score = 0
         
         # Center Control
@@ -159,7 +176,7 @@ class AIEngine:
                 if (game.bitboards[PLAYER1_PIECE] >> idx) & 1: board[r][c] = PLAYER1_PIECE
                 elif (game.bitboards[PLAYER2_PIECE] >> idx) & 1: board[r][c] = PLAYER2_PIECE
 
-        # Window Scanning
+        # Window Scanning (Horizontal, Vertical, Diagonal)
         for r in range(ROWS):
             for c in range(COLS - 3):
                 window = board[r][c:c+4]
@@ -186,6 +203,7 @@ class AIEngine:
         return False
 
     def minimax(self, game, depth, alpha, beta, maximizingPlayer):
+        self.nodes_evaluated += 1
         valid_locations = game.get_valid_locations()
         is_terminal = self.is_terminal_node(game)
         
@@ -199,6 +217,7 @@ class AIEngine:
         if not valid_locations:
             return (None, 0)
 
+        # Move ordering - center first (improves pruning)
         valid_locations.sort(key=lambda x: abs(x - COLS//2))
 
         if maximizingPlayer:
@@ -208,11 +227,14 @@ class AIEngine:
                 temp_game = game.clone()
                 temp_game.make_move(col)
                 new_score = self.minimax(temp_game, depth-1, alpha, beta, False)[1]
+                
                 if new_score > value: 
                     value = new_score
                     best_col = col
                 alpha = max(alpha, value)
-                if alpha >= beta: break
+                if alpha >= beta:
+                    self.cutoffs += 1
+                    break
             return best_col, value
         else:
             value = math.inf
@@ -221,23 +243,33 @@ class AIEngine:
                 temp_game = game.clone()
                 temp_game.make_move(col)
                 new_score = self.minimax(temp_game, depth-1, alpha, beta, True)[1]
+                
                 if new_score < value: 
                     value = new_score
                     best_col = col
                 beta = min(beta, value)
-                if alpha >= beta: break
+                if alpha >= beta:
+                    self.cutoffs += 1
+                    break
             return best_col, value
 
     def find_best_move(self, game):
+        """Find best move with metrics tracking."""
         valid_moves = game.get_valid_locations()
         if not valid_moves:
             return None
 
+        # Opening Book
         history = tuple(game.move_history)
         if history in OPENING_BOOK:
             move = OPENING_BOOK[history]
-            if game.is_valid_location(move): return move
+            if game.is_valid_location(move): 
+                return move
         
+        # Reset metrics
+        self.reset_metrics()
+        
+        # Minimax
         game_copy = game.clone()
         try:
             col, score = self.minimax(game_copy, self.depth, -math.inf, math.inf, True)
@@ -252,93 +284,7 @@ class AIEngine:
 
 
 # =============================================================================
-# INSTRUMENTED AI ENGINE - Node Counting & Metrics
-# =============================================================================
-
-class InstrumentedAIEngine(AIEngine):
-    """Performans metrikleri toplayan AI Engine."""
-    
-    def __init__(self, player_id, depth=4):
-        super().__init__(player_id, depth)
-        self.reset_counters()
-    
-    def reset_counters(self):
-        self.nodes_evaluated = 0
-        self.alpha_cutoffs = 0
-        self.beta_cutoffs = 0
-        self.max_depth_reached = 0
-        self.terminal_nodes = 0
-        self.leaf_evaluations = 0
-    
-    def minimax(self, game, depth, alpha, beta, maximizingPlayer):
-        """Instrumented minimax - node counting ekli."""
-        self.nodes_evaluated += 1
-        self.max_depth_reached = max(self.max_depth_reached, self.depth - depth)
-        
-        valid_locations = game.get_valid_locations()
-        is_terminal = self.is_terminal_node(game)
-        
-        if depth == 0 or is_terminal:
-            if is_terminal:
-                self.terminal_nodes += 1
-                if game.check_win(self.player_id): return (None, 100000000000)
-                elif game.check_win(self.opp_player_id): return (None, -100000000000)
-                else: return (None, 0)
-            else: 
-                self.leaf_evaluations += 1
-                # BUG FIX: score_position kullan, evaluate_position değil!
-                return (None, self.score_position(game, self.player_id))
-
-        if not valid_locations:
-            return (None, 0)
-
-        valid_locations.sort(key=lambda x: abs(x - COLS//2))
-
-        if maximizingPlayer:
-            value = -math.inf
-            best_col = random.choice(valid_locations) if valid_locations else None
-            for col in valid_locations:
-                temp_game = game.clone()
-                temp_game.make_move(col)
-                new_score = self.minimax(temp_game, depth-1, alpha, beta, False)[1]
-                if new_score > value: 
-                    value = new_score
-                    best_col = col
-                alpha = max(alpha, value)
-                if alpha >= beta:
-                    self.alpha_cutoffs += 1
-                    break
-            return best_col, value
-        else:
-            value = math.inf
-            best_col = random.choice(valid_locations) if valid_locations else None
-            for col in valid_locations:
-                temp_game = game.clone()
-                temp_game.make_move(col)
-                new_score = self.minimax(temp_game, depth-1, alpha, beta, True)[1]
-                if new_score < value: 
-                    value = new_score
-                    best_col = col
-                beta = min(beta, value)
-                if alpha >= beta:
-                    self.beta_cutoffs += 1
-                    break
-            return best_col, value
-    
-    def get_metrics(self) -> Dict:
-        return {
-            'nodes_evaluated': self.nodes_evaluated,
-            'alpha_cutoffs': self.alpha_cutoffs,
-            'beta_cutoffs': self.beta_cutoffs,
-            'total_cutoffs': self.alpha_cutoffs + self.beta_cutoffs,
-            'terminal_nodes': self.terminal_nodes,
-            'leaf_evaluations': self.leaf_evaluations,
-            'max_depth_reached': self.max_depth_reached
-        }
-
-
-# =============================================================================
-# DATA CLASSES - Test Results
+# DATA CLASSES
 # =============================================================================
 
 @dataclass
@@ -349,6 +295,7 @@ class LatencyResult:
     nodes_evaluated: int
     cutoffs: int
     move_chosen: int
+    game_phase: str  # 'early', 'mid', 'late'
 
 @dataclass
 class TournamentGame:
@@ -359,235 +306,262 @@ class TournamentGame:
     total_moves: int
     duration_ms: float
 
-@dataclass  
+@dataclass
 class ScenarioResult:
     scenario_name: str
     depth: int
     latency_ms: float
     move_chosen: int
     nodes_evaluated: int
-    expected_optimal: Optional[int]
+    expected_optimal: int
     is_optimal: bool
 
 
 # =============================================================================
-# TEST SCENARIOS
-# =============================================================================
-
-def create_test_scenarios() -> List[Tuple[str, List[int], Optional[int]]]:
-    """Test senaryoları: (isim, hamle_listesi, optimal_hamle)"""
-    return [
-        # Boş tahta
-        ("empty_board", [], 3),  # Center optimal
-        
-        # Erken oyun
-        ("early_game_1", [3], 3),
-        ("early_game_2", [3, 3], 3),
-        ("early_game_3", [3, 2, 3], 3),
-        
-        # Orta oyun
-        ("mid_game_1", [3, 3, 4, 4, 2, 2], None),
-        ("mid_game_2", [3, 2, 3, 4, 3, 5], None),
-        
-        # Kazanma fırsatı (3 taş dizili, 4. hamle açık)
-        ("win_opportunity_horizontal", [0, 6, 1, 6, 2, 6], 3),  # Player 1 wins with col 3
-        ("win_opportunity_vertical", [3, 0, 3, 1, 3, 2], 3),    # Player 1 wins with col 3
-        
-        # Bloklama gereken durum
-        ("must_block_horizontal", [3, 0, 4, 1, 5, 2], None),  # Must block opponent at 3
-        ("must_block_vertical", [0, 3, 1, 3, 2, 3], None),
-        
-        # Kompleks pozisyonlar
-        ("complex_1", [3, 3, 4, 2, 5, 4, 2, 5, 1, 6], None),
-        ("complex_2", [3, 2, 4, 4, 2, 3, 5, 5, 1, 1, 6, 0], None),
-    ]
-
-
-# =============================================================================
-# PERFORMANCE TEST SUITE
+# TEST SUITE
 # =============================================================================
 
 class AIPerformanceSuite:
-    """Kapsamlı AI Performans Test Paketi."""
+    """Comprehensive AI Performance Test Suite."""
     
     def __init__(self, output_dir: str = "./test_results"):
         self.output_dir = output_dir
+        os.makedirs(output_dir, exist_ok=True)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Results storage
         self.latency_results: List[LatencyResult] = []
         self.tournament_results: List[TournamentGame] = []
         self.scenario_results: List[ScenarioResult] = []
-        
-        os.makedirs(output_dir, exist_ok=True)
     
     # -------------------------------------------------------------------------
-    # TEST 1: Latency Tests
+    # Test 1: Latency Tests
     # -------------------------------------------------------------------------
-    def run_latency_tests(self, depths: List[int] = [1, 2, 3, 4, 5, 6], 
-                          iterations: int = 10,
+    def run_latency_tests(self, depths: List[int] = [1, 2, 3, 4, 5, 6, 7], 
+                          iterations: int = 20,
                           verbose: bool = True) -> Dict:
-        """Her derinlik için latency ölçümü."""
+        """Measure AI response time for different depths."""
         
-        print("\n" + "="*60)
-        print("TEST 1: LATENCY ANALYSIS")
-        print("="*60)
+        if verbose:
+            print("\n" + "="*60)
+            print("TEST 1: AI LATENCY ANALYSIS")
+            print("="*60)
         
-        results_by_depth = {}
+        stats = {}
         
         for depth in depths:
             if verbose:
-                print(f"\n[Depth {depth}] Running {iterations} iterations...")
+                print(f"\n  Testing Depth {depth}...")
             
             latencies = []
             nodes_list = []
+            cutoffs_list = []
             
             for i in range(iterations):
+                # Create game with random early/mid/late phase
                 game = ConnectFourGame()
-                ai = InstrumentedAIEngine(PLAYER1_PIECE, depth=depth)
-                ai.reset_counters()
                 
-                # Rastgele 3-5 hamle yap (farklı pozisyonlar test et)
-                num_random_moves = random.randint(3, 5)
+                # Determine game phase
+                if i < iterations // 3:
+                    # Early game (0-8 moves)
+                    num_random_moves = random.randint(0, 8)
+                    phase = 'early'
+                elif i < 2 * iterations // 3:
+                    # Mid game (9-20 moves)
+                    num_random_moves = random.randint(9, 20)
+                    phase = 'mid'
+                else:
+                    # Late game (21-30 moves)
+                    num_random_moves = random.randint(21, 30)
+                    phase = 'late'
+                
+                # Make random moves
                 for _ in range(num_random_moves):
                     valid = game.get_valid_locations()
-                    if valid and not game.game_over:
-                        game.make_move(random.choice(valid))
-                
-                if game.game_over:
-                    game = ConnectFourGame()  # Reset if game ended
-                
-                # Latency ölç
-                start = time.perf_counter()
-                move = ai.find_best_move(game)
-                elapsed = (time.perf_counter() - start) * 1000  # ms
-                
-                metrics = ai.get_metrics()
-                
-                result = LatencyResult(
-                    depth=depth,
-                    iteration=i+1,
-                    latency_ms=elapsed,
-                    nodes_evaluated=metrics['nodes_evaluated'],
-                    cutoffs=metrics['total_cutoffs'],
-                    move_chosen=move if move is not None else -1
-                )
-                self.latency_results.append(result)
-                latencies.append(elapsed)
-                nodes_list.append(metrics['nodes_evaluated'])
-            
-            # İstatistikler
-            results_by_depth[depth] = {
-                'mean_ms': statistics.mean(latencies),
-                'median_ms': statistics.median(latencies),
-                'stdev_ms': statistics.stdev(latencies) if len(latencies) > 1 else 0,
-                'min_ms': min(latencies),
-                'max_ms': max(latencies),
-                'p95_ms': sorted(latencies)[int(len(latencies) * 0.95)] if len(latencies) >= 20 else max(latencies),
-                'mean_nodes': statistics.mean(nodes_list),
-                'total_nodes': sum(nodes_list)
-            }
-            
-            if verbose:
-                stats = results_by_depth[depth]
-                print(f"    Mean: {stats['mean_ms']:.2f}ms | "
-                      f"Median: {stats['median_ms']:.2f}ms | "
-                      f"Nodes: {stats['mean_nodes']:.0f}")
-        
-        return results_by_depth
-    
-    # -------------------------------------------------------------------------
-    # TEST 2: Scenario Tests
-    # -------------------------------------------------------------------------
-    def run_scenario_tests(self, depths: List[int] = [3, 4, 5],
-                           verbose: bool = True) -> List[Dict]:
-        """Belirli senaryolarda AI davranış testi."""
-        
-        print("\n" + "="*60)
-        print("TEST 2: SCENARIO ANALYSIS")
-        print("="*60)
-        
-        scenarios = create_test_scenarios()
-        results = []
-        
-        for scenario_name, moves, optimal_move in scenarios:
-            for depth in depths:
-                # Oyunu hazırla
-                game = ConnectFourGame()
-                for m in moves:
-                    game.make_move(m)
+                    if not valid or game.game_over:
+                        break
+                    game.make_move(random.choice(valid))
                 
                 if game.game_over:
                     continue
                 
-                # AI hamle seçimi
-                ai = InstrumentedAIEngine(game.current_player, depth=depth)
-                ai.reset_counters()
+                # Test AI
+                ai = AIEngineWithMetrics(game.current_player, depth=depth)
                 
-                start = time.perf_counter()
+                start_time = time.perf_counter()
+                move = ai.find_best_move(game)
+                end_time = time.perf_counter()
+                
+                latency_ms = (end_time - start_time) * 1000
+                
+                if move is not None:
+                    latencies.append(latency_ms)
+                    nodes_list.append(ai.nodes_evaluated)
+                    cutoffs_list.append(ai.cutoffs)
+                    
+                    self.latency_results.append(LatencyResult(
+                        depth=depth,
+                        iteration=i,
+                        latency_ms=latency_ms,
+                        nodes_evaluated=ai.nodes_evaluated,
+                        cutoffs=ai.cutoffs,
+                        move_chosen=move,
+                        game_phase=phase
+                    ))
+                
+                if verbose and (i + 1) % 5 == 0:
+                    print(f"    Progress: {i+1}/{iterations}", end='\r')
+            
+            if latencies:
+                stats[depth] = {
+                    'mean_ms': statistics.mean(latencies),
+                    'median_ms': statistics.median(latencies),
+                    'min_ms': min(latencies),
+                    'max_ms': max(latencies),
+                    'stdev_ms': statistics.stdev(latencies) if len(latencies) > 1 else 0,
+                    'p95_ms': sorted(latencies)[int(len(latencies) * 0.95)] if latencies else 0,
+                    'p99_ms': sorted(latencies)[int(len(latencies) * 0.99)] if latencies else 0,
+                    'mean_nodes': statistics.mean(nodes_list),
+                    'mean_cutoffs': statistics.mean(cutoffs_list),
+                    'samples': len(latencies)
+                }
+                
+                if verbose:
+                    print(f"    Depth {depth}: Mean={stats[depth]['mean_ms']:.2f}ms, "
+                          f"P95={stats[depth]['p95_ms']:.2f}ms, "
+                          f"Nodes={stats[depth]['mean_nodes']:.0f}")
+        
+        return stats
+    
+    # -------------------------------------------------------------------------
+    # Test 2: Scenario Tests
+    # -------------------------------------------------------------------------
+    def run_scenario_tests(self, depths: List[int] = [3, 4, 5, 6],
+                           verbose: bool = True) -> List[Dict]:
+        """Test AI on critical game scenarios."""
+        
+        if verbose:
+            print("\n" + "="*60)
+            print("TEST 2: CRITICAL SCENARIO TESTS")
+            print("="*60)
+        
+        # Define test scenarios
+        scenarios = [
+            {
+                'name': 'Win in 1',
+                'moves': [3, 0, 3, 1, 3, 2],  # P1 has 3 in column 3
+                'expected': 3,  # P1 should complete 4
+                'player': PLAYER1_PIECE
+            },
+            {
+                'name': 'Block Opponent Win',
+                'moves': [3, 0, 4, 0, 5],  # P2 has 3 in column 0
+                'expected': 0,  # P1 should block at column 0
+                'player': PLAYER1_PIECE
+            },
+            {
+                'name': 'Center Control',
+                'moves': [],  # Empty board
+                'expected': 3,  # Should play center
+                'player': PLAYER1_PIECE
+            },
+            {
+                'name': 'Fork Creation',
+                'moves': [3, 0, 2, 1, 4, 6],  # Setup for fork
+                'expected': 3,  # Build toward double threat
+                'player': PLAYER1_PIECE
+            },
+            {
+                'name': 'Diagonal Defense',
+                'moves': [3, 2, 3, 2, 3],  # P2 threatens diagonal
+                'expected': 2,  # Block diagonal
+                'player': PLAYER2_PIECE
+            }
+        ]
+        
+        results = []
+        
+        for scenario in scenarios:
+            if verbose:
+                print(f"\n  Scenario: {scenario['name']}")
+            
+            for depth in depths:
+                game = ConnectFourGame()
+                
+                # Apply moves
+                for move in scenario['moves']:
+                    game.make_move(move)
+                
+                if game.game_over:
+                    continue
+                
+                # Test AI
+                ai = AIEngineWithMetrics(scenario['player'], depth=depth)
+                
+                start_time = time.perf_counter()
                 chosen_move = ai.find_best_move(game)
-                elapsed = (time.perf_counter() - start) * 1000
+                end_time = time.perf_counter()
                 
-                metrics = ai.get_metrics()
-                is_optimal = (optimal_move is None) or (chosen_move == optimal_move)
+                latency_ms = (end_time - start_time) * 1000
+                is_optimal = (chosen_move == scenario['expected'])
                 
                 result = ScenarioResult(
-                    scenario_name=scenario_name,
+                    scenario_name=scenario['name'],
                     depth=depth,
-                    latency_ms=elapsed,
-                    move_chosen=chosen_move if chosen_move is not None else -1,
-                    nodes_evaluated=metrics['nodes_evaluated'],
-                    expected_optimal=optimal_move,
+                    latency_ms=latency_ms,
+                    move_chosen=chosen_move if chosen_move else -1,
+                    nodes_evaluated=ai.nodes_evaluated,
+                    expected_optimal=scenario['expected'],
                     is_optimal=is_optimal
                 )
                 self.scenario_results.append(result)
                 results.append(asdict(result))
                 
+                status = "✓" if is_optimal else "✗"
                 if verbose:
-                    status = "✓" if is_optimal else "✗"
-                    print(f"  [{status}] {scenario_name} (d={depth}): "
-                          f"chose={chosen_move}, optimal={optimal_move}, "
-                          f"{elapsed:.2f}ms")
+                    print(f"    Depth {depth}: {status} Chose={chosen_move}, "
+                          f"Expected={scenario['expected']}, {latency_ms:.2f}ms")
         
         return results
     
     # -------------------------------------------------------------------------
-    # TEST 3: Round-Robin Tournament
+    # Test 3: AI Tournament
     # -------------------------------------------------------------------------
     def run_tournament(self, depths: List[int] = [2, 3, 4, 5, 6],
-                       games_per_matchup: int = 100,
+                       games_per_matchup: int = 20,
                        verbose: bool = True) -> Dict:
-        """Round-robin tournament: each depth pair plays 100 matches."""
-
-        print("\n" + "="*60)
-        print("TEST 3: ROUND-ROBIN TOURNAMENT (100 games per matchup)")
-        print("="*60)
-
+        """Round-robin tournament between AI of different depths."""
+        
+        if verbose:
+            print("\n" + "="*60)
+            print("TEST 3: AI vs AI TOURNAMENT")
+            print("="*60)
+        
         win_matrix = {d: {d2: 0 for d2 in depths} for d in depths}
         draw_count = {d: {d2: 0 for d2 in depths} for d in depths}
-
+        
         total_matchups = len(depths) * (len(depths) - 1) // 2
-        matchup_num = 0
-
+        current_matchup = 0
+        
         for i, d1 in enumerate(depths):
             for d2 in depths[i+1:]:
-                matchup_num += 1
-
+                current_matchup += 1
                 if verbose:
-                    print(f"\n[Matchup {matchup_num}/{total_matchups}] "
-                          f"Depth {d1} vs Depth {d2} - Playing 100 games")
-
+                    print(f"\n  Matchup {current_matchup}/{total_matchups}: Depth {d1} vs Depth {d2}")
+                
                 d1_wins = 0
                 d2_wins = 0
                 draws = 0
-
+                
                 for game_num in range(games_per_matchup):
-                    # Alternating colors for fairness (50 games each color)
+                    # Alternate who goes first
                     if game_num % 2 == 0:
-                        ai1 = AIEngine(PLAYER1_PIECE, depth=d1)
-                        ai2 = AIEngine(PLAYER2_PIECE, depth=d2)
+                        ai1 = AIEngineWithMetrics(PLAYER1_PIECE, depth=d1)
+                        ai2 = AIEngineWithMetrics(PLAYER2_PIECE, depth=d2)
                         ai1_player = PLAYER1_PIECE
                     else:
-                        ai1 = AIEngine(PLAYER2_PIECE, depth=d1)
-                        ai2 = AIEngine(PLAYER1_PIECE, depth=d2)
+                        ai1 = AIEngineWithMetrics(PLAYER2_PIECE, depth=d1)
+                        ai2 = AIEngineWithMetrics(PLAYER1_PIECE, depth=d2)
                         ai1_player = PLAYER2_PIECE
 
                     game = ConnectFourGame()
@@ -629,7 +603,7 @@ class AIPerformanceSuite:
                         duration_ms=duration
                     ))
 
-                    if verbose and (game_num + 1) % 10 == 0:
+                    if verbose and (game_num + 1) % 5 == 0:
                         print(f"    Progress: {game_num+1}/{games_per_matchup} - "
                               f"D{d1}={d1_wins} | D{d2}={d2_wins} | Draw={draws}",
                               end='\r')
@@ -663,33 +637,33 @@ class AIPerformanceSuite:
     # Export Functions
     # -------------------------------------------------------------------------
     def export_results(self):
-        """Tüm sonuçları dosyalara kaydet."""
+        """Export all results to files."""
         
         print("\n" + "="*60)
         print("EXPORTING RESULTS")
         print("="*60)
         
         # 1. Latency CSV
-        latency_file = os.path.join(self.output_dir, f"latency_{self.timestamp}.csv")
+        latency_file = os.path.join(self.output_dir, f"ai_latency_{self.timestamp}.csv")
         with open(latency_file, 'w') as f:
-            f.write("depth,iteration,latency_ms,nodes_evaluated,cutoffs,move_chosen\n")
+            f.write("depth,iteration,latency_ms,nodes_evaluated,cutoffs,move_chosen,game_phase\n")
             for r in self.latency_results:
                 f.write(f"{r.depth},{r.iteration},{r.latency_ms:.4f},"
-                        f"{r.nodes_evaluated},{r.cutoffs},{r.move_chosen}\n")
-        print(f"  [✓] Latency data: {latency_file}")
+                        f"{r.nodes_evaluated},{r.cutoffs},{r.move_chosen},{r.game_phase}\n")
+        print(f"  [OK] Latency data: {latency_file}")
         
         # 2. Tournament CSV
-        tournament_file = os.path.join(self.output_dir, f"tournament_{self.timestamp}.csv")
+        tournament_file = os.path.join(self.output_dir, f"ai_tournament_{self.timestamp}.csv")
         with open(tournament_file, 'w') as f:
             f.write("depth1,depth2,game_number,winner_depth,total_moves,duration_ms\n")
             for r in self.tournament_results:
                 winner = r.winner_depth if r.winner_depth else "draw"
                 f.write(f"{r.depth1},{r.depth2},{r.game_number},"
                         f"{winner},{r.total_moves},{r.duration_ms:.2f}\n")
-        print(f"  [✓] Tournament data: {tournament_file}")
+        print(f"  [OK] Tournament data: {tournament_file}")
         
         # 3. Scenario CSV
-        scenario_file = os.path.join(self.output_dir, f"scenarios_{self.timestamp}.csv")
+        scenario_file = os.path.join(self.output_dir, f"ai_scenarios_{self.timestamp}.csv")
         with open(scenario_file, 'w') as f:
             f.write("scenario_name,depth,latency_ms,move_chosen,nodes_evaluated,"
                     "expected_optimal,is_optimal\n")
@@ -697,7 +671,7 @@ class AIPerformanceSuite:
                 f.write(f"{r.scenario_name},{r.depth},{r.latency_ms:.4f},"
                         f"{r.move_chosen},{r.nodes_evaluated},"
                         f"{r.expected_optimal},{r.is_optimal}\n")
-        print(f"  [✓] Scenario data: {scenario_file}")
+        print(f"  [OK] Scenario data: {scenario_file}")
         
         # 4. JSON Summary
         summary = {
@@ -707,15 +681,16 @@ class AIPerformanceSuite:
                 'tournament_games': len(self.tournament_results),
                 'scenario_tests': len(self.scenario_results)
             },
+            'latency_summary': self._calculate_latency_summary(),
             'latency_results': [asdict(r) for r in self.latency_results],
             'tournament_results': [asdict(r) for r in self.tournament_results],
             'scenario_results': [asdict(r) for r in self.scenario_results]
         }
         
-        json_file = os.path.join(self.output_dir, f"full_results_{self.timestamp}.json")
+        json_file = os.path.join(self.output_dir, f"ai_results_{self.timestamp}.json")
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(summary, f, indent=2, ensure_ascii=False)
-        print(f"  [✓] Full JSON: {json_file}")
+        print(f"  [OK] Full JSON: {json_file}")
         
         return {
             'latency_csv': latency_file,
@@ -724,19 +699,40 @@ class AIPerformanceSuite:
             'json_summary': json_file
         }
     
+    def _calculate_latency_summary(self) -> Dict:
+        """Calculate summary statistics for latency results."""
+        summary = {}
+        depths = set(r.depth for r in self.latency_results)
+        
+        for depth in sorted(depths):
+            depth_results = [r.latency_ms for r in self.latency_results if r.depth == depth]
+            if depth_results:
+                sorted_latencies = sorted(depth_results)
+                summary[str(depth)] = {
+                    'mean_ms': round(statistics.mean(depth_results), 2),
+                    'median_ms': round(statistics.median(depth_results), 2),
+                    'min_ms': round(min(depth_results), 2),
+                    'max_ms': round(max(depth_results), 2),
+                    'stdev_ms': round(statistics.stdev(depth_results), 2) if len(depth_results) > 1 else 0,
+                    'p95_ms': round(sorted_latencies[int(len(sorted_latencies) * 0.95)], 2),
+                    'p99_ms': round(sorted_latencies[min(int(len(sorted_latencies) * 0.99), len(sorted_latencies)-1)], 2),
+                    'samples': len(depth_results)
+                }
+        return summary
+    
     # -------------------------------------------------------------------------
     # Full Test Run
     # -------------------------------------------------------------------------
     def run_all_tests(self, 
-                      latency_depths: List[int] = [1, 2, 3, 4, 5, 6],
-                      latency_iterations: int = 10,
+                      latency_depths: List[int] = [1, 2, 3, 4, 5, 6, 7],
+                      latency_iterations: int = 20,
                       tournament_depths: List[int] = [2, 3, 4, 5, 6],
-                      tournament_games: int = 10,
-                      scenario_depths: List[int] = [3, 4, 5]) -> Dict:
-        """Tüm testleri çalıştır."""
+                      tournament_games: int = 20,
+                      scenario_depths: List[int] = [3, 4, 5, 6]) -> Dict:
+        """Run all tests."""
         
         print("\n" + "="*60)
-        print("AI PERFORMANCE TEST SUITE v3.0")
+        print("AI PERFORMANCE TEST SUITE v3.1")
         print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("="*60)
         
@@ -770,23 +766,26 @@ class AIPerformanceSuite:
 # =============================================================================
 
 if __name__ == "__main__":
-    # Test suite'i çalıştır
-    suite = AIPerformanceSuite(output_dir="./ai_test_results")
+    print("="*60)
+    print("  CONNECT FOUR - AI PERFORMANCE TEST SUITE")
+    print("="*60)
+    
+    suite = AIPerformanceSuite(output_dir="./test_results")
 
     results = suite.run_all_tests(
-        latency_depths=[1, 2, 3, 4, 5, 6],
-        latency_iterations=10,
+        latency_depths=[1, 2, 3, 4, 5, 6, 7],  # Including depth 7
+        latency_iterations=20,
         tournament_depths=[2, 3, 4, 5, 6],
-        tournament_games=100,  # 100 games per matchup in round-robin
-        scenario_depths=[3, 4, 5]
+        tournament_games=20,
+        scenario_depths=[3, 4, 5, 6]
     )
     
     print("\n" + "="*60)
     print("LATENCY SUMMARY BY DEPTH")
     print("="*60)
     for depth, stats in results['latency_stats'].items():
-        print(f"Depth {depth}: Mean={stats['mean_ms']:.2f}ms, "
-              f"Nodes={stats['mean_nodes']:.0f}")
+        print(f"  Depth {depth}: Mean={stats['mean_ms']:.2f}ms, "
+              f"P95={stats['p95_ms']:.2f}ms, Nodes={stats['mean_nodes']:.0f}")
     
     print("\n" + "="*60)
     print("TOURNAMENT RANKING")
@@ -794,3 +793,7 @@ if __name__ == "__main__":
     for rank, depth in enumerate(results['tournament']['ranking'], 1):
         wins = results['tournament']['total_wins'][depth]
         print(f"  {rank}. Depth {depth}: {wins} total wins")
+    
+    print("\n" + "="*60)
+    print(f"Results saved to: ./test_results/")
+    print("="*60)
