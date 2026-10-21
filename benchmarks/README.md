@@ -1,152 +1,61 @@
-# Connect Four Pro - Test Suite
+# Connect Four Pro - Benchmark'lar
 
-Bu dizin, Connect Four Pro projesinin kapsamlı test altyapısını içerir.
+Performans ölçümleri (tez "Testing and Results" bölümü). Fonksiyonel testler ayrıdır: `tests/` (pytest).
+
+Son ölçümün sonuçları ve tüm tablolar: **[RESULTS.md](RESULTS.md)**
 
 ## Dosyalar
 
-| Dosya | Açıklama |
-|-------|----------|
-| `ai_performance_suite.py` | AI algoritması performans testleri (Latency, Tournament, Scenario) |
-| `network_benchmark.py` | Network performans testleri (WebSocket, REST, Concurrency) |
-| `locustfile.py` | Locust yük testi senaryoları (50-200 kullanıcı) |
-| `visualize_all_results.py` | Test sonuçlarından grafik oluşturma |
+| Dosya | Ölçtüğü |
+|---|---|
+| `ai_performance_suite.py` | AI gecikmesi ve karmaşıklığı (D1–D7), doğrulanmış taktik senaryolar, AI turnuvası |
+| `gui_fps_benchmark.py` | GUI kare hızı; boşta ve D6 AI ararken (NFR-05) |
+| `network_benchmark.py` | WebSocket vs REST, işlem gecikmeleri, mesaj boyutu, eşzamanlılık, eşzamanlı oyunlar |
+| `locustfile.py` | Locust REST yük testi (3 kullanıcı profili) |
+| `visualize_all_results.py` | `results/*.json` → `visualization_outputs/*.png` + `RESULTS.md` |
+| `run_all.py` | Hepsini sırayla çalıştırır |
+| `bench_common.py` | Ortak yardımcılar (ortam bilgisi, istatistik) |
 
-> `ai_performance_suite.py`, `src/` klasöründeki asıl oyun motorunu ve AI'yı import ederek ölçer.
-
-## Kurulum
-
-```bash
-# Sanal ortam oluştur
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# veya: venv\Scripts\activate  # Windows
-
-# Bağımlılıkları yükle (proje kökünden)
-pip install -r src/requirements.txt
-```
-
-## Test Çalıştırma
-
-### 1. AI Performance Test
+## Çalıştırma
 
 ```bash
-python ai_performance_suite.py
+pip install -r requirements-dev.txt          # proje kökünden
+
+# Benchmark için AYRI bir veritabanı kullanın (test hesapları oluşturulur ve sonda silinir)
+createdb connect4_bench
+export DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4_bench
+
+cd benchmarks
+python run_all.py            # tam ölçüm (~30 dk): sunucuyu kendisi başlatır
+python run_all.py --quick    # hızlı kontrol (~3 dk)
+python run_all.py --server http://localhost:5000 --skip-ai   # çalışan sunucuya karşı
 ```
 
-Bu test şunları ölçer:
-- Depth 1-7 için AI yanıt süresi (latency)
-- Node sayısı ve Alpha-Beta pruning verimliliği
-- Kritik pozisyon senaryoları
-- AI vs AI turnuva
+Tek tek çalıştırmak da mümkündür, örn. `python ai_performance_suite.py --iterations 45 --seed 7`.
 
-Çıktılar: `./test_results/ai_*.csv`, `./test_results/ai_results_*.json`
+## Yöntem
 
-### 2. Network Benchmark
+**AI**
+- Gecikme: derinlik başına 30 rastgele pozisyon (erken/orta/geç oyun eşit, sabit tohum). Bütün derinlikler **aynı pozisyonlarda** ölçülür. Açılış kitabı kapalıdır; kitaptan gelen 0 ms'lik hamleler ortalamayı düşürmez.
+- Senaryolar: her senaryonun doğru cevap kümesi 4 yarı-hamlelik **kesin arama** (zorla kazanç/kayıp çözücü) ile hesaplanır, elle yazılmaz.
+- Turnuva: AI deterministiktir, aynı başlangıçtan hep aynı oyun çıkar. Bu yüzden her eşleşme 10 farklı rastgele açılıştan oynanır ve her açılış renkler değiştirilerek iki kez oynanır (eşleşme başına 20 oyun). Puan = galibiyet + beraberlik/2.
 
-```bash
-# Önce server'ı başlat
-python server.py
+**Ağ**
+- Socket.IO taşıma katmanı kaydedilir. WebSocket değilse (ör. `websocket-client` eksikse) ölçüm geçersiz sayılır ve betik durur.
+- Protokol karşılaştırması adil yapılır: `latency_ping` (WebSocket) ile `GET /health` (REST) karşılaştırılır; ikisi de veritabanına dokunmaz.
+- Eşzamanlılık: N istemci sabit süre boyunca durmadan istek gönderir. Verim duvar saatiyle hesaplanır; bağlantı kurulumu ölçüme dahil değildir.
+- Eşzamanlı oyunlar: K oda (2K WebSocket bağlantısı) aynı anda tam oyun oynar. Olaylar istemcide sırasız gelebildiği için cevaplar içeriğe göre (hamle geçmişinin uzunluğu) eşleştirilir.
 
-# Sonra testi çalıştır
-python network_benchmark.py --server http://localhost:5000
-```
+**Sınırlamalar**
+- Sunucu, yük üreticileri ve PostgreSQL aynı makinede çalışır. Ağ gecikmesi yerel ağa (localhost) aittir.
+- Sunucu Flask-SocketIO `threading` modunda (Werkzeug geliştirme sunucusu) çalışır. Üretimde eventlet/gevent veya gunicorn ile verim farklı olur.
+- GUI ölçümü ekransız (SDL dummy) yapılır; ekrana çizim maliyeti dahil değildir.
 
-Bu test şunları ölçer:
-- WebSocket RTT (Round-Trip Time)
-- REST API yanıt süreleri
-- Payload boyutu vs Latency
-- Eşzamanlı bağlantı kapasitesi
+## Önceki sürümle karşılaştırma notları
 
-Çıktılar: `./test_results/network_*.csv`, `./test_results/network_results_*.json`
-
-### 3. Locust Load Test
-
-```bash
-# Server'ın çalıştığından emin ol
-python server.py
-
-# Web UI ile (tarayıcıda http://localhost:8089)
-locust -f locustfile.py --host=http://localhost:5000
-
-# Veya headless (50 kullanıcı, 2 dakika)
-locust -f locustfile.py --host=http://localhost:5000 -u 50 -r 5 -t 2m --headless
-```
-
-Parametreler:
-- `-u`: Toplam kullanıcı sayısı
-- `-r`: Saniyede spawn edilecek kullanıcı
-- `-t`: Test süresi (s/m/h)
-- `--headless`: Web UI olmadan çalıştır
-
-### 4. Görselleştirme
-
-```bash
-python visualize_all_results.py --input ./test_results --output ./visualization_outputs
-```
-
-Oluşturulan grafikler:
-- `ai_performance_analysis.png` - AI performans özeti
-- `ai_latency_vs_depth.png` - Depth vs Latency grafiği
-- `ai_computational_complexity.png` - Hesaplama karmaşıklığı
-- `protocol_comparison.png` - WebSocket vs REST
-- `concurrency_analysis.png` - Ölçeklenebilirlik analizi
-- `tournament_heatmap.png` - AI turnuva sonuçları
-- `summary_dashboard.png` - Özet dashboard
-
-## Önerilen Test Sırası
-
-1. **AI Performance Test** (server gerektirmez)
-   ```bash
-   python ai_performance_suite.py
-   ```
-
-2. **Server Başlat**
-   ```bash
-   python server.py
-   ```
-
-3. **Network Benchmark** (server gerektirir)
-   ```bash
-   python network_benchmark.py
-   ```
-
-4. **Locust Load Test** (server gerektirir)
-   ```bash
-   locust -f locustfile.py --host=http://localhost:5000 -u 50 -r 5 -t 2m --headless
-   ```
-
-5. **Görselleştirme**
-   ```bash
-   python visualize_all_results.py
-   ```
-
-## Çıktı Dizinleri
-
-```
-./test_results/           # Test sonuçları (CSV, JSON)
-./visualization_outputs/  # Grafikler (PNG, PDF)
-```
-
-## Tez için Kullanım
-
-1. Tüm testleri sırayla çalıştır
-2. `./test_results/` dizinindeki JSON dosyalarını sakla
-3. `./visualization_outputs/` dizinindeki grafikleri teze ekle
-4. Summary dashboard'u sonuç bölümünde kullan
-
-## Sorun Giderme
-
-**Server'a bağlanamıyor:**
-- Server'ın çalıştığından emin ol: `python server.py`
-- Port 5000'in açık olduğunu kontrol et
-
-**Matplotlib hatası:**
-- GUI backend'i için: `export MPLBACKEND=Agg` (Linux)
-- Veya: `plt.switch_backend('Agg')` kodu ekle
-
-**Locust import hatası:**
-- `pip install locust --upgrade`
-
-**PostgreSQL bağlantı hatası:**
-- Database'in çalıştığından emin ol
-- `.env` dosyasında DATABASE_URL kontrol et
+Önceki grafikler (`tests/visualization_outputs`, Aralık 2025) şu nedenlerle yeni sonuçlarla doğrudan karşılaştırılamaz:
+1. `visualize_all_results.py`, ölçüm dosyası bulamadığında koda gömülü **örnek değerleri** çiziyordu. Turnuva ısı haritası her zaman sabit örnek değerlerden üretiliyordu, "Kullanıcı memnuniyeti 4.6/5" de koddaki örnek veriydi.
+2. `requirements.txt` içinde `websocket-client` olmadığı için Socket.IO istemcisi **HTTP long-polling** kullanıyordu. "WebSocket" ölçümleri gerçekte polling ölçümüdür.
+3. Senaryo testlerinin 3'ünde beklenen hamle yanlıştı veya hamle sırası olmayan oyuncu adına yaptırılıyordu.
+4. Turnuvadaki "20 oyun" aynı 2 oyunun tekrarıydı. JSON özetinde düğüm sayısı alanı olmadığı için karmaşıklık grafiği de örnek değerlere düşüyordu.
+5. Ölçümler farklı donanımda yapılmıştı (bkz. RESULTS.md "Ortam").

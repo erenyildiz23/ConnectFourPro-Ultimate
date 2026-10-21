@@ -1,562 +1,481 @@
 #!/usr/bin/env python3
 # =============================================================================
-# TEST RESULTS VISUALIZATION v3.1 - THESIS EDITION
-# Connect Four Bitirme Projesi - Performans Analizi Gorsellestirme
+# VISUALIZATION & REPORT v4.0
+# results/*.json -> visualization_outputs/*.png + RESULTS.md
 # =============================================================================
-#
-# Bu script test sonuclarindan tez kalitesinde grafikler olusturur.
-# JSON/CSV dosyalarindan veri okur veya varsayilan degerler kullanir.
-#
-# Kullanim: python visualize_all_results.py [--input DIR] [--output DIR]
-# =============================================================================
+"""
+Sadece olculmus veriler kullanilir. Bir sonuc dosyasi yoksa ilgili grafikler
+uretilmez ve raporda "olculmedi" olarak gecer - varsayilan/ornek veri YOKTUR.
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import numpy as np
-import json
+Kullanim:  python visualize_all_results.py
+"""
+
 import os
-import glob
-import argparse
-from datetime import datetime
+from typing import List, Optional
 
-# =============================================================================
-# MATPLOTLIB SETTINGS - Thesis Quality
-# =============================================================================
+import matplotlib
 
-plt.style.use('seaborn-v0_8-whitegrid')
-plt.rcParams['figure.figsize'] = (12, 8)
-plt.rcParams['font.size'] = 12
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['axes.titlesize'] = 14
-plt.rcParams['axes.labelsize'] = 12
-plt.rcParams['xtick.labelsize'] = 10
-plt.rcParams['ytick.labelsize'] = 10
-plt.rcParams['legend.fontsize'] = 10
-plt.rcParams['figure.dpi'] = 150
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 
-# Color palette
-COLORS = {
-    'primary': '#2E86AB',
-    'secondary': '#A23B72',
-    'success': '#28A745',
-    'warning': '#F18F01',
-    'danger': '#C73E1D',
-    'info': '#17A2B8',
-    'light': '#F8F9FA',
-    'dark': '#343A40',
-    'p1': '#E63946',
-    'p2': '#F4A261',
-}
+import bench_common as bc  # noqa: E402
 
-# =============================================================================
-# DATA LOADING
-# =============================================================================
+# --- Palet (dataviz referans paleti, acik tema; validate_palette.js ile dogrulandi) ---
+SURFACE = '#fcfcfb'
+INK = '#0b0b0b'
+INK_2 = '#52514e'
+GRID = '#e4e3df'
+S1, S2, S3 = '#2a78d6', '#eb6834', '#1baf7a'          # kategorik sira: mavi, turuncu, turkuaz
+CRITICAL = '#d03b3b'
+DIVERGING = LinearSegmentedColormap.from_list('blue_gray_red', ['#e34948', '#f0efec', '#2a78d6'])
 
-def load_latest_json(directory: str, pattern: str) -> dict:
-    """Load the latest JSON file matching pattern."""
-    files = glob.glob(os.path.join(directory, pattern))
-    if not files:
-        return None
-    latest = max(files, key=os.path.getctime)
-    with open(latest, 'r', encoding='utf-8') as f:
-        return json.load(f)
+plt.rcParams.update({
+    'figure.facecolor': SURFACE, 'axes.facecolor': SURFACE, 'savefig.facecolor': SURFACE,
+    'axes.edgecolor': GRID, 'axes.labelcolor': INK_2, 'axes.titlecolor': INK,
+    'axes.titlesize': 13, 'axes.titleweight': 'bold', 'axes.labelsize': 11,
+    'xtick.color': INK_2, 'ytick.color': INK_2, 'text.color': INK,
+    'axes.grid': True, 'grid.color': GRID, 'grid.linewidth': 0.8, 'axes.axisbelow': True,
+    'axes.spines.top': False, 'axes.spines.right': False,
+    'lines.linewidth': 2, 'lines.markersize': 7, 'legend.frameon': False,
+    'font.size': 10, 'figure.dpi': 110,
+})
 
-def load_ai_results(input_dir: str) -> dict:
-    """Load AI test results."""
-    data = load_latest_json(input_dir, "ai_results_*.json")
-    if data:
-        print(f"  [OK] Loaded AI results from {input_dir}")
-        return data
-    
-    # Default values if no file found
-    print(f"  [INFO] Using default AI data")
-    return {
-        'latency_summary': {
-            '1': {'mean_ms': 0.6, 'p95_ms': 1.2, 'mean_nodes': 15},
-            '2': {'mean_ms': 2.3, 'p95_ms': 4.5, 'mean_nodes': 120},
-            '3': {'mean_ms': 7.2, 'p95_ms': 12.8, 'mean_nodes': 850},
-            '4': {'mean_ms': 19.2, 'p95_ms': 35.4, 'mean_nodes': 5200},
-            '5': {'mean_ms': 92.4, 'p95_ms': 158.3, 'mean_nodes': 32000},
-            '6': {'mean_ms': 355.58, 'p95_ms': 520.2, 'mean_nodes': 185000},
-            '7': {'mean_ms': 1850.0, 'p95_ms': 2800.0, 'mean_nodes': 950000},
-        }
-    }
+FIGURES: List[str] = []
 
-def load_network_results(input_dir: str) -> dict:
-    """Load network test results."""
-    data = load_latest_json(input_dir, "network_results_*.json")
-    if data:
-        print(f"  [OK] Loaded network results from {input_dir}")
-        return data
-    
-    # Default values
-    print(f"  [INFO] Using default network data")
-    return {
-        'summary': {
-            'websocket': {'avg_latency_ms': 1.38, 'avg_p95_ms': 2.85},
-            'rest': {'avg_latency_ms': 2.04, 'avg_p95_ms': 4.12},
-            'concurrency': {'max_stable_connections': 50, 'max_throughput_rps': 827}
-        },
-        'concurrency_results': [
-            {'concurrent_connections': 1, 'throughput_rps': 502, 'avg_latency_ms': 1.99, 'error_rate_percent': 0},
-            {'concurrent_connections': 5, 'throughput_rps': 489, 'avg_latency_ms': 9.73, 'error_rate_percent': 0},
-            {'concurrent_connections': 10, 'throughput_rps': 623, 'avg_latency_ms': 14.82, 'error_rate_percent': 0},
-            {'concurrent_connections': 20, 'throughput_rps': 658, 'avg_latency_ms': 27.94, 'error_rate_percent': 0},
-            {'concurrent_connections': 50, 'throughput_rps': 827, 'avg_latency_ms': 54.17, 'error_rate_percent': 0},
-        ]
-    }
 
-def load_locust_results(input_dir: str) -> dict:
-    """Load Locust load test results."""
-    data = load_latest_json(input_dir, "locust_results_*.json")
-    if data:
-        print(f"  [OK] Loaded Locust results from {input_dir}")
-        return data
-    
-    # Default values
-    print(f"  [INFO] Using default Locust data")
-    return {
-        'tests': [
-            {'users': 50, 'rps': 47.5, 'avg_latency': 42.3, 'p95_latency': 78, 'error_rate': 0.0},
-            {'users': 100, 'rps': 82.9, 'avg_latency': 68.5, 'p95_latency': 145, 'error_rate': 0.3},
-            {'users': 200, 'rps': 140.5, 'avg_latency': 142.8, 'p95_latency': 385, 'error_rate': 4.56},
-        ]
-    }
+def save(fig, name):
+    os.makedirs(bc.FIGURES_DIR, exist_ok=True)
+    fig.savefig(os.path.join(bc.FIGURES_DIR, name), dpi=200, bbox_inches='tight')
+    plt.close(fig)
+    FIGURES.append(name)
+    bc.progress(f"  [OK] {name}")
+
+
+def target_line(ax, y, label, horizontal=True):
+    (ax.axhline if horizontal else ax.axvline)(y, color=CRITICAL, linestyle='--', linewidth=1.2)
+    if horizontal:
+        ax.annotate(label, xy=(1, y), xycoords=('axes fraction', 'data'), xytext=(-4, 4),
+                    textcoords='offset points', ha='right', va='bottom', color=INK_2, fontsize=9)
+    else:
+        ax.annotate(label, xy=(y, 1), xycoords=('data', 'axes fraction'), xytext=(4, -4),
+                    textcoords='offset points', ha='left', va='top', color=INK_2, fontsize=9)
+
+
+def bar_labels(ax, bars, fmt):
+    for b in bars:
+        ax.annotate(fmt(b.get_height()), (b.get_x() + b.get_width() / 2, b.get_height()),
+                    xytext=(0, 3), textcoords='offset points', ha='center', va='bottom', fontsize=8.5, color=INK)
 
 
 # =============================================================================
-# VISUALIZATION FUNCTIONS
+# AI
 # =============================================================================
 
-def visualize_ai_performance(ai_data: dict, output_dir: str):
-    """AI Performance - Latency vs Depth graph."""
-    
-    summary = ai_data.get('latency_summary', {})
-    depths = sorted([int(d) for d in summary.keys()])
-    
-    mean_latencies = [summary[str(d)]['mean_ms'] for d in depths]
-    p95_latencies = [summary[str(d)].get('p95_ms', summary[str(d)]['mean_ms'] * 1.5) for d in depths]
-    nodes = [summary[str(d)].get('mean_nodes', 0) for d in depths]
-    
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-    fig.suptitle('AI Performance Analysis', fontsize=16, fontweight='bold')
-    
-    # 1. Latency vs Depth
-    colors = plt.cm.viridis(np.linspace(0.2, 0.9, len(depths)))
-    bars = ax1.bar(depths, mean_latencies, color=colors, edgecolor='white', linewidth=2)
-    ax1.plot(depths, p95_latencies, 'ro--', linewidth=2, markersize=8, label='P95 Latency')
-    
-    ax1.set_xlabel('Search Depth')
-    ax1.set_ylabel('Response Time (ms)')
-    ax1.set_title('AI Response Time by Depth')
-    ax1.set_xticks(depths)
-    ax1.axhline(y=500, color='red', linestyle='--', alpha=0.7, label='Target Limit (500ms)')
-    ax1.legend()
-    
-    # Add value labels
-    for bar, val in zip(bars, mean_latencies):
-        if val < 100:
-            ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5, 
-                    f'{val:.1f}', ha='center', va='bottom', fontsize=9)
-        else:
-            ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 20, 
-                    f'{val:.0f}', ha='center', va='bottom', fontsize=9)
-    
-    # 2. Computational Complexity (log scale)
-    ax2.semilogy(depths, nodes, 'o-', color=COLORS['primary'], linewidth=2, markersize=10)
-    ax2.fill_between(depths, nodes, alpha=0.3, color=COLORS['primary'])
-    ax2.set_xlabel('Search Depth')
-    ax2.set_ylabel('Nodes Evaluated (log scale)')
-    ax2.set_title('Computational Complexity')
-    ax2.set_xticks(depths)
-    ax2.grid(True, alpha=0.3)
-    
-    # Add trend annotation
-    if len(depths) > 1:
-        growth_factor = nodes[-1] / nodes[0] if nodes[0] > 0 else 0
-        ax2.annotate(f'~{growth_factor:.0f}x growth\nfrom D1 to D{depths[-1]}',
-                    xy=(depths[-1], nodes[-1]), xytext=(depths[-2], nodes[-1]*0.3),
-                    arrowprops=dict(arrowstyle='->', color='gray'),
-                    fontsize=10, color='gray')
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'ai_performance_analysis.png'), dpi=300, bbox_inches='tight')
-    plt.savefig(os.path.join(output_dir, 'ai_performance_analysis.pdf'), bbox_inches='tight')
-    print(f"  [OK] ai_performance_analysis.png")
-    plt.close()
+def ai_charts(ai):
+    lat = ai['latency_summary']
+    depths = sorted(int(d) for d in lat)
+    mean = [lat[str(d)]['mean'] for d in depths]
+    p95 = [lat[str(d)]['p95'] for d in depths]
+    nodes = [lat[str(d)]['mean_nodes'] for d in depths]
+    us_node = [lat[str(d)]['us_per_node'] for d in depths]
 
-
-def visualize_ai_latency_detailed(ai_data: dict, output_dir: str):
-    """Detailed AI latency chart (separate file for thesis)."""
-    
-    summary = ai_data.get('latency_summary', {})
-    depths = sorted([int(d) for d in summary.keys()])
-    
-    mean_latencies = [summary[str(d)]['mean_ms'] for d in depths]
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    colors = plt.cm.RdYlGn_r(np.linspace(0.2, 0.9, len(depths)))
-    bars = ax.bar(depths, mean_latencies, color=colors, edgecolor='white', linewidth=2)
-    
-    ax.set_xlabel('AI Search Depth', fontsize=12)
-    ax.set_ylabel('Average Response Time (ms)', fontsize=12)
-    ax.set_title('AI Algorithm Latency by Search Depth', fontsize=14, fontweight='bold')
+    fig, ax = plt.subplots(figsize=(8, 4.6))
+    bars = ax.bar(depths, mean, color=S1, width=0.5, label='Ortalama')
+    # p95 noktalari cubugun sagina kaydirilir: degerle cakismasin
+    ax.plot([d + 0.33 for d in depths], p95, 'o', color=S2, label='p95', zorder=3)
+    ax.set_yscale('log')
     ax.set_xticks(depths)
-    
-    # Target line
-    ax.axhline(y=500, color='red', linestyle='--', linewidth=2, alpha=0.7, label='Max Acceptable (500ms)')
+    ax.set_xlabel('Arama derinligi')
+    ax.set_ylabel('Hamle suresi (ms, log)')
+    ax.set_title('AI hamle suresi - derinlige gore')
+    ax.axhline(500, color=CRITICAL, linestyle='--', linewidth=1.2)
+    ax.annotate('NFR-01 siniri: 500 ms', xy=(0, 500), xycoords=('axes fraction', 'data'), xytext=(4, 4),
+                textcoords='offset points', ha='left', va='bottom', color=INK_2, fontsize=9)
+    bar_labels(ax, bars, lambda v: f'{v:.1f}' if v < 100 else f'{v:.0f}')
+    ax.legend(loc='center left')
+    save(fig, 'ai_latency_vs_depth.png')
+
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.2))
+    a1.semilogy(depths, nodes, 'o-', color=S1)
+    for d, n in zip(depths, nodes, strict=True):
+        a1.annotate(f'{n:,.0f}', (d, n), xytext=(0, 7), textcoords='offset points', ha='center', fontsize=8.5)
+    a1.set_xticks(depths)
+    a1.set_xlabel('Arama derinligi')
+    a1.set_ylabel('Ziyaret edilen dugum (log)')
+    a1.set_title('Ortalama dugum sayisi')
+    a2.bar(depths, us_node, color=S1, width=0.6)
+    a2.set_xticks(depths)
+    a2.set_xlabel('Arama derinligi')
+    a2.set_ylabel('Dugum basina sure (us)')
+    a2.set_title('Dugum basina maliyet')
+    bar_labels(a2, a2.patches, lambda v: f'{v:.0f}')
+    fig.tight_layout()
+    save(fig, 'ai_computational_complexity.png')
+
+    acc = ai.get('scenario_accuracy_percent', {})
+    if acc:
+        sdepths = sorted(int(d) for d in acc)
+        fig, ax = plt.subplots(figsize=(7, 4))
+        bars = ax.bar(sdepths, [acc[str(d)] for d in sdepths], color=S1, width=0.6)
+        bar_labels(ax, bars, lambda v: f'%{v:.0f}')
+        n_sc = len({r['scenario'] for r in ai['scenario_results']})
+        ax.set_ylim(0, 110)
+        ax.set_xticks(sdepths)
+        ax.set_xlabel('Arama derinligi')
+        ax.set_ylabel('Dogru hamle orani (%)')
+        ax.set_title(f'Taktik senaryolar ({n_sc} senaryo, cevaplar kesin aramayla dogrulandi)')
+        save(fig, 'ai_scenarios.png')
+
+    t = ai.get('tournament')
+    if t:
+        m = t['score_matrix_percent']
+        tdepths = sorted(int(d) for d in m)
+        grid = np.array([[m[str(r)][str(c)] for c in tdepths] for r in tdepths])
+        fig, ax = plt.subplots(figsize=(6.4, 5.2))
+        im = ax.imshow(grid, cmap=DIVERGING, vmin=0, vmax=100)
+        ax.grid(False)
+        ax.set_xticks(range(len(tdepths)), [f'D{d}' for d in tdepths])
+        ax.set_yticks(range(len(tdepths)), [f'D{d}' for d in tdepths])
+        ax.set_xlabel('Rakip derinlik')
+        ax.set_ylabel('Oyuncu derinlik')
+        games = t['results'][f'{tdepths[0]}-{tdepths[1]}']
+        per = sum(games.values())
+        ax.set_title(f'Turnuva puani (%) - eslesme basina {per} oyun')
+        for i in range(len(tdepths)):
+            for j in range(len(tdepths)):
+                ax.text(j, i, f'{grid[i, j]:.0f}', ha='center', va='center', fontsize=10, color=INK)
+        cb = fig.colorbar(im, ax=ax, fraction=0.046)
+        cb.set_label('Puan % (galibiyet + beraberlik/2)', color=INK_2)
+        save(fig, 'tournament_heatmap.png')
+
+
+# =============================================================================
+# AG
+# =============================================================================
+
+def network_charts(net):
+    proto = net['protocol']
+    ws, rest = proto['websocket_ping'], proto['rest_health']
+    metrics = ['mean', 'median', 'p95', 'p99']
+    labels = ['Ortalama', 'Medyan', 'p95', 'p99']
+    x = np.arange(len(metrics))
+    fig, ax = plt.subplots(figsize=(8, 4.4))
+    b1 = ax.bar(x - 0.19, [ws[m] for m in metrics], 0.36, color=S1, label='WebSocket (latency_ping)')
+    b2 = ax.bar(x + 0.19, [rest[m] for m in metrics], 0.36, color=S2, label='REST (GET /health)')
+    bar_labels(ax, list(b1) + list(b2), lambda v: f'{v:.2f}')
+    ax.set_xticks(x, labels)
+    ax.set_ylabel('Gidis-donus suresi (ms)')
+    ax.set_title(f"Protokol karsilastirmasi - veritabanisiz uc noktalar (n={ws['n']})")
     ax.legend(loc='upper left')
-    
-    # Value labels
-    for bar, val in zip(bars, mean_latencies):
-        y_pos = bar.get_height() + max(mean_latencies) * 0.02
-        ax.text(bar.get_x() + bar.get_width()/2, y_pos, 
-                f'{val:.1f}ms', ha='center', va='bottom', fontsize=10, fontweight='bold')
-    
-    ax.set_ylim(0, max(mean_latencies) * 1.15)
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'ai_latency_vs_depth.png'), dpi=300, bbox_inches='tight')
-    print(f"  [OK] ai_latency_vs_depth.png")
-    plt.close()
+    save(fig, 'protocol_comparison.png')
 
+    ops = net['operations']
+    names = {'ws_create_game': 'WS create_game', 'rest_active_games': 'REST /active_games',
+             'rest_signup_validation': 'REST /signup (dogrulama)', 'rest_leaderboard': 'REST /leaderboard',
+             'rest_login': 'REST /login (PBKDF2)'}
+    keys = sorted(ops, key=lambda k: ops[k]['mean'])
+    fig, ax = plt.subplots(figsize=(8, 3.8))
+    y = np.arange(len(keys))
+    ax.barh(y, [ops[k]['mean'] for k in keys], color=S1, height=0.55, label='Ortalama')
+    ax.plot([ops[k]['p95'] for k in keys], y, 'o', color=S2, label='p95')
+    ax.set_xscale('log')
+    ax.set_yticks(y, [names.get(k, k) for k in keys])
+    for yi, k in zip(y, keys, strict=True):
+        right = max(ops[k]['mean'], ops[k]['p95'])
+        ax.annotate(f"{ops[k]['mean']:.1f} ms", (right, yi), xytext=(8, 0), textcoords='offset points',
+                    va='center', fontsize=8.5)
+    ax.set_xlim(right=max(max(ops[k]['p95'] for k in keys), 100) * 3)
+    ax.set_xlabel('Sure (ms, log)')
+    ax.set_title('Islem gecikmeleri')
+    ax.legend(loc='lower right')
+    target_line(ax, 100, 'NFR-07: 100 ms', horizontal=False)
+    save(fig, 'operation_latency.png')
 
-def visualize_ai_complexity(ai_data: dict, output_dir: str):
-    """AI Computational complexity chart."""
-    
-    summary = ai_data.get('latency_summary', {})
-    depths = sorted([int(d) for d in summary.keys()])
-    nodes = [summary[str(d)].get('mean_nodes', 10**d) for d in depths]
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    ax.semilogy(depths, nodes, 'o-', color=COLORS['primary'], linewidth=3, markersize=12)
-    ax.fill_between(depths, nodes, alpha=0.3, color=COLORS['primary'])
-    
-    ax.set_xlabel('Search Depth', fontsize=12)
-    ax.set_ylabel('Nodes Evaluated (log scale)', fontsize=12)
-    ax.set_title('Minimax Algorithm Computational Complexity', fontsize=14, fontweight='bold')
-    ax.set_xticks(depths)
-    ax.grid(True, alpha=0.3, which='both')
-    
-    # Annotations
-    for d, n in zip(depths, nodes):
-        if n >= 1000:
-            label = f'{n/1000:.0f}K' if n < 1000000 else f'{n/1000000:.1f}M'
-        else:
-            label = str(int(n))
-        ax.annotate(label, (d, n), textcoords="offset points", xytext=(0, 10),
-                   ha='center', fontsize=9)
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'ai_computational_complexity.png'), dpi=300, bbox_inches='tight')
-    print(f"  [OK] ai_computational_complexity.png")
-    plt.close()
-
-
-def visualize_protocol_comparison(network_data: dict, output_dir: str):
-    """WebSocket vs REST comparison."""
-    
-    summary = network_data.get('summary', {})
-    
-    protocols = ['WebSocket', 'REST API']
-    mean_latencies = [
-        summary.get('websocket', {}).get('avg_latency_ms', 1.38),
-        summary.get('rest', {}).get('avg_latency_ms', 2.04)
-    ]
-    p95_latencies = [
-        summary.get('websocket', {}).get('avg_p95_ms', 2.85),
-        summary.get('rest', {}).get('avg_p95_ms', 4.12)
-    ]
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    x = np.arange(len(protocols))
-    width = 0.35
-    
-    bars1 = ax.bar(x - width/2, mean_latencies, width, label='Mean Latency', 
-                   color=COLORS['primary'], edgecolor='white', linewidth=2)
-    bars2 = ax.bar(x + width/2, p95_latencies, width, label='P95 Latency',
-                   color=COLORS['warning'], edgecolor='white', linewidth=2)
-    
-    ax.set_xlabel('Protocol', fontsize=12)
-    ax.set_ylabel('Latency (ms)', fontsize=12)
-    ax.set_title('Network Protocol Comparison', fontsize=14, fontweight='bold')
-    ax.set_xticks(x)
-    ax.set_xticklabels(protocols)
+    pay = net['payload']
+    fig, ax = plt.subplots(figsize=(7, 4))
+    sizes = [p['payload_bytes'] for p in pay]
+    ax.plot(sizes, [p['mean'] for p in pay], 'o-', color=S1, label='Ortalama')
+    ax.plot(sizes, [p['p95'] for p in pay], 's--', color=S2, label='p95')
+    ax.set_xscale('log', base=2)
+    ax.set_xticks(sizes, [f'{s // 1024} KB' if s >= 1024 else f'{s} B' for s in sizes])
+    ax.set_xlabel('Mesaj boyutu')
+    ax.set_ylabel('Gidis-donus suresi (ms)')
+    ax.set_title('WebSocket: mesaj boyutu - gecikme')
     ax.legend()
-    
-    # Value labels
-    for bar in bars1:
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1, 
-                f'{bar.get_height():.2f}ms', ha='center', va='bottom', fontweight='bold')
-    for bar in bars2:
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1, 
-                f'{bar.get_height():.2f}ms', ha='center', va='bottom', fontweight='bold')
-    
-    # Performance comparison
-    if mean_latencies[0] < mean_latencies[1]:
-        improvement = (mean_latencies[1] - mean_latencies[0]) / mean_latencies[1] * 100
-        ax.text(0.5, max(p95_latencies) * 0.9, f'WebSocket {improvement:.1f}% faster',
-               ha='center', fontsize=11, color=COLORS['success'], fontweight='bold')
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'protocol_comparison.png'), dpi=300, bbox_inches='tight')
-    print(f"  [OK] protocol_comparison.png")
-    plt.close()
+    save(fig, 'payload_vs_latency.png')
+
+    conc = net['concurrency']
+    rest_c, ws_c = conc['rest_leaderboard'], conc['websocket_ping']
+    clients = [r['clients'] for r in rest_c]
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+    series = [('REST /leaderboard (DB)', rest_c, S1, 'o-'), ('WebSocket ping', ws_c, S2, 's-')]
+    for label, rows, color, style in series:
+        axes[0].plot(clients, [r['throughput_rps'] for r in rows], style, color=color, label=label)
+        axes[1].plot(clients, [r.get('mean', 0) for r in rows], style, color=color, label=label)
+        axes[2].plot(clients, [r['error_rate_percent'] for r in rows], style, color=color, label=label)
+    axes[0].set_title('Verim')
+    axes[0].set_ylabel('Istek / sn')
+    target_line(axes[0], 500, 'NFR-04: 500 istek/sn')
+    axes[1].set_title('Ortalama gecikme')
+    axes[1].set_ylabel('ms')
+    axes[2].set_title('Hata orani')
+    axes[2].set_ylabel('%')
+    axes[2].set_ylim(-0.5, max(5, max(r['error_rate_percent'] for _, rows, _, _ in series for r in rows) * 1.2))
+    for a in axes:
+        a.set_xscale('log')
+        a.set_xticks(clients, [str(c) for c in clients])
+        a.set_xlabel('Eszamanli istemci')
+    axes[0].legend(loc='upper left')
+    fig.suptitle(f"Eszamanlilik ({net['parameters']['duration_per_level_s']:.0f} sn / seviye)",
+                 fontweight='bold', color=INK)
+    fig.tight_layout()
+    save(fig, 'concurrency_analysis.png')
+
+    games = net['concurrent_games']
+    k = [g['games'] for g in games]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4))
+    a1.plot(k, [g.get('mean', 0) for g in games], 'o-', color=S1, label='Ortalama')
+    a1.plot(k, [g.get('p95', 0) for g in games], 's--', color=S2, label='p95')
+    a1.set_xlabel('Eszamanli oyun (baglanti = 2 x oyun)')
+    a1.set_ylabel('Hamle gidis-donus (ms)')
+    a1.set_title('Hamle gecikmesi')
+    a1.legend()
+    bars = a2.bar([str(v) for v in k], [g['completion_percent'] for g in games], color=S1, width=0.55)
+    bar_labels(a2, bars, lambda v: f'%{v:.0f}')
+    a2.set_ylim(0, 110)
+    a2.set_xlabel('Eszamanli oyun')
+    a2.set_ylabel('Tamamlanan oyun (%)')
+    a2.set_title('Oyun tamamlanma orani')
+    fig.tight_layout()
+    save(fig, 'concurrent_games.png')
 
 
-def visualize_concurrency(network_data: dict, output_dir: str):
-    """Concurrency analysis chart."""
-    
-    results = network_data.get('concurrency_results', [])
-    
-    connections = [r['concurrent_connections'] for r in results]
-    throughput = [r['throughput_rps'] for r in results]
-    latency = [r['avg_latency_ms'] for r in results]
-    error_rate = [r['error_rate_percent'] for r in results]
-    
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    fig.suptitle('System Concurrency Analysis', fontsize=16, fontweight='bold')
-    
-    # 1. Throughput
-    ax1 = axes[0]
-    ax1.plot(connections, throughput, 'o-', color=COLORS['primary'], linewidth=2, markersize=10)
-    ax1.fill_between(connections, throughput, alpha=0.3, color=COLORS['primary'])
-    ax1.set_xlabel('Concurrent Connections')
-    ax1.set_ylabel('Throughput (RPS)')
-    ax1.set_title('Throughput Scaling')
-    ax1.axhline(y=500, color='green', linestyle='--', alpha=0.7, label='Target (500 RPS)')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-    
-    # 2. Latency
-    ax2 = axes[1]
-    ax2.plot(connections, latency, 's-', color=COLORS['warning'], linewidth=2, markersize=10)
-    ax2.fill_between(connections, latency, alpha=0.3, color=COLORS['warning'])
-    ax2.set_xlabel('Concurrent Connections')
-    ax2.set_ylabel('Average Latency (ms)')
-    ax2.set_title('Latency vs Concurrency')
-    ax2.axhline(y=100, color='red', linestyle='--', alpha=0.7, label='Max (100ms)')
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
-    
-    # 3. Error Rate
-    ax3 = axes[2]
-    colors = [COLORS['success'] if e == 0 else (COLORS['warning'] if e < 5 else COLORS['danger']) for e in error_rate]
-    bars = ax3.bar(connections, [100 - e for e in error_rate], color=colors, edgecolor='white', linewidth=2)
-    ax3.set_xlabel('Concurrent Connections')
-    ax3.set_ylabel('Success Rate (%)')
-    ax3.set_title('System Stability')
-    ax3.set_ylim(90, 101)
-    ax3.axhline(y=99, color='orange', linestyle='--', alpha=0.7, label='Target (99%)')
-    ax3.legend()
-    
-    for bar, rate in zip(bars, error_rate):
-        label = '100%' if rate == 0 else f'{100-rate:.1f}%'
-        ax3.text(bar.get_x() + bar.get_width()/2, bar.get_height() - 2, 
-                label, ha='center', va='top', fontweight='bold', color='white')
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'concurrency_analysis.png'), dpi=300, bbox_inches='tight')
-    print(f"  [OK] concurrency_analysis.png")
-    plt.close()
+def locust_charts(loc):
+    tests = loc['tests']
+    users = [t['users'] for t in tests]
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+    b = axes[0].bar([str(u) for u in users], [t['rps'] for t in tests], color=S1, width=0.55)
+    bar_labels(axes[0], b, lambda v: f'{v:.0f}')
+    axes[0].set_title('Verim')
+    axes[0].set_ylabel('Istek / sn')
+    x = np.arange(len(users))
+    axes[1].bar(x - 0.19, [t['median_ms'] for t in tests], 0.36, color=S1, label='Medyan')
+    axes[1].bar(x + 0.19, [t['p95_ms'] for t in tests], 0.36, color=S2, label='p95')
+    axes[1].set_xticks(x, [str(u) for u in users])
+    axes[1].set_title('Yanit suresi')
+    axes[1].set_ylabel('ms')
+    axes[1].legend()
+    b = axes[2].bar([str(u) for u in users], [t['error_rate_percent'] for t in tests], color=S1, width=0.55)
+    bar_labels(axes[2], b, lambda v: f'%{v:.2f}')
+    axes[2].set_title('Hata orani')
+    axes[2].set_ylabel('%')
+    axes[2].set_ylim(0, max(1, max(t['error_rate_percent'] for t in tests) * 1.4))
+    for a in axes:
+        a.set_xlabel('Sanal kullanici')
+    fig.suptitle(f"Locust yuk testi ({tests[0]['run_time']} / seviye)", fontweight='bold', color=INK)
+    fig.tight_layout()
+    save(fig, 'locust_load.png')
 
 
-def visualize_tournament_heatmap(ai_data: dict, output_dir: str):
-    """AI Tournament win rate heatmap."""
-    
-    # Use tournament results if available, otherwise use default
-    depths = [2, 3, 4, 5, 6]
-    
-    # Default win rates (higher depth generally wins)
-    win_rates = np.array([
-        [50, 35, 20, 10, 5],    # Depth 2
-        [65, 50, 35, 20, 10],   # Depth 3
-        [80, 65, 50, 35, 20],   # Depth 4
-        [90, 80, 65, 50, 35],   # Depth 5
-        [95, 90, 80, 65, 50],   # Depth 6
-    ])
-    
-    fig, ax = plt.subplots(figsize=(10, 8))
-    
-    im = ax.imshow(win_rates, cmap='RdYlGn', aspect='auto', vmin=0, vmax=100)
-    
-    ax.set_xticks(np.arange(len(depths)))
-    ax.set_yticks(np.arange(len(depths)))
-    ax.set_xticklabels([f'D{d}' for d in depths])
-    ax.set_yticklabels([f'D{d}' for d in depths])
-    
-    ax.set_xlabel('Opponent Depth', fontsize=12)
-    ax.set_ylabel('Player Depth', fontsize=12)
-    ax.set_title('AI Tournament Win Rate Matrix (%)', fontsize=14, fontweight='bold')
-    
-    # Add text annotations
-    for i in range(len(depths)):
-        for j in range(len(depths)):
-            text_color = 'white' if win_rates[i, j] < 40 or win_rates[i, j] > 60 else 'black'
-            ax.text(j, i, f'{win_rates[i, j]}%', ha='center', va='center', 
-                   color=text_color, fontsize=12, fontweight='bold')
-    
-    cbar = ax.figure.colorbar(im, ax=ax)
-    cbar.ax.set_ylabel('Win Rate (%)', rotation=-90, va="bottom")
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'tournament_heatmap.png'), dpi=300, bbox_inches='tight')
-    print(f"  [OK] tournament_heatmap.png")
-    plt.close()
+# =============================================================================
+# NFR DEGERLENDIRMESI + RAPOR
+# =============================================================================
+
+def nfr_rows(ai, net, loc, fps):
+    rows = []
+
+    def add(req, target, measured, ok, note=''):
+        rows.append((req, target, measured, 'GECTI' if ok else 'KALDI', note))
+
+    if ai:
+        d6 = ai['latency_summary'].get('6')
+        if d6:
+            add('NFR-01 AI D6 yanit suresi', '< 500 ms (ortalama)', f"ort {d6['mean']:.0f} ms, p95 {d6['p95']:.0f} ms",
+                d6['mean'] < 500, '' if d6['p95'] < 500 else 'p95 sinirin uzerinde')
+    if net:
+        ws = net['protocol']['websocket_ping']
+        add('NFR-02 WebSocket gecikmesi', '< 5 ms (ortalama)', f"ort {ws['mean']:.2f} ms, p99 {ws['p99']:.2f} ms",
+            ws['mean'] < 5, f"tasima: {net['protocol']['transport']}")
+        conc_rows = net['concurrency']['rest_leaderboard'] + net['concurrency']['websocket_ping']
+        games = net['concurrent_games']
+        max_conn = max([r['clients'] for r in conc_rows] + [g['connections'] for g in games])
+        errors = sum(r['errors'] for r in conc_rows) + sum(g['errors'] for g in games)
+        ok = errors == 0 and all(g['completion_percent'] == 100 for g in games)
+        add('NFR-03 Eszamanli baglanti', '>= 50, hatasiz',
+            f"{max_conn} eszamanli baglantiya kadar {errors} hata", ok and max_conn >= 50,
+            '' if max_conn >= 50 else 'yetersiz olcum: 50 seviyesi test edilmedi')
+        rest_max = max(r['throughput_rps'] for r in net['concurrency']['rest_leaderboard'])
+        ws_max = max(r['throughput_rps'] for r in net['concurrency']['websocket_ping'])
+        add('NFR-04 Sunucu verimi', '> 500 istek/sn', f"REST (DB) {rest_max:.0f}, WS {ws_max:.0f} istek/sn",
+            rest_max > 500, 'REST, veritabani okuyan uc nokta')
+        ops = net['operations']
+        worst = max(ops['rest_leaderboard']['mean'], ops['rest_login']['mean'])
+        add('NFR-07 Veritabani islemleri', '< 100 ms', f"leaderboard {ops['rest_leaderboard']['mean']:.1f} ms, "
+            f"login {ops['rest_login']['mean']:.1f} ms", worst < 100, 'login sureyi PBKDF2 belirler')
+    if fps:
+        s = fps['ai_searching']
+        add('NFR-05 GUI kare hizi', '>= 30 FPS', f"AI ararken ort {s['fps_mean']:.0f} FPS, p99 kare {s['p99']:.0f} ms",
+            s['fps_mean'] >= 30, 'ekransiz (SDL dummy) olcum')
+    if loc:
+        worst = max(loc['tests'], key=lambda t: t['users'])
+        add('Locust yuk testi', 'hata < %1', f"{worst['users']} kullanici: %{worst['error_rate_percent']:.2f} hata, "
+            f"p95 {worst['p95_ms']:.0f} ms", worst['error_rate_percent'] < 1, '')
+    return rows
 
 
-def visualize_summary_dashboard(ai_data: dict, network_data: dict, output_dir: str):
-    """Summary dashboard with all key metrics."""
-    
-    fig = plt.figure(figsize=(16, 12))
-    fig.suptitle('Connect Four Pro - Performance Summary Dashboard', fontsize=18, fontweight='bold')
-    
-    gs = fig.add_gridspec(3, 4, hspace=0.3, wspace=0.3)
-    
-    # 1. AI Response Time (top-left)
-    ax1 = fig.add_subplot(gs[0, 0:2])
-    summary = ai_data.get('latency_summary', {})
-    depths = sorted([int(d) for d in summary.keys()])[:6]  # Limit to 6 for display
-    latency = [summary[str(d)]['mean_ms'] for d in depths]
-    colors = plt.cm.viridis(np.linspace(0.2, 0.9, len(depths)))
-    ax1.bar(depths, latency, color=colors)
-    ax1.set_xlabel('Depth')
-    ax1.set_ylabel('Response Time (ms)')
-    ax1.set_title('AI Response Time')
-    ax1.axhline(y=500, color='red', linestyle='--', alpha=0.7)
-    ax1.set_xticks(depths)
-    
-    # 2. Network Comparison (top-right)
-    ax2 = fig.add_subplot(gs[0, 2:4])
-    net_summary = network_data.get('summary', {})
-    protocols = ['WebSocket', 'REST API']
-    latencies = [
-        net_summary.get('websocket', {}).get('avg_latency_ms', 1.38),
-        net_summary.get('rest', {}).get('avg_latency_ms', 2.04)
-    ]
-    bars2 = ax2.bar(protocols, latencies, color=[COLORS['primary'], COLORS['secondary']])
-    ax2.set_ylabel('Mean Latency (ms)')
-    ax2.set_title('Protocol Comparison')
-    for bar, val in zip(bars2, latencies):
-        ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.05, 
-                f'{val:.2f}ms', ha='center', va='bottom', fontweight='bold')
-    
-    # 3. Concurrency (middle-left)
-    ax3 = fig.add_subplot(gs[1, 0:2])
-    conc_results = network_data.get('concurrency_results', [])
-    if conc_results:
-        connections = [r['concurrent_connections'] for r in conc_results]
-        throughput = [r['throughput_rps'] for r in conc_results]
-        ax3.plot(connections, throughput, 'o-', color=COLORS['primary'], linewidth=2, markersize=8)
-        ax3.fill_between(connections, throughput, alpha=0.3, color=COLORS['primary'])
-    ax3.set_xlabel('Concurrent Connections')
-    ax3.set_ylabel('Throughput (RPS)')
-    ax3.set_title('Scalability')
-    ax3.grid(True, alpha=0.3)
-    
-    # 4. User Satisfaction (mock data - middle-right)
-    ax4 = fig.add_subplot(gs[1, 2:4])
-    categories = ['Ease', 'Design', 'Response', 'AI', 'Multi', 'Overall']
-    scores = [4.6, 4.4, 4.8, 4.5, 4.7, 4.6]
-    ax4.barh(categories, scores, color=COLORS['success'])
-    ax4.set_xlim(3.5, 5)
-    ax4.set_xlabel('Score (1-5)')
-    ax4.set_title('User Satisfaction')
-    ax4.axvline(x=4.5, color='green', linestyle='--', alpha=0.5)
-    
-    # 5. Key Metrics Table (bottom)
-    ax5 = fig.add_subplot(gs[2, :])
-    ax5.axis('off')
-    
-    # Get actual values
-    ai_depth6 = summary.get('6', {}).get('mean_ms', 355.58)
-    ws_latency = net_summary.get('websocket', {}).get('avg_latency_ms', 1.38)
-    max_conn = net_summary.get('concurrency', {}).get('max_stable_connections', 50)
-    max_rps = net_summary.get('concurrency', {}).get('max_throughput_rps', 827)
-    
-    metrics_data = [
-        ['Metric', 'Value', 'Target', 'Status'],
-        ['AI Response (D6)', f'{ai_depth6:.2f} ms', '< 500 ms', 'PASS' if ai_depth6 < 500 else 'FAIL'],
-        ['WebSocket Latency', f'{ws_latency:.2f} ms', '< 5 ms', 'PASS' if ws_latency < 5 else 'FAIL'],
-        ['Max Concurrent', f'{max_conn} users', '>= 50', 'PASS' if max_conn >= 50 else 'FAIL'],
-        ['Throughput', f'{max_rps:.0f} RPS', '> 500 RPS', 'PASS' if max_rps > 500 else 'FAIL'],
-        ['User Satisfaction', '4.6 / 5.0', '> 4.0', 'PASS'],
-    ]
-    
-    table = ax5.table(cellText=metrics_data[1:], colLabels=metrics_data[0],
-                     loc='center', cellLoc='center',
-                     colColours=[COLORS['light']]*4,
-                     cellColours=[[COLORS['light']]*4 for _ in range(5)])
+def summary_dashboard(rows):
+    fig, ax = plt.subplots(figsize=(13, 0.6 + 0.48 * len(rows)))
+    ax.axis('off')
+    table = ax.table(cellText=[r[:4] for r in rows], colLabels=['Gereksinim', 'Hedef', 'Olculen', 'Sonuc'],
+                     loc='center', cellLoc='left', colWidths=[0.26, 0.17, 0.45, 0.10])
     table.auto_set_font_size(False)
-    table.set_fontsize(11)
-    table.scale(1.2, 1.8)
-    
-    for (row, col), cell in table.get_celld().items():
-        if row == 0:
-            cell.set_text_props(fontweight='bold')
-            cell.set_facecolor(COLORS['primary'])
-            cell.set_text_props(color='white')
-        if col == 3 and row > 0:
-            status = metrics_data[row][3]
-            cell.set_facecolor('#d4edda' if status == 'PASS' else '#f8d7da')
-    
-    plt.savefig(os.path.join(output_dir, 'summary_dashboard.png'), dpi=300, bbox_inches='tight')
-    plt.savefig(os.path.join(output_dir, 'summary_dashboard.pdf'), bbox_inches='tight')
-    print(f"  [OK] summary_dashboard.png")
-    plt.close()
+    table.set_fontsize(10)
+    table.scale(1, 1.6)
+    for (r, c), cell in table.get_celld().items():
+        cell.set_edgecolor(GRID)
+        if r == 0:
+            cell.set_text_props(fontweight='bold', color=INK)
+            cell.set_facecolor('#f0efec')
+        elif c == 3:
+            cell.set_text_props(fontweight='bold', color=INK)
+            cell.set_facecolor('#d8efd8' if rows[r - 1][3] == 'GECTI' else '#f6d5d5')
+    ax.set_title('Gereksinim dogrulama ozeti (olculmus degerler)', pad=12)
+    save(fig, 'summary_dashboard.png')
 
 
-# =============================================================================
-# MAIN FUNCTION
-# =============================================================================
+def fmt_env(env):
+    return (f"{env['cpu']} ({env['logical_cpus']} mantiksal cekirdek), {env['platform']}, "
+            f"Python {env['python']}, commit `{env['git_commit']}`, {env['timestamp']}")
+
+
+def write_report(ai, net, loc, fps, rows):
+    L = ["# Connect Four Pro - Performans Sonuclari", "",
+         "> Bu dosya `benchmarks/visualize_all_results.py` tarafindan `results/*.json` dosyalarindan "
+         "otomatik uretilir. Tum sayilar olculmustur; ornek/varsayilan veri yoktur.", ""]
+
+    L += ["## Ortam", ""]
+    for name, data in (('AI', ai), ('Ag', net), ('Locust', loc), ('GUI', fps)):
+        L.append(f"- **{name}:** " + (fmt_env(data['environment']) if data else 'olculmedi'))
+    L += ["", "Sunucu, istemciler (yuk ureticileri) ve PostgreSQL ayni makinede calisti; sunucu Flask-SocketIO "
+          "`threading` modunda (Werkzeug). Sonuclar donanima baglidir, farkli makinede yeniden olculmelidir.", ""]
+
+    L += ["## Gereksinim dogrulama", "", "| Gereksinim | Hedef | Olculen | Sonuc | Not |", "|---|---|---|---|---|"]
+    L += [f"| {r[0]} | {r[1]} | {r[2]} | **{r[3]}** | {r[4]} |" for r in rows]
+    L += ["", "![Ozet](visualization_outputs/summary_dashboard.png)", ""]
+
+    if ai:
+        p = ai['parameters']
+        L += ["## AI performansi", "",
+              f"Yontem: derinlik basina {p['iterations_per_depth']} rastgele pozisyon (erken/orta/gec oyun esit, "
+              f"tohum {p['seed']}); tum derinlikler ayni pozisyonlarda olculdu. Acilis kitabi kapali (saf arama).", "",
+              "| Derinlik | Ortalama (ms) | Std (ms) | Medyan | p95 (ms) | Maks (ms) | Ort. dugum | Ort. budama | us/dugum |",
+              "|---|---|---|---|---|---|---|---|---|"]
+        for d in sorted(ai['latency_summary'], key=int):
+            s = ai['latency_summary'][d]
+            L.append(f"| {d} | {s['mean']:.2f} | {s['stdev']:.2f} | {s['median']:.2f} | {s['p95']:.2f} | "
+                     f"{s['max']:.2f} | {s['mean_nodes']:,.0f} | {s['mean_cutoffs']:,.0f} | {s['us_per_node']:.1f} |")
+        L += ["", "![AI gecikme](visualization_outputs/ai_latency_vs_depth.png)",
+              "![AI karmasiklik](visualization_outputs/ai_computational_complexity.png)", "",
+              "### Taktik senaryolar", "",
+              "Dogru cevap kumesi 4 yari-hamlelik kesin aramayla (zorla kazanc/kayip) hesaplandi.", ""]
+        sdepths = sorted({r['depth'] for r in ai['scenario_results']})
+        L += ["| Senaryo | Dogru hamle(ler) | " + " | ".join(f"D{d}" for d in sdepths) + " |",
+              "|---|---|" + "---|" * len(sdepths)]
+        for name in dict.fromkeys(r['scenario'] for r in ai['scenario_results']):
+            rs = {r['depth']: r for r in ai['scenario_results'] if r['scenario'] == name}
+            cells = [('OK' if rs[d]['correct'] else f"X ({rs[d]['move']})") for d in sdepths]
+            L.append(f"| {name} | {rs[sdepths[0]]['acceptable']} | " + " | ".join(cells) + " |")
+        acc = ai['scenario_accuracy_percent']
+        L += ["| **Dogruluk** | | " + " | ".join(f"**%{acc[str(d)]:.0f}**" for d in sdepths) + " |", "",
+              "![Senaryolar](visualization_outputs/ai_scenarios.png)", ""]
+        t = ai['tournament']
+        L += ["### Turnuva", "",
+              f"Her eslesme {len(t['openings'])} farkli rastgele acilistan (4 yari-hamle), her acilis renkler "
+              f"degistirilerek iki kez oynandi. Toplam {t['games']} oyun. Kazanan oyunlarda ilk oyuncunun "
+              f"kazanma orani: %{t['first_player_win_rate_percent']:.0f}.", "",
+              "| Eslesme | 1. derinlik galibiyet | 2. derinlik galibiyet | Beraberlik |", "|---|---|---|---|"]
+        for key, s in t['results'].items():
+            a, b = key.split('-')
+            L.append(f"| D{a} vs D{b} | {s['d1_wins']} | {s['d2_wins']} | {s['draws']} |")
+        L += ["", "![Turnuva](visualization_outputs/tournament_heatmap.png)", ""]
+
+    if net:
+        pr = net['protocol']
+        L += ["## Ag performansi", "",
+              f"Socket.IO tasima katmani: **{pr['transport']}**. Protokol karsilastirmasinda iki uc nokta da "
+              "veritabanina dokunmaz; fark yalnizca protokol maliyetidir.", "",
+              "| Olcum | n | Ortalama | Medyan | p95 | p99 | Jitter (ms) |", "|---|---|---|---|---|---|---|"]
+        for name, s in (('WebSocket latency_ping', pr['websocket_ping']), ('REST GET /health', pr['rest_health'])):
+            L.append(f"| {name} | {s['n']} | {s['mean']:.3f} | {s['median']:.3f} | {s['p95']:.3f} | "
+                     f"{s['p99']:.3f} | {s['jitter']:.3f} |")
+        L += ["", "| Islem | Ortalama (ms) | p95 (ms) | Hata |", "|---|---|---|---|"]
+        for k, s in net['operations'].items():
+            L.append(f"| {k} | {s['mean']:.2f} | {s['p95']:.2f} | {s['failures']} |")
+        L += ["", "![Protokol](visualization_outputs/protocol_comparison.png)",
+              "![Islemler](visualization_outputs/operation_latency.png)",
+              "![Mesaj boyutu](visualization_outputs/payload_vs_latency.png)", "",
+              "### Eszamanlilik", "", "| Istemci | REST istek/sn | REST ort (ms) | REST hata % | WS istek/sn | "
+              "WS ort (ms) | WS hata % |", "|---|---|---|---|---|---|---|"]
+        for r, w in zip(net['concurrency']['rest_leaderboard'], net['concurrency']['websocket_ping'], strict=True):
+            L.append(f"| {r['clients']} | {r['throughput_rps']:.0f} | {r.get('mean', 0):.2f} | "
+                     f"{r['error_rate_percent']:.2f} | {w['throughput_rps']:.0f} | {w.get('mean', 0):.2f} | "
+                     f"{w['error_rate_percent']:.2f} |")
+        L += ["", "![Eszamanlilik](visualization_outputs/concurrency_analysis.png)", "",
+              "### Eszamanli oyunlar", "", "Her oda iki WebSocket istemcisi; rastgele yasal hamlelerle tam oyun.", "",
+              "| Oyun | Baglanti | Tamamlanan | Hamle RTT ort (ms) | p95 (ms) | p99 (ms) | Hamle/sn |",
+              "|---|---|---|---|---|---|---|"]
+        for g in net['concurrent_games']:
+            L.append(f"| {g['games']} | {g['connections']} | {g['completed']}/{g['games']} | {g.get('mean', 0):.2f} | "
+                     f"{g.get('p95', 0):.2f} | {g.get('p99', 0):.2f} | {g['moves_per_second']:.0f} |")
+        L += ["", "![Eszamanli oyunlar](visualization_outputs/concurrent_games.png)", ""]
+
+    if loc:
+        L += ["## Locust yuk testi", "", "Profiller: Casual %30, Active %50, Power %20 (REST API).", "",
+              "| Kullanici | Istek | Hata % | Istek/sn | Medyan (ms) | Ortalama (ms) | p95 (ms) | p99 (ms) |",
+              "|---|---|---|---|---|---|---|---|"]
+        for t in loc['tests']:
+            L.append(f"| {t['users']} | {t['requests']} | {t['error_rate_percent']:.2f} | {t['rps']:.1f} | "
+                     f"{t['median_ms']:.0f} | {t['mean_ms']:.0f} | {t['p95_ms']:.0f} | {t['p99_ms']:.0f} |")
+        L += ["", "![Locust](visualization_outputs/locust_load.png)", ""]
+
+    if fps:
+        L += ["## GUI kare hizi", "", "Gercek ana dongu (60 FPS siniri), ekransiz SDL surucusu; kareler arasi sure.", "",
+              "| Durum | Ort. FPS | p99 kare (ms) | En uzun kare (ms) | >33 ms kare |", "|---|---|---|---|---|"]
+        for name, label in (('idle', 'Bos'), ('ai_searching', 'AI (D6) ararken')):
+            s = fps[name]
+            L.append(f"| {label} | {s['fps_mean']:.1f} | {s['p99']:.1f} | {s['max']:.1f} | "
+                     f"{s['frames_over_33ms']} / {s['n']} |")
+        L.append("")
+
+    with open(os.path.join(bc.BENCH_DIR, 'RESULTS.md'), 'w', encoding='utf-8') as f:
+        f.write('\n'.join(L) + '\n')
+    bc.progress("  [OK] RESULTS.md")
+
+
+def load(name) -> Optional[dict]:
+    data = bc.load_json(name)
+    bc.progress(f"  {'[OK]' if data else '[--]'} {name}")
+    return data
+
 
 def main():
-    parser = argparse.ArgumentParser(description='Test Results Visualization')
-    parser.add_argument('--input', default='./test_results',
-                        help='Input directory with test results')
-    parser.add_argument('--output', default='./visualization_outputs',
-                        help='Output directory for visualizations')
-    args = parser.parse_args()
-    
-    os.makedirs(args.output, exist_ok=True)
-    
-    print("="*60)
-    print("  CONNECT FOUR PRO - TEST RESULTS VISUALIZATION")
-    print("="*60)
-    print(f"  Input:  {args.input}/")
-    print(f"  Output: {args.output}/")
-    print("-"*60)
-    
-    # Load data
-    print("\nLoading test results...")
-    ai_data = load_ai_results(args.input)
-    network_data = load_network_results(args.input)
-    
-    # Generate visualizations
-    print("\nGenerating visualizations...")
-    visualize_ai_performance(ai_data, args.output)
-    visualize_ai_latency_detailed(ai_data, args.output)
-    visualize_ai_complexity(ai_data, args.output)
-    visualize_protocol_comparison(network_data, args.output)
-    visualize_concurrency(network_data, args.output)
-    visualize_tournament_heatmap(ai_data, args.output)
-    visualize_summary_dashboard(ai_data, network_data, args.output)
-    
-    print("-"*60)
-    print(f"  All visualizations completed!")
-    print(f"  Output: {args.output}/")
-    print("="*60)
-    
-    # List generated files
-    print("\nGenerated files:")
-    for f in sorted(os.listdir(args.output)):
-        if f.endswith(('.png', '.pdf')):
-            size = os.path.getsize(os.path.join(args.output, f)) / 1024
-            print(f"  - {f} ({size:.1f} KB)")
+    bc.progress("Sonuclar okunuyor:")
+    ai, net = load('ai_results.json'), load('network_results.json')
+    loc, fps = load('locust_results.json'), load('gui_fps_results.json')
+    bc.progress("Grafikler:")
+    if ai:
+        ai_charts(ai)
+    if net:
+        network_charts(net)
+    if loc:
+        locust_charts(loc)
+    rows = nfr_rows(ai, net, loc, fps)
+    if rows:
+        summary_dashboard(rows)
+    write_report(ai, net, loc, fps, rows)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

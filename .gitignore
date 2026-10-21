@@ -45,3 +45,6 @@ dist/
 .coverage
 htmlcov/
 .ruff_cache/
+
+# Benchmark calisma logu
+benchmarks/results/server.log

@@ -1,731 +1,411 @@
 #!/usr/bin/env python3
 # =============================================================================
-# NETWORK BENCHMARK SUITE v2.1 - THESIS EDITION
-# Connect Four Bitirme Projesi - Network Performans Analizi
+# NETWORK BENCHMARK SUITE v3.0
+# Connect Four Pro - Ag performans analizi
 # =============================================================================
-#
-# Bu test suite aşağıdaki metrikleri ölçer:
-# 1. WebSocket Round-Trip Time (RTT)
-# 2. REST API Response Time
-# 3. Payload Size vs Latency ilişkisi
-# 4. Concurrent Connection performansı
-# 5. Jitter (gecikme varyansı) analizi
-#
-# Kullanım: python network_benchmark.py [--server URL] [--output DIR]
-# =============================================================================
+"""
+Olculenler:
+  1. Protokol karsilastirmasi (adil): WebSocket `latency_ping` yankisi ile REST
+     `GET /health` - ikisi de veritabanina dokunmaz, sadece protokol maliyeti.
+  2. Islem gecikmeleri: WebSocket create_game, REST leaderboard / active_games /
+     login (PBKDF2 dahil).
+  3. Yuk boyutu - gecikme iliskisi (WebSocket, 64 B - 16 KB).
+  4. Eszamanlilik: N istemci ayni anda sabit sure boyunca REST ve WebSocket
+     istekleri yapar; verim (istek/sn), gecikme, hata orani.
+  5. Eszamanli oyunlar: K oda ayni anda tam oyun oynar (2K WebSocket baglantisi);
+     hamle gidis-donus suresi ve tamamlanan oyun orani.
 
-import socketio
-import requests
-import time
-import statistics
-import sys
-import os
-import json
-import csv
-import threading
+Socket.IO tasima katmani raporlanir; WebSocket degilse olcum gecersiz sayilir.
+
+Kullanim:
+    python network_benchmark.py --server http://localhost:5000
+    python network_benchmark.py --quick
+"""
+
 import argparse
-from datetime import datetime
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import random
+import threading
+import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor
+from typing import Callable, Dict, List
 
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
+import requests
+import socketio
+
+import bench_common as bc
+from game_core import ConnectFourGame
 
 DEFAULT_SERVER = 'http://localhost:5000'
-DEFAULT_OUTPUT_DIR = './test_results'
 
-# Test Parameters
-WARMUP_REQUESTS = 10
-REQUESTS_PER_TEST = 100
-PAYLOAD_SIZES = [64, 256, 1024, 4096]
-CONCURRENT_LEVELS = [1, 5, 10, 20, 50]
 
 # =============================================================================
-# DATA CLASSES
+# YARDIMCILAR
 # =============================================================================
 
-@dataclass
-class LatencyMeasurement:
-    """Single latency measurement."""
-    test_type: str          # 'websocket', 'rest_get', 'rest_post'
-    timestamp: float
-    latency_ms: float
-    payload_size: int
-    success: bool
-    error_message: Optional[str] = None
+class WSClient:
+    """
+    Istek/cevap seklinde olcum icin senkron Socket.IO sarmalayici.
 
-@dataclass
-class TestResult:
-    """Summary statistics for a test series."""
-    test_name: str
-    test_type: str
-    sample_count: int
-    success_count: int
-    failure_count: int
-    min_ms: float
-    max_ms: float
-    mean_ms: float
-    median_ms: float
-    stdev_ms: float
-    p50_ms: float
-    p95_ms: float
-    p99_ms: float
-    jitter_ms: float
-    throughput_rps: float
+    python-socketio istemcisi her mesaji ayri thread'de isler; olaylar sirasiz
+    gelebilir. Bu yuzden cevap beklenirken olayin ICERIGI de kontrol edilir
+    (orn. hamle gecmisi uzunlugu), sadece adi degil.
+    """
 
-@dataclass 
-class ConcurrencyResult:
-    """Concurrent connection test result."""
-    concurrent_connections: int
-    total_requests: int
-    successful_requests: int
-    failed_requests: int
-    total_time_seconds: float
-    avg_latency_ms: float
-    throughput_rps: float
-    error_rate_percent: float
+    def __init__(self, url: str):
+        self.sio = socketio.Client(reconnection=False)
+        self._events: List[tuple] = []          # (ad, veri)
+        self._cond = threading.Condition()
+        for event in ('latency_pong', 'game_created', 'game_joined', 'game_start', 'move_made',
+                      'game_over', 'error'):
+            self.sio.on(event, self._make_handler(event))
+        self.sio.connect(url, wait_timeout=10, transports=['websocket'])
 
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
+    def _make_handler(self, event):
+        def handler(data=None):
+            with self._cond:
+                self._events.append((event, data))
+                self._cond.notify_all()
+        return handler
 
-def calculate_statistics(measurements: List[LatencyMeasurement], 
-                        test_name: str) -> Optional[TestResult]:
-    """Calculate summary statistics from measurements."""
-    
-    successful = [m for m in measurements if m.success]
-    if not successful:
-        return None
-    
-    latencies = [m.latency_ms for m in successful]
-    sorted_latencies = sorted(latencies)
-    n = len(sorted_latencies)
-    
-    # Calculate jitter (consecutive differences)
-    if len(latencies) > 1:
-        jitter = statistics.stdev([latencies[i+1] - latencies[i] 
-                                   for i in range(len(latencies)-1)])
-    else:
-        jitter = 0
-    
-    return TestResult(
-        test_name=test_name,
-        test_type=measurements[0].test_type if measurements else 'unknown',
-        sample_count=len(measurements),
-        success_count=len(successful),
-        failure_count=len(measurements) - len(successful),
-        min_ms=min(latencies),
-        max_ms=max(latencies),
-        mean_ms=statistics.mean(latencies),
-        median_ms=statistics.median(latencies),
-        stdev_ms=statistics.stdev(latencies) if len(latencies) > 1 else 0,
-        p50_ms=sorted_latencies[int(n * 0.50)],
-        p95_ms=sorted_latencies[int(n * 0.95)],
-        p99_ms=sorted_latencies[min(int(n * 0.99), n-1)],
-        jitter_ms=jitter,
-        throughput_rps=len(successful) / sum(latencies) * 1000 if latencies else 0
-    )
+    def _wait_match(self, event, predicate, start, timeout):
+        deadline = time.perf_counter() + timeout
+        with self._cond:
+            while True:
+                for name, data in self._events[start:]:
+                    if name == event and (predicate is None or predicate(data)):
+                        return data, True
+                remaining = deadline - time.perf_counter()
+                if remaining <= 0:
+                    return None, False
+                self._cond.wait(remaining)
 
-# =============================================================================
-# WEBSOCKET BENCHMARK
-# =============================================================================
+    def request(self, emit_event: str, data, reply_event: str, timeout: float = 5.0, predicate=None):
+        """Gonderir, eslesen cevabi bekler: (gecikme_ms, veri) - zaman asiminda (None, None)."""
+        with self._cond:
+            start = len(self._events)
+        t0 = time.perf_counter()
+        self.sio.emit(emit_event, data)
+        reply, ok = self._wait_match(reply_event, predicate, start, timeout)
+        if not ok:
+            return None, None
+        ms = (time.perf_counter() - t0) * 1000
+        with self._cond:
+            if len(self._events) > 1000:     # uzun olcumlerde bellegi sinirla
+                del self._events[:-100]
+        return ms, reply
 
-class WebSocketBenchmark:
-    """WebSocket RTT measurement class."""
-    
-    def __init__(self, server_url: str):
-        self.server_url = server_url
-        self.measurements: List[LatencyMeasurement] = []
-        self.pending_start_time: Optional[float] = None
-        self.response_received = threading.Event()
-        self.sio = None
-        self.connected = False
-        
-    def connect(self) -> bool:
-        """Connect to server."""
+    def wait(self, event: str, timeout: float = 5.0):
+        """Baglanti boyunca gelmis (veya gelecek) ilk `event` olayini dondurur."""
+        return self._wait_match(event, None, 0, timeout)[0]
+
+    def wait_for_history(self, n: int, timeout: float = 5.0) -> bool:
+        """Oyun gecmisi en az n hamle olan bir move_made gorulene kadar bekler (n=0 aninda)."""
+        if n == 0:
+            return True
+        return self._wait_match('move_made', lambda d: len(d['history']) >= n, 0, timeout)[1]
+
+    @property
+    def transport(self) -> str:
+        return self.sio.transport()
+
+    def close(self):
         try:
-            self.sio = socketio.Client(reconnection=False)
-            
-            @self.sio.on('connect')
-            def on_connect():
-                self.connected = True
-            
-            @self.sio.on('disconnect')
-            def on_disconnect():
-                self.connected = False
-            
-            @self.sio.on('game_created')
-            def on_game_created(data):
-                self._handle_response(data)
-            
-            @self.sio.on('error')
-            def on_error(data):
-                self._handle_response(data, success=False)
-            
-            self.sio.connect(self.server_url, wait_timeout=10)
-            time.sleep(0.5)
-            return self.connected
-            
-        except Exception as e:
-            print(f"    [WebSocket] Connection error: {e}")
-            return False
-    
-    def disconnect(self):
-        """Close connection."""
-        if self.sio and self.connected:
-            try:
-                self.sio.disconnect()
-            except:
-                pass
-    
-    def _handle_response(self, data, success: bool = True):
-        """Handle server response."""
-        end_time = time.perf_counter()
-        
-        if self.pending_start_time is not None:
-            latency_ms = (end_time - self.pending_start_time) * 1000
-            
-            self.measurements.append(LatencyMeasurement(
-                test_type='websocket',
-                timestamp=end_time,
-                latency_ms=latency_ms,
-                payload_size=len(str(data)) if data else 0,
-                success=success,
-                error_message=None if success else str(data)
-            ))
-            
-            self.pending_start_time = None
-            self.response_received.set()
-    
-    def run_latency_test(self, num_requests: int = 100, 
-                         warmup: int = 10,
-                         payload_size: int = 64) -> List[LatencyMeasurement]:
-        """Run latency test."""
-        self.measurements = []
-        
-        # Warmup
-        print(f"    [WebSocket] Warmup: {warmup} requests...")
-        for i in range(warmup):
-            self.response_received.clear()
-            self.pending_start_time = time.perf_counter()
-            self.sio.emit('create_game', {'user_id': 9999, 'padding': 'x' * payload_size})
-            self.response_received.wait(timeout=5)
-            time.sleep(0.02)
-        
-        self.measurements = []  # Clear warmup data
-        
-        # Actual test
-        print(f"    [WebSocket] Testing: {num_requests} requests (payload: {payload_size} bytes)...")
-        for i in range(num_requests):
-            self.response_received.clear()
-            self.pending_start_time = time.perf_counter()
-            self.sio.emit('create_game', {'user_id': 9999, 'padding': 'x' * payload_size})
-            
-            if not self.response_received.wait(timeout=5):
-                # Timeout
-                self.measurements.append(LatencyMeasurement(
-                    test_type='websocket',
-                    timestamp=time.perf_counter(),
-                    latency_ms=5000,
-                    payload_size=payload_size,
-                    success=False,
-                    error_message='Timeout'
-                ))
-            
-            time.sleep(0.02)
-            
-            if (i + 1) % 20 == 0:
-                print(f"    Progress: {i+1}/{num_requests}", end='\r')
-        
-        print(f"    Completed: {len(self.measurements)} measurements")
-        return self.measurements
+            self.sio.disconnect()
+        except Exception:
+            pass
+
+
+def timed_series(fn: Callable[[], float], n: int, warmup: int, pause: float = 0.0) -> Dict:
+    """fn() -> gecikme_ms (hata icin None). n olcum, warmup isinma."""
+    for _ in range(warmup):
+        fn()
+    values, failures = [], 0
+    t0 = time.perf_counter()
+    for _ in range(n):
+        ms = fn()
+        if ms is None:
+            failures += 1
+        else:
+            values.append(ms)
+        if pause:
+            time.sleep(pause)
+    stats = bc.summarize(values)
+    stats.update(failures=failures, jitter=bc.jitter(values),
+                 sequential_rps=len(values) / (time.perf_counter() - t0))
+    return stats
 
 
 # =============================================================================
-# REST API BENCHMARK
+# TESTLER
 # =============================================================================
 
-class RESTBenchmark:
-    """REST API benchmark class."""
-    
-    def __init__(self, server_url: str):
-        self.server_url = server_url
-        self.session = requests.Session()
-    
-    def run_get_test(self, endpoint: str, num_requests: int = 100,
-                     warmup: int = 10) -> List[LatencyMeasurement]:
-        """Run GET request test."""
-        measurements = []
-        url = f"{self.server_url}{endpoint}"
-        
-        # Warmup
-        for _ in range(warmup):
+class NetworkBenchmark:
+    def __init__(self, server: str, n: int, warmup: int, duration: float, seed: int):
+        self.server = server.rstrip('/')
+        self.n, self.warmup, self.duration, self.seed = n, warmup, duration, seed
+        self.http = requests.Session()
+
+    # ------------------------------------------------------------------
+    def protocol_comparison(self) -> Dict:
+        bc.progress("\n[1/5] Protokol karsilastirmasi (veritabanisiz uc noktalar)")
+        ws = WSClient(self.server)
+        transport = ws.transport
+        bc.progress(f"  Socket.IO tasima katmani: {transport}")
+        payload = {'pad': 'x' * 64}
+        ws_stats = timed_series(lambda: ws.request('latency_ping', payload, 'latency_pong')[0],
+                                self.n, self.warmup, pause=0.005)
+
+        def rest_health():
+            t0 = time.perf_counter()
+            r = self.http.get(f'{self.server}/health', timeout=5)
+            return (time.perf_counter() - t0) * 1000 if r.ok else None
+        rest_stats = timed_series(rest_health, self.n, self.warmup, pause=0.005)
+        ws.close()
+        for name, s in (('WebSocket ping', ws_stats), ('REST /health', rest_stats)):
+            bc.progress(f"  {name:<15} ort {s['mean']:.3f} ms | medyan {s['median']:.3f} | "
+                        f"p95 {s['p95']:.3f} | p99 {s['p99']:.3f}")
+        return {'transport': transport, 'websocket_ping': ws_stats, 'rest_health': rest_stats}
+
+    # ------------------------------------------------------------------
+    def operations(self) -> Dict:
+        bc.progress("\n[2/5] Islem gecikmeleri")
+        results = {}
+        ws = WSClient(self.server)
+        user = f'bench_ws_{uuid.uuid4().hex[:6]}'
+        results['ws_create_game'] = timed_series(
+            lambda: ws.request('create_game', {'user_id': user}, 'game_created')[0], self.n // 2, 5)
+        ws.close()
+
+        def rest(method, path, **kw):
+            def call():
+                t0 = time.perf_counter()
+                r = self.http.request(method, f'{self.server}{path}', timeout=10, **kw)
+                return (time.perf_counter() - t0) * 1000 if r.status_code < 500 else None
+            return call
+
+        name = f'bench_{uuid.uuid4().hex[:8]}'
+        self.http.post(f'{self.server}/signup', json={'username': name, 'password': 'benchpw'})
+        results['rest_leaderboard'] = timed_series(rest('GET', '/leaderboard'), self.n, self.warmup)
+        results['rest_active_games'] = timed_series(rest('GET', '/active_games'), self.n, self.warmup)
+        results['rest_login'] = timed_series(
+            rest('POST', '/login', json={'username': name, 'password': 'benchpw'}), self.n // 2, 3)
+        results['rest_signup_validation'] = timed_series(
+            rest('POST', '/signup', json={'username': 'x', 'password': 'y'}), self.n // 2, 3)
+        for k, s in results.items():
+            bc.progress(f"  {k:<24} ort {s['mean']:8.3f} ms | p95 {s['p95']:8.3f} ms | hata {s['failures']}")
+        return results
+
+    # ------------------------------------------------------------------
+    def payload_sweep(self, sizes: List[int]) -> List[Dict]:
+        bc.progress("\n[3/5] Yuk boyutu - gecikme (WebSocket)")
+        ws = WSClient(self.server)
+        out = []
+        for size in sizes:
+            payload = {'pad': 'x' * size}
+            s = timed_series(lambda p=payload: ws.request('latency_ping', p, 'latency_pong')[0],
+                             self.n // 2, 10, pause=0.003)
+            s['payload_bytes'] = size
+            out.append(s)
+            bc.progress(f"  {size:>6} B: ort {s['mean']:.3f} ms | p95 {s['p95']:.3f} ms")
+        ws.close()
+        return out
+
+    # ------------------------------------------------------------------
+    def _load(self, workers: int, make_call: Callable[[], Callable[[], bool]]) -> Dict:
+        """`workers` istemci `duration` saniye boyunca durmaksizin istek yapar."""
+        latencies, errors = [], [0]
+        lock = threading.Lock()
+        ready = threading.Barrier(workers + 1)
+        go = threading.Event()
+        stop_at = [0.0]
+
+        def worker():
             try:
-                self.session.get(url, timeout=5)
-            except:
-                pass
-            time.sleep(0.01)
-        
-        # Test
-        for i in range(num_requests):
-            start_time = time.perf_counter()
+                call = make_call()      # Baglanti kurulumu olcume dahil degil
+            except Exception:
+                with lock:
+                    errors[0] += 1
+                ready.wait()
+                return
+            ready.wait()
+            go.wait()                   # stop_at ayarlandiktan sonra baslar
+            local, local_err = [], 0
+            while time.perf_counter() < stop_at[0]:
+                t0 = time.perf_counter()
+                try:
+                    ok = call()
+                except Exception:
+                    ok = False
+                if ok:
+                    local.append((time.perf_counter() - t0) * 1000)
+                else:
+                    local_err += 1
+            with lock:
+                latencies.extend(local)
+                errors[0] += local_err
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for _ in range(workers):
+                pool.submit(worker)
+            ready.wait()
+            t0 = time.perf_counter()
+            stop_at[0] = t0 + self.duration
+            go.set()
+        elapsed = time.perf_counter() - t0
+        total = len(latencies) + errors[0]
+        stats = bc.summarize(latencies)
+        stats.update(clients=workers, requests=total, errors=errors[0],
+                     error_rate_percent=100 * errors[0] / max(total, 1),
+                     throughput_rps=len(latencies) / elapsed)
+        return stats
+
+    def _concurrency_level(self, n: int):
+        def make_rest():
+            session = requests.Session()
+            return lambda: session.get(f'{self.server}/leaderboard', timeout=10).ok
+        r = self._load(n, make_rest)
+
+        clients = []
+
+        def make_ws():
+            c = WSClient(self.server)
+            clients.append(c)  # list.append thread-safe
+            return lambda: c.request('latency_ping', {'t': 1}, 'latency_pong', timeout=10)[0] is not None
+        w = self._load(n, make_ws)
+        for c in clients:
+            c.close()
+        return r, w
+
+    def concurrency(self, levels: List[int]) -> Dict[str, List[Dict]]:
+        bc.progress(f"\n[4/5] Eszamanlilik ({self.duration:.0f} sn / seviye)")
+        out = {'rest_leaderboard': [], 'websocket_ping': []}
+        for n in levels:
+            r, w = self._concurrency_level(n)
+            out['rest_leaderboard'].append(r)
+            out['websocket_ping'].append(w)
+            bc.progress(f"  {n:>4} istemci | REST {r['throughput_rps']:7.1f} rps, ort {r.get('mean', 0):7.2f} ms, "
+                        f"hata %{r['error_rate_percent']:.1f} | WS {w['throughput_rps']:7.1f} rps, "
+                        f"ort {w.get('mean', 0):7.2f} ms, hata %{w['error_rate_percent']:.1f}")
+        return out
+
+    # ------------------------------------------------------------------
+    def _games_level(self, k: int) -> Dict:
+        rng = random.Random(self.seed + k)
+        scripts = []
+        for _ in range(k):
+            g = ConnectFourGame()
+            while not g.game_over:
+                g.make_move(rng.choice(g.get_valid_locations()))
+            scripts.append(g.move_history)
+
+        rtts, completed, errors = [], [0], [0]
+        play_windows = []           # (oyun baslangici, bitisi): verim sadece oyun suresinden
+        lock = threading.Lock()
+        all_ready = threading.Barrier(k)
+
+        def play(idx):
+            tag = uuid.uuid4().hex[:6]
+            a = b = None
             try:
-                response = self.session.get(url, timeout=5)
-                end_time = time.perf_counter()
-                latency_ms = (end_time - start_time) * 1000
-                
-                measurements.append(LatencyMeasurement(
-                    test_type='rest_get',
-                    timestamp=end_time,
-                    latency_ms=latency_ms,
-                    payload_size=len(response.content),
-                    success=response.status_code == 200
-                ))
-            except Exception as e:
-                end_time = time.perf_counter()
-                measurements.append(LatencyMeasurement(
-                    test_type='rest_get',
-                    timestamp=end_time,
-                    latency_ms=(end_time - start_time) * 1000,
-                    payload_size=0,
-                    success=False,
-                    error_message=str(e)
-                ))
-            
-            time.sleep(0.01)
-        
-        return measurements
-    
-    def run_post_test(self, endpoint: str, payload_size: int = 64,
-                      num_requests: int = 50, warmup: int = 5) -> List[LatencyMeasurement]:
-        """Run POST request test."""
-        measurements = []
-        url = f"{self.server_url}{endpoint}"
-        payload = {'data': 'x' * payload_size}
-        
-        # Warmup
-        for _ in range(warmup):
+                a, b = WSClient(self.server), WSClient(self.server)
+                _, created = a.request('create_game', {'user_id': f'bench_a_{tag}'}, 'game_created', 10)
+                room = created['room_id']
+                b.request('join_game', {'room_id': room, 'user_id': f'bench_b_{tag}'}, 'game_start', 10)
+                a.wait('game_start', 10)
+            except Exception:
+                with lock:
+                    errors[0] += 1
+                all_ready.abort()
+                for c in (a, b):
+                    if c:
+                        c.close()
+                return
             try:
-                self.session.post(url, json=payload, timeout=5)
-            except:
-                pass
-            time.sleep(0.01)
-        
-        # Test
-        for i in range(num_requests):
-            start_time = time.perf_counter()
-            try:
-                response = self.session.post(url, json=payload, timeout=5)
-                end_time = time.perf_counter()
-                latency_ms = (end_time - start_time) * 1000
-                
-                measurements.append(LatencyMeasurement(
-                    test_type='rest_post',
-                    timestamp=end_time,
-                    latency_ms=latency_ms,
-                    payload_size=payload_size,
-                    success=response.status_code in [200, 201, 400, 409]
-                ))
-            except Exception as e:
-                end_time = time.perf_counter()
-                measurements.append(LatencyMeasurement(
-                    test_type='rest_post',
-                    timestamp=end_time,
-                    latency_ms=(end_time - start_time) * 1000,
-                    payload_size=payload_size,
-                    success=False,
-                    error_message=str(e)
-                ))
-            
-            time.sleep(0.01)
-        
-        return measurements
+                all_ready.wait(30)      # Tum odalar hazir: oyunlar ayni anda baslar
+                start = time.perf_counter()
+                local = []
+                for i, col in enumerate(scripts[idx]):
+                    client, piece = (a, 1) if i % 2 == 0 else (b, 2)
+                    # Rakibin hamlesi istemciye ulasmadan sira gelmez: gercek oyuncu davranisi
+                    client.wait_for_history(i, 10)
+                    ms, _ = client.request(
+                        'make_move', {'room_id': room, 'col': col, 'player_piece': piece}, 'move_made', 10,
+                        predicate=lambda d, n=i + 1: len(d['history']) == n)
+                    if ms is None:
+                        raise RuntimeError('hamle zaman asimi')
+                    local.append(ms)
+                if a.wait('game_over', 10) is None:
+                    raise RuntimeError('game_over gelmedi')
+                with lock:
+                    rtts.extend(local)
+                    completed[0] += 1
+                    play_windows.append((start, time.perf_counter()))
+            except Exception:
+                with lock:
+                    errors[0] += 1
+            finally:
+                a.close()
+                b.close()
 
+        threads = [threading.Thread(target=play, args=(i,)) for i in range(k)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        play_seconds = (max(e for _, e in play_windows) - min(s for s, _ in play_windows)) if play_windows else 0
+        stats = bc.summarize(rtts)
+        stats.update(games=k, connections=2 * k, completed=completed[0], errors=errors[0],
+                     completion_percent=100 * completed[0] / k, moves=len(rtts),
+                     moves_per_second=len(rtts) / play_seconds if play_seconds else 0,
+                     play_seconds=play_seconds)
+        bc.progress(f"  {k:>3} oyun ({2 * k:>3} baglanti): tamamlanan {completed[0]}/{k} | hamle RTT ort "
+                    f"{stats.get('mean', 0):.2f} ms, p95 {stats.get('p95', 0):.2f} ms | "
+                    f"{stats['moves_per_second']:.0f} hamle/sn")
+        return stats
 
-# =============================================================================
-# CONCURRENT CONNECTION TEST
-# =============================================================================
+    def concurrent_games(self, levels: List[int]) -> List[Dict]:
+        bc.progress("\n[5/5] Eszamanli oyunlar (her oda 2 WebSocket istemcisi, rastgele yasal hamleler)")
+        return [self._games_level(k) for k in levels]
 
-def run_concurrent_test(server_url: str, concurrent_connections: int = 10,
-                       requests_per_connection: int = 20) -> ConcurrencyResult:
-    """Run concurrent connection test."""
-    
-    results = []
-    lock = threading.Lock()
-    start_time = time.perf_counter()
-    
-    def worker(worker_id: int):
-        session = requests.Session()
-        local_results = []
-        
-        for i in range(requests_per_connection):
-            req_start = time.perf_counter()
-            try:
-                response = session.get(f"{server_url}/leaderboard", timeout=10)
-                req_end = time.perf_counter()
-                
-                local_results.append({
-                    'success': response.status_code == 200,
-                    'latency_ms': (req_end - req_start) * 1000
-                })
-            except Exception as e:
-                req_end = time.perf_counter()
-                local_results.append({
-                    'success': False,
-                    'latency_ms': (req_end - req_start) * 1000
-                })
-        
-        with lock:
-            results.extend(local_results)
-    
-    # Run concurrent workers
-    threads = []
-    for i in range(concurrent_connections):
-        t = threading.Thread(target=worker, args=(i,))
-        threads.append(t)
-        t.start()
-    
-    for t in threads:
-        t.join()
-    
-    end_time = time.perf_counter()
-    total_time = end_time - start_time
-    
-    # Calculate statistics
-    successful = [r for r in results if r['success']]
-    failed = [r for r in results if not r['success']]
-    
-    avg_latency = statistics.mean([r['latency_ms'] for r in successful]) if successful else 0
-    throughput = len(successful) / total_time if total_time > 0 else 0
-    error_rate = (len(failed) / len(results) * 100) if results else 0
-    
-    return ConcurrencyResult(
-        concurrent_connections=concurrent_connections,
-        total_requests=len(results),
-        successful_requests=len(successful),
-        failed_requests=len(failed),
-        total_time_seconds=total_time,
-        avg_latency_ms=avg_latency,
-        throughput_rps=throughput,
-        error_rate_percent=error_rate
-    )
-
-
-# =============================================================================
-# MAIN BENCHMARK SUITE
-# =============================================================================
-
-class NetworkBenchmarkSuite:
-    """Complete network benchmark suite."""
-    
-    def __init__(self, server_url: str = DEFAULT_SERVER, 
-                 output_dir: str = DEFAULT_OUTPUT_DIR):
-        self.server_url = server_url
-        self.output_dir = output_dir
-        os.makedirs(output_dir, exist_ok=True)
-        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Results storage
-        self.all_measurements: List[LatencyMeasurement] = []
-        self.test_results: List[TestResult] = []
-        self.concurrency_results: List[ConcurrencyResult] = []
-    
-    def run_websocket_tests(self):
-        """Run WebSocket tests."""
-        print("\n" + "="*60)
-        print("TEST 1: WEBSOCKET LATENCY")
-        print("="*60)
-        
-        ws = WebSocketBenchmark(self.server_url)
-        
-        if not ws.connect():
-            print("    [ERROR] Could not connect to WebSocket server!")
-            return
-        
-        try:
-            for payload_size in PAYLOAD_SIZES:
-                measurements = ws.run_latency_test(
-                    num_requests=REQUESTS_PER_TEST,
-                    warmup=WARMUP_REQUESTS,
-                    payload_size=payload_size
-                )
-                self.all_measurements.extend(measurements)
-                
-                result = calculate_statistics(measurements, f"websocket_{payload_size}b")
-                if result:
-                    self.test_results.append(result)
-                    print(f"    [OK] {payload_size}B: Mean={result.mean_ms:.2f}ms, "
-                          f"P95={result.p95_ms:.2f}ms, P99={result.p99_ms:.2f}ms")
-        finally:
-            ws.disconnect()
-    
-    def run_rest_tests(self):
-        """Run REST API tests."""
-        print("\n" + "="*60)
-        print("TEST 2: REST API LATENCY")
-        print("="*60)
-        
-        rest = RESTBenchmark(self.server_url)
-        
-        # GET tests
-        print("\n  GET /leaderboard:")
-        measurements = rest.run_get_test('/leaderboard', REQUESTS_PER_TEST, WARMUP_REQUESTS)
-        self.all_measurements.extend(measurements)
-        
-        result = calculate_statistics(measurements, "rest_get_leaderboard")
-        if result:
-            self.test_results.append(result)
-            print(f"    [OK] Mean={result.mean_ms:.2f}ms, P95={result.p95_ms:.2f}ms")
-        
-        # GET active_games
-        print("\n  GET /active_games:")
-        measurements = rest.run_get_test('/active_games', REQUESTS_PER_TEST, WARMUP_REQUESTS)
-        self.all_measurements.extend(measurements)
-        
-        result = calculate_statistics(measurements, "rest_get_active_games")
-        if result:
-            self.test_results.append(result)
-            print(f"    [OK] Mean={result.mean_ms:.2f}ms, P95={result.p95_ms:.2f}ms")
-        
-        # POST tests
-        print("\n  POST /signup (various payloads):")
-        for payload_size in PAYLOAD_SIZES[:2]:  # Just first two sizes
-            measurements = rest.run_post_test(
-                '/signup',
-                payload_size=payload_size,
-                num_requests=REQUESTS_PER_TEST // 2,
-                warmup=WARMUP_REQUESTS // 2
-            )
-            self.all_measurements.extend(measurements)
-            
-            result = calculate_statistics(measurements, f"rest_post_{payload_size}b")
-            if result:
-                self.test_results.append(result)
-                print(f"    [OK] {payload_size}B: Mean={result.mean_ms:.2f}ms, "
-                      f"P95={result.p95_ms:.2f}ms")
-    
-    def run_concurrency_tests(self):
-        """Run concurrent connection tests."""
-        print("\n" + "="*60)
-        print("TEST 3: CONCURRENT CONNECTIONS")
-        print("="*60)
-        
-        for level in CONCURRENT_LEVELS:
-            try:
-                result = run_concurrent_test(
-                    self.server_url,
-                    concurrent_connections=level,
-                    requests_per_connection=20
-                )
-                self.concurrency_results.append(result)
-                
-                status = "[OK]" if result.error_rate_percent < 5 else "[WARN]"
-                print(f"    {status} {level} conn: "
-                      f"Throughput={result.throughput_rps:.1f} RPS, "
-                      f"Avg={result.avg_latency_ms:.1f}ms, "
-                      f"Err={result.error_rate_percent:.1f}%")
-            except Exception as e:
-                print(f"    [ERROR] {level} connections: {e}")
-    
-    def export_results(self):
-        """Export results to files."""
-        print("\n" + "="*60)
-        print("EXPORTING RESULTS")
-        print("="*60)
-        
-        # 1. Raw measurements CSV
-        raw_file = os.path.join(self.output_dir, f"network_raw_{self.timestamp}.csv")
-        with open(raw_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['test_type', 'timestamp', 'latency_ms', 'payload_size', 'success'])
-            for m in self.all_measurements:
-                writer.writerow([m.test_type, m.timestamp, f"{m.latency_ms:.4f}", 
-                               m.payload_size, m.success])
-        print(f"    [OK] Raw data: {raw_file}")
-        
-        # 2. Summary statistics CSV
-        summary_file = os.path.join(self.output_dir, f"network_summary_{self.timestamp}.csv")
-        with open(summary_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['test_name', 'test_type', 'samples', 'success', 'failure',
-                           'min_ms', 'max_ms', 'mean_ms', 'median_ms', 'stdev_ms',
-                           'p50_ms', 'p95_ms', 'p99_ms', 'jitter_ms', 'throughput_rps'])
-            for r in self.test_results:
-                writer.writerow([r.test_name, r.test_type, r.sample_count, r.success_count,
-                               r.failure_count, f"{r.min_ms:.2f}", f"{r.max_ms:.2f}",
-                               f"{r.mean_ms:.2f}", f"{r.median_ms:.2f}", f"{r.stdev_ms:.2f}",
-                               f"{r.p50_ms:.2f}", f"{r.p95_ms:.2f}", f"{r.p99_ms:.2f}",
-                               f"{r.jitter_ms:.2f}", f"{r.throughput_rps:.2f}"])
-        print(f"    [OK] Summary: {summary_file}")
-        
-        # 3. Concurrency results CSV
-        conc_file = os.path.join(self.output_dir, f"network_concurrency_{self.timestamp}.csv")
-        with open(conc_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['concurrent_connections', 'total_requests', 'successful',
-                           'failed', 'total_time_sec', 'avg_latency_ms', 
-                           'throughput_rps', 'error_rate_percent'])
-            for r in self.concurrency_results:
-                writer.writerow([r.concurrent_connections, r.total_requests,
-                               r.successful_requests, r.failed_requests,
-                               f"{r.total_time_seconds:.2f}", f"{r.avg_latency_ms:.2f}",
-                               f"{r.throughput_rps:.2f}", f"{r.error_rate_percent:.2f}"])
-        print(f"    [OK] Concurrency: {conc_file}")
-        
-        # 4. Full JSON report
-        json_file = os.path.join(self.output_dir, f"network_results_{self.timestamp}.json")
-        report = {
-            'timestamp': self.timestamp,
-            'server_url': self.server_url,
-            'config': {
-                'warmup_requests': WARMUP_REQUESTS,
-                'requests_per_test': REQUESTS_PER_TEST,
-                'payload_sizes': PAYLOAD_SIZES,
-                'concurrent_levels': CONCURRENT_LEVELS
-            },
-            'summary': self._calculate_summary(),
-            'test_results': [asdict(r) for r in self.test_results],
-            'concurrency_results': [asdict(r) for r in self.concurrency_results],
-            'raw_measurements_count': len(self.all_measurements)
-        }
-        with open(json_file, 'w', encoding='utf-8') as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
-        print(f"    [OK] Full report: {json_file}")
-        
-        return {
-            'raw_csv': raw_file,
-            'summary_csv': summary_file,
-            'concurrency_csv': conc_file,
-            'json_report': json_file
-        }
-    
-    def _calculate_summary(self) -> Dict:
-        """Calculate summary for JSON export."""
-        ws_results = [r for r in self.test_results if r.test_type == 'websocket']
-        rest_results = [r for r in self.test_results if r.test_type.startswith('rest')]
-        
-        summary = {}
-        
-        if ws_results:
-            summary['websocket'] = {
-                'avg_latency_ms': round(statistics.mean([r.mean_ms for r in ws_results]), 2),
-                'avg_p95_ms': round(statistics.mean([r.p95_ms for r in ws_results]), 2),
-                'tests_run': len(ws_results)
-            }
-        
-        if rest_results:
-            summary['rest'] = {
-                'avg_latency_ms': round(statistics.mean([r.mean_ms for r in rest_results]), 2),
-                'avg_p95_ms': round(statistics.mean([r.p95_ms for r in rest_results]), 2),
-                'tests_run': len(rest_results)
-            }
-        
-        if self.concurrency_results:
-            stable = [r for r in self.concurrency_results if r.error_rate_percent < 1]
-            if stable:
-                max_stable = max(stable, key=lambda x: x.concurrent_connections)
-                summary['concurrency'] = {
-                    'max_stable_connections': max_stable.concurrent_connections,
-                    'max_throughput_rps': round(max_stable.throughput_rps, 2)
-                }
-        
-        return summary
-    
-    def print_summary(self):
-        """Print summary report."""
-        print("\n" + "="*60)
-        print("NETWORK BENCHMARK SUMMARY")
-        print("="*60)
-        
-        ws_results = [r for r in self.test_results if r.test_type == 'websocket']
-        rest_results = [r for r in self.test_results if r.test_type.startswith('rest')]
-        
-        if ws_results:
-            ws_avg = statistics.mean([r.mean_ms for r in ws_results])
-            print(f"\n  WebSocket Average: {ws_avg:.2f} ms")
-        
-        if rest_results:
-            rest_avg = statistics.mean([r.mean_ms for r in rest_results])
-            print(f"  REST API Average:  {rest_avg:.2f} ms")
-        
-        if ws_results and rest_results:
-            diff_percent = ((rest_avg - ws_avg) / ws_avg) * 100
-            faster = "WebSocket" if diff_percent > 0 else "REST"
-            print(f"\n  -> {faster} is {abs(diff_percent):.1f}% faster")
-        
-        if self.concurrency_results:
-            print(f"\n  Concurrency Test Results:")
-            for r in self.concurrency_results:
-                status = "[OK]" if r.error_rate_percent == 0 else "[WARN]" if r.error_rate_percent < 5 else "[FAIL]"
-                print(f"    {status} {r.concurrent_connections:3d} connections: "
-                      f"{r.throughput_rps:6.1f} RPS, {r.error_rate_percent:.1f}% errors")
-            
-            stable = [r for r in self.concurrency_results if r.error_rate_percent < 1]
-            if stable:
-                max_stable = max(stable, key=lambda x: x.concurrent_connections)
-                print(f"\n  -> Stable up to {max_stable.concurrent_connections} concurrent connections")
-                print(f"  -> Max stable throughput: {max_stable.throughput_rps:.1f} RPS")
-    
-    def run_all_tests(self):
-        """Run all tests."""
-        print("\n" + "="*60)
-        print("NETWORK BENCHMARK SUITE v2.1")
-        print(f"Server: {self.server_url}")
-        print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print("="*60)
-        
-        start_time = time.time()
-        
-        # Server reachability check
-        try:
-            response = requests.get(f"{self.server_url}/health", timeout=5)
-            print(f"\n[OK] Server is reachable (HTTP {response.status_code})")
-        except:
-            try:
-                response = requests.get(f"{self.server_url}/leaderboard", timeout=5)
-                print(f"\n[OK] Server is reachable (HTTP {response.status_code})")
-            except Exception as e:
-                print(f"\n[ERROR] Server is not reachable: {e}")
-                print("    Make sure the server is running!")
-                return None
-        
-        # Run tests
-        self.run_websocket_tests()
-        self.run_rest_tests()
-        self.run_concurrency_tests()
-        
-        # Export results
-        exported = self.export_results()
-        
-        # Summary
-        self.print_summary()
-        
-        total_time = time.time() - start_time
-        print(f"\n{'='*60}")
-        print(f"COMPLETED in {total_time:.1f} seconds")
-        print(f"Results saved to: {self.output_dir}/")
-        print(f"{'='*60}")
-        
-        return exported
-
-
-# =============================================================================
-# MAIN
-# =============================================================================
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Network Benchmark Suite v2.1')
-    parser.add_argument('--server', default=DEFAULT_SERVER, 
-                        help=f'Server URL (default: {DEFAULT_SERVER})')
-    parser.add_argument('--output', default=DEFAULT_OUTPUT_DIR,
-                        help=f'Output directory (default: {DEFAULT_OUTPUT_DIR})')
+def main():
+    parser = argparse.ArgumentParser(description='Network Benchmark Suite v3.0')
+    parser.add_argument('--server', default=DEFAULT_SERVER)
+    parser.add_argument('--requests', type=int, default=500, help='Seri olcumlerde istek sayisi')
+    parser.add_argument('--duration', type=float, default=10.0, help='Eszamanlilik seviyesi basina sure (sn)')
+    parser.add_argument('--seed', type=int, default=2024)
+    parser.add_argument('--quick', action='store_true')
     args = parser.parse_args()
-    
-    print("="*60)
-    print("  CONNECT FOUR - NETWORK BENCHMARK SUITE")
-    print("="*60)
-    
-    suite = NetworkBenchmarkSuite(args.server, args.output)
-    suite.run_all_tests()
+
+    levels, game_levels, sizes = [1, 5, 10, 20, 50, 100], [1, 10, 25, 50], [64, 256, 1024, 4096, 16384]
+    if args.quick:
+        args.requests, args.duration = 60, 2.0
+        levels, game_levels, sizes = [1, 10], [1, 5], [64, 1024]
+
+    health = requests.get(f'{args.server}/health', timeout=5).json()
+    env = bc.environment_info()
+    bc.progress(f"NETWORK BENCHMARK v3.0 | {args.server} | veritabani: {health.get('database')} | {env['cpu']}")
+
+    bench = NetworkBenchmark(args.server, args.requests, warmup=20, duration=args.duration, seed=args.seed)
+    t0 = time.time()
+    protocol = bench.protocol_comparison()
+    if protocol['transport'] != 'websocket':
+        raise SystemExit("HATA: Socket.IO WebSocket kullanmiyor (websocket-client kurulu mu?). Olcum gecersiz.")
+    report = {
+        'suite': 'network', 'version': '3.0', 'environment': env,
+        'parameters': {'server': args.server, 'requests': args.requests, 'duration_per_level_s': args.duration,
+                       'concurrency_levels': levels, 'game_levels': game_levels, 'payload_sizes': sizes,
+                       'quick': args.quick, 'server_health': health},
+        'protocol': protocol,
+        'operations': bench.operations(),
+        'payload': bench.payload_sweep(sizes),
+        'concurrency': bench.concurrency(levels),
+        'concurrent_games': bench.concurrent_games(game_levels),
+    }
+    report['duration_seconds'] = time.time() - t0
+    path = bc.save_json('network_results.json', bc.rounded(report))
+    bc.progress(f"\nSure: {report['duration_seconds']:.0f} sn | Sonuc: {path}")
+
+
+if __name__ == '__main__':
+    main()
