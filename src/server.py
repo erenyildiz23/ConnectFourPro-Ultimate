@@ -22,7 +22,8 @@ from game_core import ConnectFourGame, PLAYER1_PIECE, PLAYER2_PIECE
 # =============================================================================
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'production_secret_key_c4_2024')
+# SECRET_KEY ayarlanmamissa her baslatmada rastgele uretilir (kodda sabit anahtar tutulmaz)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.urandom(24).hex()
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
@@ -381,7 +382,19 @@ def on_make_move(data):
     if g_data['p2_uid'] is None:
         emit('error', {'msg': 'Rakip bekleniyor!'}, to=request.sid)
         return
-    
+
+    # Hamleyi gonderen baglanti gercekten o tasin sahibi mi? (Seyirci veya
+    # baska bir istemci, player_piece yazarak baskasi adina hamle yapamaz)
+    owner_sid = g_data['p1_sid'] if player_piece == PLAYER1_PIECE else (
+        g_data['p2_sid'] if player_piece == PLAYER2_PIECE else None)
+    if request.sid != owner_sid:
+        emit('error', {'msg': 'Bu oyunda hamle yapma yetkiniz yok!'}, to=request.sid)
+        return
+
+    if not isinstance(col, int):
+        emit('error', {'msg': 'Gecersiz hamle!'}, to=request.sid)
+        return
+
     if game.current_player != player_piece:
         emit('error', {'msg': 'Sıra sizde değil!'}, to=request.sid)
         return
@@ -417,34 +430,39 @@ def handle_game_over(room_id, g_data, game):
     
     if winner_uid and loser_uid:
         # ELO güncelle (username bazlı)
+        # Misafir/kayitsiz oyuncu varsa veritabani 0 doner -> ELO bildirimi gonderilmez
         result = db.update_elo_by_username(str(winner_uid), str(loser_uid))
-        elo_change = result.get('winner_change', 15)
-        
+        elo_change = result.get('winner_change', 0)
+
         if winner_uid == p1_uid:
             elo_changes['p1'] = elo_change
             elo_changes['p2'] = -elo_change
         else:
             elo_changes['p1'] = -elo_change
             elo_changes['p2'] = elo_change
-        
+
         # Oyunu kaydet
         db.record_game(str(p1_uid), str(p2_uid), str(winner_uid), str(game.move_history))
-        
-        # Güncel ELO değerlerini al
-        new_p1_info = get_user_info(p1_uid)
-        new_p2_info = get_user_info(p2_uid)
-        
-        emit('elo_update', {
-            'new_elo': new_p1_info.get('rating', 1200),
-            'change': elo_changes['p1'],
-            'winner': winner_uid == p1_uid
-        }, to=g_data['p1_sid'])
-        
-        emit('elo_update', {
-            'new_elo': new_p2_info.get('rating', 1200),
-            'change': elo_changes['p2'],
-            'winner': winner_uid == p2_uid
-        }, to=g_data['p2_sid'])
+
+        if elo_change:
+            # Güncel ELO değerlerini al
+            new_p1_info = get_user_info(p1_uid)
+            new_p2_info = get_user_info(p2_uid)
+
+            emit('elo_update', {
+                'new_elo': new_p1_info.get('rating', 1200),
+                'change': elo_changes['p1'],
+                'winner': winner_uid == p1_uid
+            }, to=g_data['p1_sid'])
+
+            emit('elo_update', {
+                'new_elo': new_p2_info.get('rating', 1200),
+                'change': elo_changes['p2'],
+                'winner': winner_uid == p2_uid
+            }, to=g_data['p2_sid'])
+    elif game.winner is None:
+        # Beraberlik de kaydedilir (FR-10); ELO degismez
+        db.record_game(str(p1_uid), str(p2_uid), None, str(game.move_history))
     
     emit('game_over', {
         'winner': game.winner,

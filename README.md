@@ -106,9 +106,12 @@ pip install -r src/requirements.txt
 # PostgreSQL veritabanı oluşturun
 createdb connect4
 
-# Veya DATABASE_URL environment variable ayarlayın
-export DATABASE_URL="postgresql://user:password@localhost/connect4"
+# DATABASE_URL environment variable ayarlayın (şifre koda yazılmaz)
+export DATABASE_URL="postgresql://user:password@localhost/connect4"   # Linux/Mac
+set DATABASE_URL=postgresql://user:password@localhost/connect4        # Windows (cmd)
 ```
+
+> Eski SHA-256 ile kayıtlı hesaplar giriş yapmaya devam eder; ilk girişte şifre otomatik olarak tuzlu PBKDF2 formatına yükseltilir.
 
 ---
 
@@ -135,6 +138,11 @@ Sunucu `http://localhost:5000` adresinde çalışmaya başlar.
 # Terminal 2 & 3: İstemcileri başlatın
 cd src
 python gui_app.py
+```
+Farklı bir bilgisayardaki sunucuya (ör. ngrok) bağlanmak için:
+```bash
+python gui_app.py https://abc123.ngrok-free.app
+# veya: CONNECT4_SERVER ortam değişkeni
 ```
 - Her iki istemcide de giriş yapın
 - "Online Lobi" seçeneğinden oyun oluşturun veya mevcut oyuna katılın

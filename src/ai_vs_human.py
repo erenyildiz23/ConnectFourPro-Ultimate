@@ -31,6 +31,13 @@ class AIEngine:
         self.player_id = player_id
         self.opp_player_id = PLAYER1_PIECE if player_id == PLAYER2_PIECE else PLAYER2_PIECE
         self.depth = depth
+        # Performans metrikleri (tests/ai_performance_suite.py kullanir)
+        self.nodes_evaluated = 0
+        self.cutoffs = 0
+
+    def reset_metrics(self):
+        self.nodes_evaluated = 0
+        self.cutoffs = 0
 
     def evaluate_window(self, window, piece):
         score = 0
@@ -96,6 +103,7 @@ class AIEngine:
         return False
 
     def minimax(self, game, depth, alpha, beta, maximizingPlayer):
+        self.nodes_evaluated += 1
         valid_locations = game.get_valid_locations()
         is_terminal = self.is_terminal_node(game)
         
@@ -125,7 +133,9 @@ class AIEngine:
                     value = new_score
                     best_col = col
                 alpha = max(alpha, value)
-                if alpha >= beta: break
+                if alpha >= beta:
+                    self.cutoffs += 1
+                    break
             return best_col, value
         else:
             value = math.inf
@@ -140,10 +150,15 @@ class AIEngine:
                     value = new_score
                     best_col = col
                 beta = min(beta, value)
-                if alpha >= beta: break
+                if alpha >= beta:
+                    self.cutoffs += 1
+                    break
             return best_col, value
 
     def find_best_move(self, game):
+        # Metrikler her cagrida sifirlanir (acilis kitabi hamlesi = 0 dugum)
+        self.reset_metrics()
+
         # 0. Early Exit for Full Board
         valid_moves = game.get_valid_locations()
         if not valid_moves:
@@ -154,7 +169,7 @@ class AIEngine:
         if history in OPENING_BOOK:
              move = OPENING_BOOK[history]
              if game.is_valid_location(move): return move
-        
+
         # 2. Minimax
         game_copy = game.clone()
         try:

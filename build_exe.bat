@@ -17,10 +17,14 @@ echo.
 
 cd src
 
+REM Ikon dosyasi varsa kullan (yoksa PyInstaller hata vermesin)
+set ICON_ARG=
+if exist "..\assets\icon.ico" set ICON_ARG=--icon "../assets/icon.ico"
+
 REM Tek dosya EXE oluştur (GUI için)
 pyinstaller --onefile --windowed ^
     --name "ConnectFourPro" ^
-    --icon "../assets/icon.ico" ^
+    %ICON_ARG% ^
     --add-data "game_core.py;." ^
     --add-data "ai_vs_human.py;." ^
     --hidden-import=pygame ^

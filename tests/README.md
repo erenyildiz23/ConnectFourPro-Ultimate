@@ -10,7 +10,8 @@ Bu dizin, Connect Four Pro projesinin kapsamlı test altyapısını içerir.
 | `network_benchmark.py` | Network performans testleri (WebSocket, REST, Concurrency) |
 | `locustfile.py` | Locust yük testi senaryoları (50-200 kullanıcı) |
 | `visualize_all_results.py` | Test sonuçlarından grafik oluşturma |
-| `requirements.txt` | Python bağımlılıkları |
+
+> `ai_performance_suite.py`, `src/` klasöründeki asıl oyun motorunu ve AI'yı import ederek ölçer.
 
 ## Kurulum
 
@@ -20,8 +21,8 @@ python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # veya: venv\Scripts\activate  # Windows
 
-# Bağımlılıkları yükle
-pip install -r requirements.txt
+# Bağımlılıkları yükle (proje kökünden)
+pip install -r src/requirements.txt
 ```
 
 ## Test Çalıştırma

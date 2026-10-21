@@ -32,7 +32,7 @@ test_results/
 ai_test_results/
 
 # Build outputs
+# (src/ConnectFourPro.spec build ayari oldugu icin takip edilir)
 build/
 dist/
-*.spec
 *.exe

@@ -37,7 +37,14 @@ BOARD_HEIGHT = ROWS * CELL_SIZE
 WINDOW_WIDTH = BOARD_WIDTH + 320
 WINDOW_HEIGHT = BOARD_HEIGHT + 150
 
-SERVER_URL = 'http://localhost:5000'
+# Sunucu adresi (uzak sunucu / ngrok destegi):
+#   python gui_app.py                               # localhost:5000 (varsayilan)
+#   python gui_app.py https://abc123.ngrok-free.app # ngrok URL
+#   veya CONNECT4_SERVER ortam degiskeni
+SERVER_URL = sys.argv[1] if len(sys.argv) > 1 else os.environ.get('CONNECT4_SERVER', 'http://localhost:5000')
+if not SERVER_URL.startswith('http'):
+    SERVER_URL = 'http://' + SERVER_URL
+SERVER_URL = SERVER_URL.rstrip('/')
 
 COLORS = {
     'bg': (26, 26, 46),
@@ -204,6 +211,9 @@ class ConnectFourGUI:
         
         self.active_games = []
         self.last_lobby_refresh = 0
+        self.lobby_fetching = False      # Arka planda lobi istegi suruyor mu
+        self.leaderboard_data = None     # None = yukleniyor, [] = veri yok
+        self.leaderboard_error = False
         self.status_text = ""
         self.hover_col = -1
         self.buttons = []
@@ -465,17 +475,20 @@ class ConnectFourGUI:
     def draw_leaderboard(self):
         self.screen.fill(COLORS['bg'])
         self.draw_text("LIDERLIK TABLOSU", self.font_large, COLORS['red'], WINDOW_WIDTH//2, 50)
-        try:
-            r = requests.get(f"{SERVER_URL}/leaderboard", timeout=3)
-            if r.status_code == 200:
-                y = 120
-                for i, p in enumerate(r.json()[:10]):
-                    prefix = ["1.","2.","3."][i] if i < 3 else f"{i+1}."
-                    self.draw_text(f"{prefix} {p['username']} - ELO: {p['rating']} (W:{p['wins']} L:{p['losses']})", 
-                                  self.font_small, COLORS['yellow'] if i<3 else COLORS['white'], WINDOW_WIDTH//2, y)
-                    y += 35
-        except:
+        # Veri open_leaderboard() ile arka planda bir kez cekilir; burada sadece cizilir
+        if self.leaderboard_error:
             self.draw_text("Sunucuya baglanilamadi", self.font_medium, COLORS['gray'], WINDOW_WIDTH//2, 200)
+        elif self.leaderboard_data is None:
+            self.draw_text("Yukleniyor...", self.font_medium, COLORS['gray'], WINDOW_WIDTH//2, 200)
+        elif not self.leaderboard_data:
+            self.draw_text("Henuz kayitli oyuncu yok", self.font_medium, COLORS['gray'], WINDOW_WIDTH//2, 200)
+        else:
+            y = 120
+            for i, p in enumerate(self.leaderboard_data[:10]):
+                prefix = ["1.","2.","3."][i] if i < 3 else f"{i+1}."
+                self.draw_text(f"{prefix} {p['username']} - ELO: {p['rating']} (W:{p['wins']} L:{p['losses']})",
+                              self.font_small, COLORS['yellow'] if i<3 else COLORS['white'], WINDOW_WIDTH//2, y)
+                y += 35
         self.buttons = [('BACK', self.draw_button("Geri", WINDOW_WIDTH//2-75, WINDOW_HEIGHT-80, 150, 45))]
     
     def draw_game(self):
@@ -492,25 +505,58 @@ class ConnectFourGUI:
     # =========================================================================
     
     def refresh_active_games(self):
-        try:
-            r = requests.get(f"{SERVER_URL}/active_games", timeout=2)
-            if r.status_code == 200:
-                self.active_games = r.json()
-        except:
-            pass
+        """Lobi listesini arka planda yeniler (ana donguyu/arayuzu bloklamaz)."""
+        if self.lobby_fetching:
+            return
+        self.lobby_fetching = True
+
+        def fetch():
+            try:
+                r = requests.get(f"{SERVER_URL}/active_games", timeout=2)
+                if r.status_code == 200:
+                    self.active_games = r.json()
+            except Exception:
+                pass
+            finally:
+                self.lobby_fetching = False
+
+        threading.Thread(target=fetch, daemon=True).start()
+
+    def open_leaderboard(self):
+        """Liderlik tablosunu bir kez, arka planda ceker (eskiden her karede istek atiliyordu)."""
+        self.state = 'LEADERBOARD'
+        self.leaderboard_data = None
+        self.leaderboard_error = False
+
+        def fetch():
+            try:
+                r = requests.get(f"{SERVER_URL}/leaderboard", timeout=3)
+                if r.status_code == 200:
+                    self.leaderboard_data = r.json()
+                else:
+                    self.leaderboard_error = True
+            except Exception:
+                self.leaderboard_error = True
+
+        threading.Thread(target=fetch, daemon=True).start()
     
     def refresh_user_elo(self):
         if not self.username or self.is_guest:
             return
-        try:
-            r = requests.get(f"{SERVER_URL}/user/{self.username}", timeout=2)
-            if r.status_code == 200:
-                new_elo = r.json().get('user', {}).get('rating', self.user_elo)
-                if new_elo != self.user_elo:
-                    log(f"ELO updated: {self.user_elo} -> {new_elo}")
-                    self.user_elo = new_elo
-        except:
-            pass
+
+        def fetch():
+            try:
+                r = requests.get(f"{SERVER_URL}/user/{self.username}", timeout=2)
+                if r.status_code == 200:
+                    new_elo = r.json().get('user', {}).get('rating', self.user_elo)
+                    if new_elo != self.user_elo:
+                        log(f"ELO updated: {self.user_elo} -> {new_elo}")
+                        self.user_elo = new_elo
+            except Exception:
+                pass
+
+        # Menuye donerken arayuz donmasin diye arka planda
+        threading.Thread(target=fetch, daemon=True).start()
     
     # =========================================================================
     # AUTH
@@ -1057,7 +1103,7 @@ class ConnectFourGUI:
             'REFRESH': lambda: (self.refresh_active_games(), self.set_status("Yenilendi")),
             'AI': lambda: setattr(self, 'state', 'AI_SELECT'),
             'LOBBY': lambda: (setattr(self, 'state', 'LOBBY'), self.refresh_active_games()),
-            'LEADERBOARD': lambda: setattr(self, 'state', 'LEADERBOARD'),
+            'LEADERBOARD': self.open_leaderboard,
             'CREATE': self.create_online_game,
             'QUIT': lambda: (self.invalidate_ai_session(), self.network.disconnect(), pygame.quit(), sys.exit())
         }

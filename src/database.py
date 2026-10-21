@@ -5,6 +5,8 @@
 
 import os
 import hashlib
+import hmac
+import secrets
 from typing import Optional, Dict, Any, List
 from contextlib import contextmanager
 
@@ -13,7 +15,10 @@ from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 
 # DATABASE URL
-DB_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:230198@localhost/connect4")
+# Sifre koda yazilmaz. Ornek:
+#   Windows:   set DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4
+#   Linux/Mac: export DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost/connect4")
 
 # GLOBAL CONNECTION POOL
 try:
@@ -21,27 +26,37 @@ try:
     print("[DATABASE] Connection Pool created.")
 except Exception as e:
     print(f"[DATABASE ERROR] Pool creation failed: {e}")
+    print("[DATABASE] DATABASE_URL ortam degiskenini ayarladiginizdan emin olun.")
     pg_pool = None
 
 @contextmanager
-def get_db_cursor():
-    """Context manager for safe connection handling."""
-    conn = None
+def get_db_cursor(transaction: bool = False):
+    """
+    Context manager for safe connection handling.
+    Yields None if the database is unavailable. Exceptions raised inside the
+    with-block propagate to the caller (and roll back when transaction=True).
+    """
+    if pg_pool is None:
+        yield None
+        return
     try:
-        if pg_pool is None:
-            yield None
-            return
         conn = pg_pool.getconn()
-        conn.autocommit = True
-        yield conn.cursor(cursor_factory=RealDictCursor)
     except Exception as e:
         print(f"[DB ERROR] {e}")
-        if conn: 
-            conn.rollback()
         yield None
+        return
+    try:
+        conn.autocommit = not transaction
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            yield cur
+        if transaction:
+            conn.commit()
+    except Exception:
+        if transaction:
+            conn.rollback()
+        raise
     finally:
-        if conn and pg_pool:
-            pg_pool.putconn(conn)
+        pg_pool.putconn(conn)
 
 def init_db() -> None:
     try:
@@ -73,32 +88,60 @@ def init_db() -> None:
     except Exception as e:
         print(f"[INIT ERROR] {e}")
 
-def hash_password(password: str) -> str:
+PBKDF2_ITERATIONS = 200_000
+
+def _legacy_hash(password: str) -> str:
+    """Eski format: tuzsuz SHA-256 (sadece eski hesaplari dogrulamak icin)."""
     return hashlib.sha256(password.encode()).hexdigest()
+
+def hash_password(password: str) -> str:
+    """Tuzlu PBKDF2-SHA256. Format: pbkdf2_sha256$iterasyon$tuz$hash"""
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), PBKDF2_ITERATIONS).hex()
+    return f"pbkdf2_sha256${PBKDF2_ITERATIONS}${salt}${digest}"
+
+def check_password(password: str, stored: str) -> bool:
+    if stored.startswith('pbkdf2_sha256$'):
+        try:
+            _, iterations, salt, digest = stored.split('$')
+            calc = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), int(iterations)).hex()
+            return hmac.compare_digest(calc, digest)
+        except ValueError:
+            return False
+    return hmac.compare_digest(_legacy_hash(password), stored)
 
 def create_user(username: str, password: str, email: str = "") -> Optional[int]:
     try:
         with get_db_cursor() as c:
             if not c: return None
             pwd_hash = hash_password(password)
-            c.execute('INSERT INTO users (username, password_hash, email) VALUES (%s, %s, %s) RETURNING user_id', 
+            c.execute('INSERT INTO users (username, password_hash, email) VALUES (%s, %s, %s) RETURNING user_id',
                       (username, pwd_hash, email))
             return c.fetchone()['user_id']
     except psycopg2.IntegrityError:
-        return None 
-    except Exception:
+        return None  # Kullanici adi zaten alinmis
+    except Exception as e:
+        print(f"[CREATE USER ERROR] {e}")
         return None
 
 def verify_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     try:
         with get_db_cursor() as c:
             if not c: return None
-            pwd_hash = hash_password(password)
-            c.execute('SELECT user_id, username, rating, wins, losses FROM users WHERE username = %s AND password_hash = %s', 
-                         (username, pwd_hash))
+            c.execute('SELECT user_id, username, password_hash, rating, wins, losses FROM users WHERE username = %s',
+                      (username,))
             row = c.fetchone()
-            return dict(row) if row else None
-    except Exception:
+            if not row or not check_password(password, row['password_hash']):
+                return None
+            # Eski SHA-256 hash'i ilk basarili giriste PBKDF2'ye yukselt
+            if not row['password_hash'].startswith('pbkdf2_sha256$'):
+                c.execute('UPDATE users SET password_hash = %s WHERE user_id = %s',
+                          (hash_password(password), row['user_id']))
+            user = dict(row)
+            del user['password_hash']
+            return user
+    except Exception as e:
+        print(f"[VERIFY USER ERROR] {e}")
         return None
 
 def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
@@ -138,15 +181,16 @@ def update_elo_by_username(winner_username: str, loser_username: str, k_factor: 
     Returns dict with 'winner_change' and 'loser_change'.
     """
     try:
-        with get_db_cursor() as c:
-            if not c: 
+        # Tek transaction: iki UPDATE ya birlikte uygulanir ya hic uygulanmaz
+        with get_db_cursor(transaction=True) as c:
+            if not c:
                 return {'winner_change': 0, 'loser_change': 0}
-            
-            # Get current ratings
-            c.execute('SELECT user_id, rating FROM users WHERE username = %s', (winner_username,))
+
+            # Get current ratings (FOR UPDATE: es zamanli oyun sonlarinda kayip guncelleme olmasin)
+            c.execute('SELECT user_id, rating FROM users WHERE username = %s FOR UPDATE', (winner_username,))
             winner = c.fetchone()
-            
-            c.execute('SELECT user_id, rating FROM users WHERE username = %s', (loser_username,))
+
+            c.execute('SELECT user_id, rating FROM users WHERE username = %s FOR UPDATE', (loser_username,))
             loser = c.fetchone()
             
             if not winner or not loser:

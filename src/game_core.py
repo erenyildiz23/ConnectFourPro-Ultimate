@@ -131,8 +131,9 @@ class ConnectFourGame:
     def from_dict(self, data):
         """Restores state from network data."""
         self.bitboards = {int(k): v for k, v in data['bitboards'].items()}
-        self.heights = data['heights']
-        self.move_history = data['history']
+        self.heights = list(data['heights'])
+        self.move_history = list(data['history'])
+        self.move_count = len(self.move_history)  # Beraberlik kontrolu icin gerekli
         self.current_player = data['current']
         self.game_state = data['state']
         self.game_over = data['game_over']
