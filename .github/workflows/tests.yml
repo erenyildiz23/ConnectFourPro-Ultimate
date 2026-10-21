@@ -42,3 +42,32 @@ jobs:
         run: ruff check src tests benchmarks scripts
       - name: Run tests
         run: pytest --cov --cov-report=term-missing
+
+  csharp:
+    # Unity istemcisinin Unity'den bagimsiz kodu: oyun motoru, AI (Python motoruyla
+    # altin vektor karsilastirmasi), JSON/protokol ve gercek sunucuya karsi Socket.IO.
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://nobody@127.0.0.1:1/none   # veritabani yok: misafir modu yeterli
+      CONNECT4_TEST_SERVER: http://localhost:5000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Install server dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Golden vectors are up to date
+        run: |
+          python scripts/export_ai_vectors.py
+          git diff --exit-code tests/csharp/vectors
+      - name: Start server
+        run: |
+          (cd src && python server.py > ../server.log 2>&1 &)
+          python scripts/wait_for_server.py || (cat server.log; exit 1)
+      - name: Run C# tests
+        run: dotnet test tests/csharp --logger "console;verbosity=normal"

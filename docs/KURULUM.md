@@ -1,4 +1,4 @@
-# Connect Four Pro — Kurulum ve Çalıştırma Rehberi
+# Connect Four Pro Ultimate — Kurulum ve Çalıştırma Rehberi
 
 ## Hızlı kurulum (önerilen)
 
@@ -21,7 +21,10 @@ Bundan sonra ortam değişkeni yazmanıza veya sanal ortamı etkinleştirmenize 
 
 | Komut (Windows'ta `run.bat`, bash'te `./run.sh`) | Ne yapar |
 |---|---|
-| `run client` | Oyunu açar. AI'ya karşı oynamak için sunucu gerekmez |
+| `run build-web` | Unity WebGL build'ini alır (bir kez ve Unity kodu değişince; bkz. bölüm 11) |
+| `run web` | Sunucuyu başlatır ve Unity oyununu tarayıcıda açar: `http://localhost:5000/play/` |
+| `run test-cs` | C# testlerini çalıştırır (.NET 8 SDK gerekir) |
+| `run client` | Python/Pygame istemcisini açar. AI'ya karşı oynamak için sunucu gerekmez |
 | `run client 192.168.1.20:5000` | Başka bilgisayardaki sunucuya bağlanır |
 | `run server` | Online mod için sunucuyu başlatır |
 | `run online` | Sunucuyu ve iki oyuncu penceresini birlikte açar (tek bilgisayarda deneme) |
@@ -47,6 +50,7 @@ Komutlar **Windows** için yazılmıştır; Linux/Mac karşılıkları her adım
 | Testleri çalıştırmak | + test veritabanı | 8 |
 | Performans ölçümlerini tekrarlamak | + benchmark veritabanı | 9 |
 | EXE oluşturmak | Windows | 10 |
+| Unity (tarayıcı) istemcisini derlemek | Unity 6 LTS + WebGL modülü | 11 |
 
 ---
 
@@ -69,23 +73,12 @@ git --version
 
 ## 2. Kodu indirme ve kurulum
 
-Güncel kod `claude/python-to-unity-migration-mUVdC` dalındadır (henüz `main`'e birleştirilmedi).
-
-**Repo bilgisayarınızda zaten varsa:**
-
 ```bat
-cd C:\yol\ConnectFourPro
-git fetch origin
-git checkout claude/python-to-unity-migration-mUVdC
-git pull
+git clone https://github.com/erenyildiz23/ConnectFourPro-Ultimate.git
+cd ConnectFourPro-Ultimate
 ```
 
-**Sıfırdan:**
-
-```bat
-git clone -b claude/python-to-unity-migration-mUVdC https://github.com/erenyildiz23/ConnectFourPro.git
-cd ConnectFourPro
-```
+Repo bilgisayarınızda zaten varsa: `git pull`.
 
 **Sanal ortam ve bağımlılıklar** (proje klasöründe, bir kez):
 
@@ -178,14 +171,15 @@ Online oyundan "Menü" ile çıkmak hükmen yenilgi sayılır (iki kez basmak ge
 **Aynı ağda (ev/okul Wi-Fi):**
 1. Sunucu bilgisayarında IP adresini öğrenin: `ipconfig` → "IPv4 Address" (ör. `192.168.1.20`).
 2. Sunucu ilk açıldığında Windows Güvenlik Duvarı izin sorarsa **Özel ağlar** için izin verin. Sormazsa 5000 numaralı TCP portuna gelen bağlantılara izin veren bir kural ekleyin.
-3. Diğer bilgisayarda istemciyi sunucunun adresiyle başlatın:
+3. Diğer cihazda (bilgisayar, telefon, tablet) tarayıcıyla `http://192.168.1.20:5000/play/` adresini açın. Kurulum gerekmez.
+   Pygame istemcisiyle bağlanmak için:
    ```bat
    python gui_app.py 192.168.1.20:5000
    ```
 
 **İnternet üzerinden (ngrok):**
 1. Sunucu bilgisayarında [ngrok](https://ngrok.com/) kurun ve `ngrok http 5000` komutunu çalıştırın.
-2. Verilen adresle bağlanın: `python gui_app.py https://abc123.ngrok-free.app`
+2. Verilen adresle bağlanın: tarayıcıda `https://abc123.ngrok-free.app/play/` veya `python gui_app.py https://abc123.ngrok-free.app`
 
 Adres her seferinde komut satırında vermek yerine `CONNECT4_SERVER` ortam değişkeniyle de ayarlanabilir.
 
@@ -202,7 +196,7 @@ pip install -r requirements-dev.txt
 pytest tests\unit
 ```
 
-**Tüm testler** (250 test, ~40 sn) için **ayrı** bir test veritabanı oluşturun. Testler bu veritabanını her testte boşaltır; gerçek `connect4` veritabanınızı kesinlikle kullanmayın.
+**Tüm testler** (266 test, ~40 sn) için **ayrı** bir test veritabanı oluşturun. Testler bu veritabanını her testte boşaltır; gerçek `connect4` veritabanınızı kesinlikle kullanmayın.
 
 ```bat
 "C:\Program Files\PostgreSQL\16\bin\createdb.exe" -U postgres connect4_test
@@ -211,7 +205,9 @@ pytest
 pytest --cov          REM kapsam raporuyla
 ```
 
-`TEST_DATABASE_URL` erişilemezse veritabanı gerektiren testler "skipped" olarak atlanır. Sonunda `250 passed` görmelisiniz.
+`TEST_DATABASE_URL` erişilemezse veritabanı gerektiren testler "skipped" olarak atlanır. Sonunda `266 passed` görmelisiniz.
+
+**C# testleri** (Unity istemcisinin oyun motoru, AI, protokol; Unity gerekmez): [.NET 8 SDK](https://dotnet.microsoft.com/download) kurun, sonra `dotnet test tests\csharp`. Socket.IO testleri için önce sunucuyu başlatıp `set CONNECT4_TEST_SERVER=http://localhost:5000` ayarlayın.
 
 ## 9. Performans ölçümleri (isteğe bağlı)
 
@@ -242,6 +238,70 @@ build_exe.bat
 - Başka bir sunucu için bir kısayol oluşturup "Hedef" alanının sonuna adresi ekleyin, ör. `...\ConnectFourPro.exe 192.168.1.20:5000`.
 - AI'ya karşı oynamak için sunucu gerekmez.
 
+## 11. Unity (tarayıcı) istemcisi
+
+Unity istemcisi `unity/` klasöründedir ve WebGL olarak derlenir. Derlenen oyunu Python sunucusu `/play/` adresinden sunar; oyuncuların bir şey kurması gerekmez. Mimari ve geliştirme notları: [`unity/README.md`](../unity/README.md).
+
+### 11.1 Unity CLI ve Editor (bir kez)
+
+Unity'nin komut satırı aracı (Unity CLI) Editor'ü, lisansı ve build'i yönetir. Unity Hub ile de aynı adımlar yapılabilir.
+
+```powershell
+# Windows PowerShell
+$env:UNITY_CLI_CHANNEL='beta'; irm https://public-cdn.cloud.unity3d.com/hub/prod/cli/install.ps1 | iex
+```
+```bash
+# macOS / Linux
+curl -fsSL https://public-cdn.cloud.unity3d.com/hub/prod/cli/install.sh | UNITY_CLI_CHANNEL=beta bash
+```
+
+Yeni bir terminal açın, sonra:
+
+```bash
+unity --version
+unity auth login                     # tarayıcıda Unity hesabınızla giriş
+unity license activate               # ücretsiz Personal lisans
+unity install lts --module webgl --yes --accept-eula   # Unity 6 LTS + WebGL modülü (birkaç GB)
+unity editors --installed            # kurulumu doğrulayın
+```
+
+### 11.2 Projeyi ilk kez açma
+
+```bash
+unity open unity                     # veya Unity Hub > Add > proje klasöründeki "unity" klasörü
+```
+
+İlk açılışta Unity `ProjectSettings/`, `Packages/` ve `.meta` dosyalarını oluşturur. Ardından proje kendini kurar:
+- `Assets/Scenes/Main.unity` sahnesi oluşturulur (menü: **Tools > Connect Four > Build Scenes**).
+- WebGL ayarları uygulanır (menü: **Tools > Apply Web Release Settings**): Gzip sıkıştırma, kod ayıklama, `ConnectFour` web şablonu.
+
+Oluşan dosyaları bir kez commit'leyin (`Library/`, `Temp/`, `Build/` zaten `.gitignore`'da):
+
+```bash
+git add unity && git commit -m "Unity proje ayarlari ve meta dosyalari"
+```
+
+**Editor'de deneme:** sunucuyu başlatın (`run server`), Unity'de `Main` sahnesini açıp **Play**'e basın. Editor `CONNECT4_SERVER` ortam değişkenine, yoksa `http://localhost:5000` adresine bağlanır.
+
+### 11.3 WebGL build ve oynama
+
+```bash
+run build-web        # = unity build unity --target WebGL --execute-method ConnectFourPro.EditorTools.ProjectSetup.BuildWebGL
+run web              # sunucu + http://localhost:5000/play/
+```
+
+Build `unity/Build/WebGL` klasörüne yazılır (Editor'den: **Tools > Connect Four > Build WebGL**). Başka bir klasör kullanmak için `CONNECT4_WEB_BUILD` ayarlayın.
+
+### 11.4 Claude Code + Unity eklentisi ile canlı düzenleme (isteğe bağlı)
+
+Unity Editor açıkken Claude Code'daki Unity eklentisi Editor'ü komut satırından yönetebilir (nesne ekleme, ayar okuma, C# çalıştırma):
+
+```bash
+unity pipeline install   # projeye com.unity.pipeline paketini ekler (bir kez)
+unity status             # bağlı Editor'ü gösterir ("ready")
+unity command            # Editor'ün sunduğu komutlar
+```
+
 ---
 
 ## Sorun giderme
@@ -258,4 +318,9 @@ build_exe.bat
 | Girişte "Sunucuya bağlanılamadı" | Sunucu çalışmıyor veya adres yanlış (`python gui_app.py ADRES`) |
 | `Address already in use` / port 5000 dolu | Başka bir program 5000'i kullanıyor: `set CONNECT4_PORT=5001` ile sunucuyu başlatın, istemciyi `python gui_app.py localhost:5001` ile açın |
 | Diğer bilgisayar bağlanamıyor | Güvenlik duvarında 5000 numaralı TCP portunu açın; iki bilgisayarın aynı ağda olduğunu kontrol edin |
+| `/play/` adresi `WebGL build bulunamadi` diyor | Önce `run build-web` ile build alın (bölüm 11.3) |
+| Tarayıcıda oyun "Unable to parse Build/....gz" hatası veriyor | Build'i Python sunucusu dışında (ör. `python -m http.server`) sunuyorsunuz; gzip dosyaları için `Content-Encoding: gzip` gerekir. `run web` kullanın |
+| `unity: command not found` | Unity CLI kurulumundan sonra yeni bir terminal açın (bölüm 11.1) |
+| Unity'de `unity status` bağlanamıyor | Projede derleme hatası varsa Editor "Safe Mode"da açılır; Console'daki hatayı düzeltin. `unity pipeline list` ile kontrol edin |
+| Unity Console'da `WebGL modulu bulunamadi` uyarısı | `unity install-modules --module webgl` |
 | Testlerde çok sayıda "skipped" | `TEST_DATABASE_URL` ayarlanmamış veya veritabanı yok |
