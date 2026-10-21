@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>{{{ PRODUCT_NAME }}}</title>
+  <style>
+    :root { --bg: #1a1a2e; --panel: #16213e; --red: #e94560; --text: #eaeaea; --gray: #7f8c8d; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+                 font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+    #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+    /* 16:9 sahne, pencereye sigar */
+    #unity-canvas { width: min(100vw, calc(100vh * 16 / 9)); height: min(100vh, calc(100vw * 9 / 16));
+                    background: var(--bg); outline: none; display: block; }
+    #loader { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+              justify-content: center; gap: 18px; background: var(--bg); transition: opacity .3s; }
+    #loader h1 { margin: 0; color: var(--red); letter-spacing: .06em; font-size: clamp(24px, 5vw, 44px); }
+    #loader small { color: var(--gray); }
+    #bar { width: min(320px, 70vw); height: 10px; background: var(--panel); border-radius: 5px; overflow: hidden; }
+    #fill { width: 0; height: 100%; background: var(--red); transition: width .15s; }
+    #error { display: none; max-width: 640px; padding: 0 16px; text-align: center; color: var(--red); }
+  </style>
+</head>
+<body>
+  <div id="stage"><canvas id="unity-canvas" tabindex="-1"></canvas></div>
+  <div id="loader">
+    <h1>CONNECT FOUR PRO</h1>
+    <small>ULTIMATE</small>
+    <div id="bar"><div id="fill"></div></div>
+    <small id="percent">Yükleniyor...</small>
+    <p id="error"></p>
+  </div>
+
+  <!-- Socket.IO istemcisi (sunucu: python-socketio 5.x); SocketBridge.jslib kullanir -->
+  <script src="socket.io.min.js"></script>
+  <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+  <script>
+    var canvas = document.getElementById('unity-canvas');
+    var fill = document.getElementById('fill');
+    var percent = document.getElementById('percent');
+    var loader = document.getElementById('loader');
+
+    // Yuksek DPI ekranlarda gereksiz buyuk cozunurlukte cizmemek icin ust sinir
+    var config = {
+      dataUrl: "Build/{{{ DATA_FILENAME }}}",
+      frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+      codeUrl: "Build/{{{ CODE_FILENAME }}}",
+#if MEMORY_FILENAME
+      memoryUrl: "Build/{{{ MEMORY_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+      symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
+#endif
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+      productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+      productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+      devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+    };
+
+    createUnityInstance(canvas, config, function (progress) {
+      var p = Math.round(progress * 100);
+      fill.style.width = p + '%';
+      percent.textContent = 'Yükleniyor... %' + p;
+    }).then(function () {
+      loader.style.opacity = 0;
+      setTimeout(function () { loader.style.display = 'none'; }, 300);
+      canvas.focus();
+    }).catch(function (message) {
+      var error = document.getElementById('error');
+      error.style.display = 'block';
+      error.textContent = 'Oyun yüklenemedi: ' + message;
+    });
+  </script>
+</body>
+</html>

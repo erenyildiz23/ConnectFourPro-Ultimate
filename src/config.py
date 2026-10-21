@@ -92,6 +92,9 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost/c
 DB_POOL_SIZE = _env_int("DB_POOL_SIZE", 20)
 DB_POOL_TIMEOUT = _env_int("DB_POOL_TIMEOUT", 10)
 
+# --- Unity WebGL istemcisi (sunucu /play adresinden sunar) ---
+WEB_BUILD_DIR = os.environ.get("CONNECT4_WEB_BUILD", os.path.join(PROJECT_ROOT, 'unity', 'Build', 'WebGL'))
+
 # --- Istemci ---
 CLIENT_SERVER_URL = os.environ.get("CONNECT4_SERVER", "http://localhost:5000")
 HTTP_TIMEOUT = 5

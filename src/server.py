@@ -4,7 +4,8 @@
 # =============================================================================
 """
 REST API (kimlik dogrulama, liderlik tablosu, lobi, mac gecmisi) +
-Socket.IO (oda yonetimi, gercek zamanli hamleler, seyirci modu).
+Socket.IO (oda yonetimi, gercek zamanli hamleler, seyirci modu) +
+Unity WebGL istemcisi (/play).
 
 Ozellikler:
   * Sunucu tarafli hamle dogrulama; hamleyi sadece tasin sahibi yapabilir
@@ -14,6 +15,7 @@ Ozellikler:
   * Tum oda durumuna erisim tek bir kilitle korunur (thread-safe)
 """
 
+import os
 import random
 import re
 import string
@@ -21,7 +23,7 @@ import threading
 import time
 from typing import Any, Dict, Optional, Tuple
 
-from flask import Flask, jsonify, request
+from flask import Flask, abort, jsonify, redirect, request, send_from_directory
 from flask_socketio import SocketIO, close_room, emit, join_room, leave_room
 
 import config
@@ -348,6 +350,68 @@ def health():
         'active_games': len(GAMES),
         'connected_users': len(CONNECTED_USERS),
     }), 200
+
+
+# =============================================================================
+# UNITY WEBGL ISTEMCISI
+# =============================================================================
+# Oyun ayni origin'den sunuldugu icin REST ve Socket.IO icin CORS gerekmez.
+# Unity build'i Gzip ile sikistirilir (Decompression Fallback kapali); tarayicinin
+# dosyalari kendisi acabilmesi icin .gz dosyalari Content-Encoding: gzip ve asil
+# dosya turunun Content-Type'i ile gonderilir.
+
+_WEB_CONTENT_TYPES = {
+    '.wasm': 'application/wasm',
+    '.js': 'application/javascript',
+    '.data': 'application/octet-stream',
+    '.json': 'application/json',
+    '.symbols.json': 'application/json',
+}
+
+
+def _web_content_type(name: str) -> Optional[str]:
+    for ext in sorted(_WEB_CONTENT_TYPES, key=len, reverse=True):
+        if name.endswith(ext):
+            return _WEB_CONTENT_TYPES[ext]
+    return None
+
+
+@app.route('/')
+def root():
+    return redirect('/play/')
+
+
+@app.route('/play')
+def play_redirect():
+    return redirect('/play/')
+
+
+@app.route('/play/', defaults={'path': 'index.html'})
+@app.route('/play/<path:path>')
+def play(path):
+    build_dir = os.path.abspath(config.WEB_BUILD_DIR)
+    if not os.path.isfile(os.path.join(build_dir, 'index.html')):
+        return jsonify({'error': 'WebGL build bulunamadi',
+                        'hint': 'Unity ile build alin (docs/KURULUM.md) veya CONNECT4_WEB_BUILD ayarlayin',
+                        'build_dir': build_dir}), 404
+    full = os.path.abspath(os.path.join(build_dir, path))
+    if not full.startswith(build_dir + os.sep) or not os.path.isfile(full):
+        abort(404)
+
+    response = send_from_directory(build_dir, path, conditional=True)
+    name = path.lower()
+    if name.endswith('.gz') or name.endswith('.br'):
+        response.headers['Content-Encoding'] = 'gzip' if name.endswith('.gz') else 'br'
+        content_type = _web_content_type(name[:-3])
+        if content_type:
+            response.headers['Content-Type'] = content_type
+    else:
+        content_type = _web_content_type(name)
+        if content_type:
+            response.headers['Content-Type'] = content_type
+    if name.endswith('index.html'):
+        response.headers['Cache-Control'] = 'no-cache'
+    return response
 
 
 # =============================================================================

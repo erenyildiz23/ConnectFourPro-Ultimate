@@ -1,0 +1,26 @@
+{
+    "name": "ConnectFourPro.Runtime",
+    "rootNamespace": "ConnectFourPro",
+    "references": [
+        "ConnectFourPro.Core",
+        "ConnectFourPro.AI",
+        "ConnectFourPro.Protocol",
+        "UnityEngine.UI",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "1.0.0",
+            "define": "CF4_INPUT_SYSTEM"
+        }
+    ],
+    "noEngineReferences": false
+}

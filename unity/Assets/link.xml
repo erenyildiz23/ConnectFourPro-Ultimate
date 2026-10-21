@@ -1,0 +1,9 @@
+<!--
+  Managed Stripping Level = High iken korunacak kod.
+  WebGLSocketTransport'un metotlari JS'ten SendMessage ile adla cagrilir;
+  ayiklayici bunu goremedigi icin kendi derlemelerimiz tamamen korunur (kucuktur).
+-->
+<linker>
+  <assembly fullname="ConnectFourPro.Runtime" preserve="all" />
+  <assembly fullname="ConnectFourPro.Protocol" preserve="all" />
+</linker>

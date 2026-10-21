@@ -15,7 +15,7 @@
   <ItemGroup>
     <Compile Include="../../unity/Assets/Scripts/Core/**/*.cs" LinkBase="Linked/Core" />
     <Compile Include="../../unity/Assets/Scripts/AI/**/*.cs" LinkBase="Linked/AI" />
-    <Compile Include="../../unity/Assets/Scripts/Net/Json/**/*.cs" LinkBase="Linked/Net" />
+    <Compile Include="../../unity/Assets/Scripts/Net/Protocol/**/*.cs" LinkBase="Linked/Net" />
     <None Include="vectors/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
