@@ -1,0 +1,27 @@
+[project]
+name = "connect-four-pro"
+version = "3.0.0"
+description = "Connect Four with Minimax AI, real-time multiplayer and ELO ranking"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+addopts = "-ra"
+markers = [
+    "db: PostgreSQL gerektiren testler (TEST_DATABASE_URL)",
+    "gui: Pygame gerektiren testler",
+    "slow: uzun suren testler",
+]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["unity"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["E501"]

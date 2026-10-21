@@ -1,0 +1,12 @@
+# Gelistirme, test ve benchmark bagimliliklari
+-r src/requirements.txt
+
+# Testler
+pytest>=8.0
+pytest-cov>=5.0
+ruff>=0.6
+
+# Benchmark ve gorsellestirme
+locust>=2.29
+matplotlib>=3.7
+numpy>=1.24

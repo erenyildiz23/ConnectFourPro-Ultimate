@@ -36,3 +36,12 @@ ai_test_results/
 build/
 dist/
 *.exe
+
+# Ortam degiskenleri (gercek sifreler)
+.env
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/

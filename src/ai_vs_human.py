@@ -1,20 +1,39 @@
 # =============================================================================
 # MODULE: ai_vs_human.py
+# Connect Four Pro - Minimax + Alpha-Beta AI motoru
 # =============================================================================
+"""
+Arama: Minimax + Alpha-Beta budama, merkez-oncelikli hamle siralamasi.
+Degerlendirme: 4'luk pencere taramasi (acik 2'li / 3'lu, rakip tehdidi) +
+merkez sutun kontrolu. Bilinen acilislar icin kucuk bir acilis kitabi.
+
+Terminal skorlar kalan derinlikle agirliklandirilir: AI kazanci olabildigince
+erken, kaybi olabildigince gec tercih eder (kazanabilecekken oyunu uzatmaz).
+"""
 
 import math
 import random
-import time
-from game_core import ROWS, COLS, WINDOW_LENGTH, EMPTY, PLAYER1_PIECE, PLAYER2_PIECE
+from typing import Optional, Sequence, Tuple
+
+from config import get_logger
+from game_core import COLS, EMPTY, ROWS, ConnectFourGame, other_player
+
+log = get_logger("ai")
 
 # --- TUNED HEURISTICS ---
 SCORE_WIN = 10000000000
-SCORE_BLOCK = -6000000 
-SCORE_3_OPEN = 5000     
-SCORE_2_OPEN = 300      
-SCORE_CENTER = 10       
+SCORE_BLOCK = -6000000
+SCORE_3_OPEN = 5000
+SCORE_2_OPEN = 300
+SCORE_CENTER = 10
+
+# Terminal pozisyon skoru (heuristik skorlarin her zaman ustunde)
+SCORE_TERMINAL = 100000000000
 
 MAX_DEPTH_DEFAULT = 7
+
+# Arayuzdeki zorluk seviyeleri
+DIFFICULTY_DEPTHS = {'Kolay': 2, 'Orta': 4, 'Zor': 6}
 
 # --- OPENING BOOK ---
 OPENING_BOOK = {
@@ -26,160 +45,170 @@ OPENING_BOOK = {
     (0,): 3, (1,): 3, (2,): 3, (4,): 3, (5,): 3, (6,): 3,
 }
 
+_CENTER = COLS // 2
+
+
+class SearchCancelled(Exception):
+    """Arama disaridan iptal edildi (orn. oyuncu menuye dondu)."""
+
+
 class AIEngine:
-    def __init__(self, player_id, depth=MAX_DEPTH_DEFAULT):
+    """
+    Args:
+        player_id: AI'nin oynadigi tas (PLAYER1_PIECE / PLAYER2_PIECE)
+        depth: Arama derinligi (hamle sayisi)
+        use_opening_book: False ise her hamlede arama yapilir (benchmark icin)
+        seed: Tekrarlanabilir sonuclar icin rastgelelik tohumu
+    """
+
+    def __init__(self, player_id: int, depth: int = MAX_DEPTH_DEFAULT,
+                 use_opening_book: bool = True, seed: Optional[int] = None):
+        if depth < 1:
+            raise ValueError("depth en az 1 olmali")
         self.player_id = player_id
-        self.opp_player_id = PLAYER1_PIECE if player_id == PLAYER2_PIECE else PLAYER2_PIECE
+        self.opp_player_id = other_player(player_id)
         self.depth = depth
-        # Performans metrikleri (tests/ai_performance_suite.py kullanir)
+        self.use_opening_book = use_opening_book
+        self._rng = random.Random(seed)
+        # Performans metrikleri (benchmarks/ai_performance_suite.py kullanir)
         self.nodes_evaluated = 0
         self.cutoffs = 0
+        self.last_move_from_book = False
+        self._cancel = None
 
-    def reset_metrics(self):
+    def reset_metrics(self) -> None:
         self.nodes_evaluated = 0
         self.cutoffs = 0
+        self.last_move_from_book = False
 
-    def evaluate_window(self, window, piece):
+    # ------------------------------------------------------------------
+    # Degerlendirme
+    # ------------------------------------------------------------------
+
+    def evaluate_window(self, window: Sequence[int], piece: int) -> int:
+        """4 hucrelik bir pencereyi `piece` acisindan puanlar."""
+        own = window.count(piece)
+        empty = window.count(EMPTY)
+        opp = window.count(other_player(piece))
+
         score = 0
-        opp_piece = self.opp_player_id
-
-        if window.count(piece) == 4:
+        if own == 4:
             score += SCORE_WIN
-        elif window.count(piece) == 3 and window.count(EMPTY) == 1:
+        elif own == 3 and empty == 1:
             score += SCORE_3_OPEN
-        elif window.count(piece) == 2 and window.count(EMPTY) == 2:
+        elif own == 2 and empty == 2:
             score += SCORE_2_OPEN
 
-        if window.count(opp_piece) == 3 and window.count(EMPTY) == 1:
+        if opp == 3 and empty == 1:
             score += SCORE_BLOCK
-
         return score
 
-    def score_position(self, game, piece):
-        score = 0
-        
-        # 1. Center Control
-        center_idx = COLS // 2
-        center_col = [(game.bitboards[piece] >> (center_idx * (ROWS+1) + r)) & 1 for r in range(ROWS)]
-        score += sum(center_col) * SCORE_CENTER
+    def score_position(self, game: ConnectFourGame, piece: int) -> int:
+        """Terminal olmayan pozisyonun `piece` acisindan heuristik degeri."""
+        board = game.get_board()
 
-        # 2. Board Reconstruction
-        board = [[EMPTY]*COLS for _ in range(ROWS)]
-        for c in range(COLS):
-            for r in range(ROWS):
-                idx = c * (ROWS + 1) + r
-                if (game.bitboards[PLAYER1_PIECE] >> idx) & 1: board[r][c] = PLAYER1_PIECE
-                elif (game.bitboards[PLAYER2_PIECE] >> idx) & 1: board[r][c] = PLAYER2_PIECE
+        # 1. Merkez kontrolu
+        score = sum(1 for r in range(ROWS) if board[r][_CENTER] == piece) * SCORE_CENTER
 
-        # 3. Window Scanning
-        # Horizontal
-        for r in range(ROWS):
+        # 2. Pencere taramasi
+        for r in range(ROWS):                                   # Yatay
             for c in range(COLS - 3):
-                window = board[r][c:c+4]
-                score += self.evaluate_window(window, piece)
-        # Vertical
-        for c in range(COLS):
+                score += self.evaluate_window(board[r][c:c + 4], piece)
+        for c in range(COLS):                                   # Dikey
             for r in range(ROWS - 3):
-                window = [board[r+i][c] for i in range(4)]
-                score += self.evaluate_window(window, piece)
-        # Diagonals
-        for r in range(ROWS - 3):
+                score += self.evaluate_window([board[r + i][c] for i in range(4)], piece)
+        for r in range(ROWS - 3):                               # Capraz /
             for c in range(COLS - 3):
-                window = [board[r+i][c+i] for i in range(4)]
-                score += self.evaluate_window(window, piece)
-        for r in range(3, ROWS):
+                score += self.evaluate_window([board[r + i][c + i] for i in range(4)], piece)
+        for r in range(3, ROWS):                                # Capraz \
             for c in range(COLS - 3):
-                window = [board[r-i][c+i] for i in range(4)]
-                score += self.evaluate_window(window, piece)
+                score += self.evaluate_window([board[r - i][c + i] for i in range(4)], piece)
         return score
 
-    def is_terminal_node(self, game):
-        # Check win conditions first
-        if game.check_win(self.player_id) or game.check_win(self.opp_player_id):
-            return True
-        # Check if board is full (Draw)
-        if len(game.get_valid_locations()) == 0:
-            return True
-        return False
+    # ------------------------------------------------------------------
+    # Arama
+    # ------------------------------------------------------------------
 
-    def minimax(self, game, depth, alpha, beta, maximizingPlayer):
+    def is_terminal_node(self, game: ConnectFourGame) -> bool:
+        return (game.check_win(self.player_id) or game.check_win(self.opp_player_id)
+                or not game.get_valid_locations())
+
+    def minimax(self, game: ConnectFourGame, depth: int, alpha: float, beta: float,
+                maximizingPlayer: bool) -> Tuple[Optional[int], float]:
+        """(en iyi sutun, deger) dondurur. Deger AI (player_id) acisindandir."""
         self.nodes_evaluated += 1
+        if self._cancel is not None and self._cancel.is_set():
+            raise SearchCancelled
+
+        if game.check_win(self.player_id):
+            return None, SCORE_TERMINAL + depth         # Erken kazanc daha degerli
+        if game.check_win(self.opp_player_id):
+            return None, -(SCORE_TERMINAL + depth)      # Gec kayip daha az kotu
         valid_locations = game.get_valid_locations()
-        is_terminal = self.is_terminal_node(game)
-        
-        if depth == 0 or is_terminal:
-            if is_terminal:
-                if game.check_win(self.player_id): return (None, 100000000000)
-                elif game.check_win(self.opp_player_id): return (None, -100000000000)
-                else: return (None, 0) # Game is over, no more valid moves
-            else: return (None, self.score_position(game, self.player_id))
-
         if not valid_locations:
-             return (None, 0)
+            return None, 0                              # Beraberlik
+        if depth == 0:
+            return None, self.score_position(game, self.player_id)
 
-        # Heuristic sort for pruning 
-        valid_locations.sort(key=lambda x: abs(x - COLS//2))
+        # Merkeze yakin sutunlar once: budamayi iyilestirir
+        valid_locations.sort(key=lambda x: abs(x - _CENTER))
+        best_col = valid_locations[0]
 
         if maximizingPlayer:
             value = -math.inf
-            # Default to a random valid move if no move improves -inf
-            best_col = random.choice(valid_locations)
             for col in valid_locations:
-                temp_game = game.clone()
-                temp_game.make_move(col)
-                new_score = self.minimax(temp_game, depth-1, alpha, beta, False)[1]
-                
-                if new_score > value: 
-                    value = new_score
-                    best_col = col
+                child = game.clone()
+                child.make_move(col)
+                new_score = self.minimax(child, depth - 1, alpha, beta, False)[1]
+                if new_score > value:
+                    value, best_col = new_score, col
                 alpha = max(alpha, value)
                 if alpha >= beta:
                     self.cutoffs += 1
                     break
-            return best_col, value
         else:
             value = math.inf
-            # Default to a random valid move if no move improves +inf
-            best_col = random.choice(valid_locations)
             for col in valid_locations:
-                temp_game = game.clone()
-                temp_game.make_move(col)
-                new_score = self.minimax(temp_game, depth-1, alpha, beta, True)[1]
-                
-                if new_score < value: 
-                    value = new_score
-                    best_col = col
+                child = game.clone()
+                child.make_move(col)
+                new_score = self.minimax(child, depth - 1, alpha, beta, True)[1]
+                if new_score < value:
+                    value, best_col = new_score, col
                 beta = min(beta, value)
                 if alpha >= beta:
                     self.cutoffs += 1
                     break
-            return best_col, value
+        return best_col, value
 
-    def find_best_move(self, game):
-        # Metrikler her cagrida sifirlanir (acilis kitabi hamlesi = 0 dugum)
+    def find_best_move(self, game: ConnectFourGame, cancel_event=None) -> Optional[int]:
+        """
+        Mevcut pozisyon icin en iyi sutun; tahta doluysa None.
+
+        Args:
+            cancel_event: threading.Event; set edilirse arama durur ve None doner.
+        """
         self.reset_metrics()
+        self._cancel = cancel_event
 
-        # 0. Early Exit for Full Board
         valid_moves = game.get_valid_locations()
         if not valid_moves:
-            return None # Board is full, no move possible
+            return None
 
-        # 1. Opening Book
-        history = tuple(game.move_history)
-        if history in OPENING_BOOK:
-             move = OPENING_BOOK[history]
-             if game.is_valid_location(move): return move
+        if self.use_opening_book:
+            move = OPENING_BOOK.get(tuple(game.move_history))
+            if move is not None and game.is_valid_location(move):
+                self.last_move_from_book = True
+                return move
 
-        # 2. Minimax
-        game_copy = game.clone()
         try:
-            col, score = self.minimax(game_copy, self.depth, -math.inf, math.inf, True)
-        except Exception as e:
-            print(f"[AI ERROR] Minimax crashed: {e}")
+            col, _ = self.minimax(game.clone(), self.depth, -math.inf, math.inf, True)
+        except SearchCancelled:
+            return None
+        except Exception:
+            log.exception("Minimax hatasi")
             col = None
+        finally:
+            self._cancel = None
 
-        # 3. Fallback (Safety Net)
-        if col is None:
-            return random.choice(valid_moves)
-        
-        return col
+        # Guvenlik agi: arama sonuc vermezse rastgele gecerli hamle
+        return col if col is not None else self._rng.choice(valid_moves)
