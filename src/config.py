@@ -52,8 +52,10 @@ PBKDF2_ITERATIONS = _env_int("PBKDF2_ITERATIONS", 200_000)
 
 # --- Veritabani ---
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost/connect4")
-DB_POOL_MIN = _env_int("DB_POOL_MIN", 1)
-DB_POOL_MAX = _env_int("DB_POOL_MAX", 10)
+# psycopg2 havuzu minconn uzerindeki baglantilari iadede KAPATIR; bu yuzden
+# havuz sabit boyutludur (min = max). Havuz doluysa istek bos baglanti bekler.
+DB_POOL_SIZE = _env_int("DB_POOL_SIZE", 20)
+DB_POOL_TIMEOUT = _env_int("DB_POOL_TIMEOUT", 10)
 
 # --- Istemci ---
 CLIENT_SERVER_URL = os.environ.get("CONNECT4_SERVER", "http://localhost:5000")

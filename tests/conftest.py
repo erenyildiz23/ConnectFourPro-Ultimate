@@ -15,6 +15,7 @@ import time
 # Ayarlar config import edilmeden once yapilmali
 os.environ.setdefault("RECONNECT_GRACE_SECONDS", "1")
 os.environ.setdefault("PBKDF2_ITERATIONS", "1000")   # Testleri hizlandirir
+os.environ.setdefault("DB_POOL_SIZE", "4")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")

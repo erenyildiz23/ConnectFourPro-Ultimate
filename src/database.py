@@ -29,6 +29,8 @@ _pool: Optional[pool.ThreadedConnectionPool] = None
 _pool_url: Optional[str] = None
 _pool_failed = False
 _pool_lock = threading.Lock()
+# psycopg2 havuzu doluyken beklemek yerine hata firlatir; semafor bekletir
+_pool_slots = threading.BoundedSemaphore(config.DB_POOL_SIZE)
 
 # Yuk testlerinde olusturulan hesaplarin on ekleri (delete_test_users temizler)
 TEST_USER_PREFIXES = ('locust_', 'test_user_', 'bench_')
@@ -56,8 +58,9 @@ def _get_pool() -> Optional[pool.ThreadedConnectionPool]:
     with _pool_lock:
         if _pool is None and not _pool_failed:
             try:
+                # min = max: baglantilar acik kalir (her istekte yeniden baglanma yok)
                 _pool = pool.ThreadedConnectionPool(
-                    config.DB_POOL_MIN, config.DB_POOL_MAX, dsn=_pool_url or config.DATABASE_URL)
+                    config.DB_POOL_SIZE, config.DB_POOL_SIZE, dsn=_pool_url or config.DATABASE_URL)
                 log.info("Connection pool created")
             except Exception as e:
                 _pool_failed = True
@@ -79,24 +82,34 @@ def get_db_cursor(transaction: bool = False):
     if pg_pool is None:
         yield None
         return
+    if not _pool_slots.acquire(timeout=config.DB_POOL_TIMEOUT):
+        log.error("Veritabani baglantisi %d sn icinde bosalmadi", config.DB_POOL_TIMEOUT)
+        yield None
+        return
     try:
         conn = pg_pool.getconn()
     except Exception as e:
+        _pool_slots.release()
         log.error("Havuzdan baglanti alinamadi: %s", e)
         yield None
         return
+    broken = False
     try:
         conn.autocommit = not transaction
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             yield cur
         if transaction:
             conn.commit()
+    except (psycopg2.OperationalError, psycopg2.InterfaceError):
+        broken = True    # Kopmus baglantiyi havuza geri koyma
+        raise
     except Exception:
         if transaction:
             conn.rollback()
         raise
     finally:
-        pg_pool.putconn(conn)
+        pg_pool.putconn(conn, close=broken or conn.closed)
+        _pool_slots.release()
 
 
 def init_db() -> bool:
