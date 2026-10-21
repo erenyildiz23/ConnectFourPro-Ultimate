@@ -4,6 +4,9 @@ echo   Connect Four Pro - EXE Builder
 echo ============================================
 echo.
 
+REM Proje bagimliliklari (exe'ye bunlar paketlenir)
+pip install -q -r src\requirements.txt
+
 REM PyInstaller yüklü mü kontrol et
 pip show pyinstaller >nul 2>&1
 if %errorlevel% neq 0 (
@@ -29,8 +32,9 @@ pyinstaller --onefile --windowed ^
     --add-data "ai_vs_human.py;." ^
     --hidden-import=pygame ^
     --hidden-import=requests ^
-    --hidden-import=python_socketio ^
+    --hidden-import=socketio ^
     --hidden-import=engineio ^
+    --hidden-import=websocket ^
     gui_app.py
 
 echo.

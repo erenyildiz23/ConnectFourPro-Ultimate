@@ -54,6 +54,7 @@ ConnectFourPro/
 ├── docs/
 │   ├── USE_CASES.md          # Use case'ler + gereksinim izlenebilirliği
 │   ├── AI.md                 # Oyun teorisi, AI v1 sorunları, v2 tasarımı
+│   ├── KURULUM.md            # Adım adım kurulum ve çalıştırma
 │   └── diagrams/             # UML (PlantUML + PNG)
 ├── requirements-dev.txt      # Test / benchmark bağımlılıkları
 ├── pyproject.toml            # pytest, coverage, ruff ayarları
@@ -61,6 +62,8 @@ ConnectFourPro/
 ```
 
 ## 🚀 Kurulum
+
+> Adım adım Windows rehberi (PostgreSQL, online oyun, ağ, EXE, sorun giderme): **[docs/KURULUM.md](docs/KURULUM.md)**
 
 ```bash
 git clone https://github.com/erenyildiz23/ConnectFourPro.git
