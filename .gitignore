@@ -48,3 +48,26 @@ htmlcov/
 
 # Benchmark calisma logu
 benchmarks/results/server.log
+
+# Unity (unity/ projesi) - Library/ gibi uretilen klasorler asla commit'lenmez
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Bb]uild/
+unity/[Bb]uilds/
+unity/[Ll]ogs/
+unity/[Uu]ser[Ss]ettings/
+unity/[Mm]emoryCaptures/
+unity/.vs/
+unity/*.csproj
+unity/*.sln
+unity/*.slnx
+unity/*.user
+unity/*.pidb
+unity/*.booproj
+unity/crashlytics-build.properties
+
+# .NET testleri (tests/csharp)
+tests/csharp/bin/
+tests/csharp/obj/
+tests/csharp/TestResults/

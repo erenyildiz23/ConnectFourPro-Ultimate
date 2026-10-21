@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Unity'den bagimsiz testler: unity/Assets/Scripts altindaki saf C# kodu
+    (Core, AI, Net/Json) buraya link'lenir ve Unity olmadan derlenip test edilir.
+    LangVersion 9: Unity 6'nin destekledigi C# surumu; daha yeni soz dizimi derlenmez.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../unity/Assets/Scripts/Core/**/*.cs" LinkBase="Linked/Core" />
+    <Compile Include="../../unity/Assets/Scripts/AI/**/*.cs" LinkBase="Linked/AI" />
+    <Compile Include="../../unity/Assets/Scripts/Net/Json/**/*.cs" LinkBase="Linked/Net" />
+    <None Include="vectors/*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+</Project>
