@@ -32,7 +32,19 @@ test_results/
 ai_test_results/
 
 # Build outputs
+# (src/ConnectFourPro.spec build ayari oldugu icin takip edilir)
 build/
 dist/
-*.spec
 *.exe
+
+# Ortam degiskenleri (gercek sifreler)
+.env
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Benchmark calisma logu
+benchmarks/results/server.log

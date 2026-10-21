@@ -1,0 +1,9528 @@
+{
+  "suite": "ai_performance",
+  "version": "4.0",
+  "environment": {
+    "timestamp": "2026-10-21T11:32:04",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "logical_cpus": "4",
+    "platform": "Linux-6.18.44-fc-v140-x86_64-with-glibc2.39",
+    "python": "3.11.17",
+    "implementation": "CPython",
+    "git_commit": "1113e42"
+  },
+  "parameters": {
+    "seed": 2024,
+    "iterations_per_depth": 30,
+    "opening_book": false,
+    "latency_depths": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "tournament_depths": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      8
+    ],
+    "scenario_depths": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      8
+    ],
+    "openings_per_matchup": 10,
+    "quick": false
+  },
+  "duration_seconds": 106.672,
+  "latency_summary": {
+    "1": {
+      "n": 30,
+      "mean": 0.09,
+      "stdev": 0.023,
+      "min": 0.06,
+      "median": 0.083,
+      "max": 0.147,
+      "p95": 0.132,
+      "p99": 0.144,
+      "mean_nodes": 6.5,
+      "max_nodes": 7,
+      "mean_cutoffs": 0.0,
+      "us_per_node": 13.85,
+      "by_phase": {
+        "early": 0.106,
+        "mid": 0.085,
+        "late": 0.079
+      }
+    },
+    "2": {
+      "n": 30,
+      "mean": 0.296,
+      "stdev": 0.106,
+      "min": 0.065,
+      "median": 0.314,
+      "max": 0.513,
+      "p95": 0.471,
+      "p99": 0.505,
+      "mean_nodes": 23.6,
+      "max_nodes": 40,
+      "mean_cutoffs": 4.133,
+      "us_per_node": 12.534,
+      "by_phase": {
+        "early": 0.34,
+        "mid": 0.316,
+        "late": 0.232
+      }
+    },
+    "3": {
+      "n": 30,
+      "mean": 1.844,
+      "stdev": 1.434,
+      "min": 0.127,
+      "median": 1.67,
+      "max": 7.94,
+      "p95": 3.481,
+      "p99": 6.716,
+      "mean_nodes": 69.367,
+      "max_nodes": 140,
+      "mean_cutoffs": 13.5,
+      "us_per_node": 26.584,
+      "by_phase": {
+        "early": 2.79,
+        "mid": 1.716,
+        "late": 1.026
+      }
+    },
+    "4": {
+      "n": 30,
+      "mean": 3.814,
+      "stdev": 2.467,
+      "min": 0.117,
+      "median": 3.76,
+      "max": 11.418,
+      "p95": 6.968,
+      "p99": 10.164,
+      "mean_nodes": 163.3,
+      "max_nodes": 435,
+      "mean_cutoffs": 40.0,
+      "us_per_node": 23.359,
+      "by_phase": {
+        "early": 5.406,
+        "mid": 4.026,
+        "late": 2.011
+      }
+    },
+    "5": {
+      "n": 30,
+      "mean": 7.367,
+      "stdev": 6.829,
+      "min": 0.06,
+      "median": 5.187,
+      "max": 27.24,
+      "p95": 18.498,
+      "p99": 24.813,
+      "mean_nodes": 379.1,
+      "max_nodes": 1095,
+      "mean_cutoffs": 95.167,
+      "us_per_node": 19.432,
+      "by_phase": {
+        "early": 14.187,
+        "mid": 6.059,
+        "late": 1.854
+      }
+    },
+    "6": {
+      "n": 30,
+      "mean": 10.916,
+      "stdev": 8.455,
+      "min": 0.063,
+      "median": 10.48,
+      "max": 30.743,
+      "p95": 28.056,
+      "p99": 30.306,
+      "mean_nodes": 807.267,
+      "max_nodes": 2255,
+      "mean_cutoffs": 221.933,
+      "us_per_node": 13.522,
+      "by_phase": {
+        "early": 17.672,
+        "mid": 10.693,
+        "late": 4.382
+      }
+    },
+    "7": {
+      "n": 30,
+      "mean": 25.442,
+      "stdev": 28.455,
+      "min": 0.065,
+      "median": 15.939,
+      "max": 123.015,
+      "p95": 78.965,
+      "p99": 110.56,
+      "mean_nodes": 1685.667,
+      "max_nodes": 5903,
+      "mean_cutoffs": 467.033,
+      "us_per_node": 15.093,
+      "by_phase": {
+        "early": 52.133,
+        "mid": 18.318,
+        "late": 5.874
+      }
+    },
+    "8": {
+      "n": 30,
+      "mean": 40.732,
+      "stdev": 41.244,
+      "min": 0.067,
+      "median": 33.804,
+      "max": 148.539,
+      "p95": 119.627,
+      "p99": 141.027,
+      "mean_nodes": 2974.367,
+      "max_nodes": 11516,
+      "mean_cutoffs": 876.433,
+      "us_per_node": 13.694,
+      "by_phase": {
+        "early": 79.067,
+        "mid": 31.239,
+        "late": 11.889
+      }
+    }
+  },
+  "scenario_accuracy_percent": {
+    "1": 100.0,
+    "2": 100.0,
+    "3": 100.0,
+    "4": 100.0,
+    "6": 100.0,
+    "8": 100.0
+  },
+  "scenario_results": [
+    {
+      "scenario": "Win in 1 (vertical)",
+      "depth": 1,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.016,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (vertical)",
+      "depth": 2,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.006,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (vertical)",
+      "depth": 3,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.004,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (vertical)",
+      "depth": 4,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.004,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (vertical)",
+      "depth": 6,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.004,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (vertical)",
+      "depth": 8,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.004,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (horizontal)",
+      "depth": 1,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.014,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (horizontal)",
+      "depth": 2,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.006,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (horizontal)",
+      "depth": 3,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.004,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (horizontal)",
+      "depth": 4,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.004,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (horizontal)",
+      "depth": 6,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.003,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (horizontal)",
+      "depth": 8,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.004,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (diagonal)",
+      "depth": 1,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.009,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (diagonal)",
+      "depth": 2,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.005,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (diagonal)",
+      "depth": 3,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.005,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (diagonal)",
+      "depth": 4,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.004,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (diagonal)",
+      "depth": 6,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.004,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win in 1 (diagonal)",
+      "depth": 8,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.004,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (vertical)",
+      "depth": 1,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.014,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (vertical)",
+      "depth": 2,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.007,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (vertical)",
+      "depth": 3,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.006,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (vertical)",
+      "depth": 4,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.006,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (vertical)",
+      "depth": 6,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.005,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (vertical)",
+      "depth": 8,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.005,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (horizontal)",
+      "depth": 1,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.015,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (horizontal)",
+      "depth": 2,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.008,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (horizontal)",
+      "depth": 3,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.006,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (horizontal)",
+      "depth": 4,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.006,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (horizontal)",
+      "depth": 6,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.005,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (horizontal)",
+      "depth": 8,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.005,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (diagonal)",
+      "depth": 1,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.019,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (diagonal)",
+      "depth": 2,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.009,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (diagonal)",
+      "depth": 3,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.008,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (diagonal)",
+      "depth": 4,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.008,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (diagonal)",
+      "depth": 6,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.007,
+      "nodes": 0
+    },
+    {
+      "scenario": "Block (diagonal)",
+      "depth": 8,
+      "move": 3,
+      "acceptable": [
+        3
+      ],
+      "correct": true,
+      "latency_ms": 0.008,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win before block",
+      "depth": 1,
+      "move": 0,
+      "acceptable": [
+        0
+      ],
+      "correct": true,
+      "latency_ms": 0.013,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win before block",
+      "depth": 2,
+      "move": 0,
+      "acceptable": [
+        0
+      ],
+      "correct": true,
+      "latency_ms": 0.008,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win before block",
+      "depth": 3,
+      "move": 0,
+      "acceptable": [
+        0
+      ],
+      "correct": true,
+      "latency_ms": 0.006,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win before block",
+      "depth": 4,
+      "move": 0,
+      "acceptable": [
+        0
+      ],
+      "correct": true,
+      "latency_ms": 0.005,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win before block",
+      "depth": 6,
+      "move": 0,
+      "acceptable": [
+        0
+      ],
+      "correct": true,
+      "latency_ms": 0.006,
+      "nodes": 0
+    },
+    {
+      "scenario": "Win before block",
+      "depth": 8,
+      "move": 0,
+      "acceptable": [
+        0
+      ],
+      "correct": true,
+      "latency_ms": 0.006,
+      "nodes": 0
+    },
+    {
+      "scenario": "Avoid trap square",
+      "depth": 1,
+      "move": 3,
+      "acceptable": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      "correct": true,
+      "latency_ms": 0.148,
+      "nodes": 7
+    },
+    {
+      "scenario": "Avoid trap square",
+      "depth": 2,
+      "move": 3,
+      "acceptable": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      "correct": true,
+      "latency_ms": 0.391,
+      "nodes": 28
+    },
+    {
+      "scenario": "Avoid trap square",
+      "depth": 3,
+      "move": 4,
+      "acceptable": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      "correct": true,
+      "latency_ms": 1.327,
+      "nodes": 96
+    },
+    {
+      "scenario": "Avoid trap square",
+      "depth": 4,
+      "move": 4,
+      "acceptable": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      "correct": true,
+      "latency_ms": 3.037,
+      "nodes": 234
+    },
+    {
+      "scenario": "Avoid trap square",
+      "depth": 6,
+      "move": 4,
+      "acceptable": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      "correct": true,
+      "latency_ms": 15.427,
+      "nodes": 1265
+    },
+    {
+      "scenario": "Avoid trap square",
+      "depth": 8,
+      "move": 6,
+      "acceptable": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      "correct": true,
+      "latency_ms": 62.522,
+      "nodes": 4494
+    },
+    {
+      "scenario": "Double threat (win in 3)",
+      "depth": 1,
+      "move": 2,
+      "acceptable": [
+        2,
+        5
+      ],
+      "correct": true,
+      "latency_ms": 0.104,
+      "nodes": 7
+    },
+    {
+      "scenario": "Double threat (win in 3)",
+      "depth": 2,
+      "move": 2,
+      "acceptable": [
+        2,
+        5
+      ],
+      "correct": true,
+      "latency_ms": 0.069,
+      "nodes": 7
+    },
+    {
+      "scenario": "Double threat (win in 3)",
+      "depth": 3,
+      "move": 2,
+      "acceptable": [
+        2,
+        5
+      ],
+      "correct": true,
+      "latency_ms": 0.106,
+      "nodes": 7
+    },
+    {
+      "scenario": "Double threat (win in 3)",
+      "depth": 4,
+      "move": 2,
+      "acceptable": [
+        2,
+        5
+      ],
+      "correct": true,
+      "latency_ms": 0.069,
+      "nodes": 7
+    },
+    {
+      "scenario": "Double threat (win in 3)",
+      "depth": 6,
+      "move": 2,
+      "acceptable": [
+        2,
+        5
+      ],
+      "correct": true,
+      "latency_ms": 0.066,
+      "nodes": 7
+    },
+    {
+      "scenario": "Double threat (win in 3)",
+      "depth": 8,
+      "move": 2,
+      "acceptable": [
+        2,
+        5
+      ],
+      "correct": true,
+      "latency_ms": 0.075,
+      "nodes": 7
+    }
+  ],
+  "tournament": {
+    "openings": [
+      [
+        4,
+        0,
+        5,
+        6
+      ],
+      [
+        3,
+        1,
+        4,
+        0
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        0,
+        3,
+        3,
+        0
+      ],
+      [
+        0,
+        0,
+        6,
+        1
+      ],
+      [
+        3,
+        0,
+        3,
+        0
+      ],
+      [
+        4,
+        0,
+        4,
+        4
+      ],
+      [
+        0,
+        6,
+        1,
+        6
+      ],
+      [
+        1,
+        0,
+        5,
+        1
+      ],
+      [
+        6,
+        6,
+        5,
+        3
+      ]
+    ],
+    "results": {
+      "2-2": {
+        "d1_wins": 4,
+        "d2_wins": 4,
+        "draws": 12
+      },
+      "2-3": {
+        "d1_wins": 8,
+        "d2_wins": 9,
+        "draws": 3
+      },
+      "2-4": {
+        "d1_wins": 5,
+        "d2_wins": 11,
+        "draws": 4
+      },
+      "2-5": {
+        "d1_wins": 7,
+        "d2_wins": 11,
+        "draws": 2
+      },
+      "2-6": {
+        "d1_wins": 5,
+        "d2_wins": 12,
+        "draws": 3
+      },
+      "2-8": {
+        "d1_wins": 5,
+        "d2_wins": 13,
+        "draws": 2
+      },
+      "3-3": {
+        "d1_wins": 9,
+        "d2_wins": 9,
+        "draws": 2
+      },
+      "3-4": {
+        "d1_wins": 5,
+        "d2_wins": 10,
+        "draws": 5
+      },
+      "3-5": {
+        "d1_wins": 6,
+        "d2_wins": 12,
+        "draws": 2
+      },
+      "3-6": {
+        "d1_wins": 5,
+        "d2_wins": 13,
+        "draws": 2
+      },
+      "3-8": {
+        "d1_wins": 2,
+        "d2_wins": 15,
+        "draws": 3
+      },
+      "4-4": {
+        "d1_wins": 8,
+        "d2_wins": 8,
+        "draws": 4
+      },
+      "4-5": {
+        "d1_wins": 8,
+        "d2_wins": 10,
+        "draws": 2
+      },
+      "4-6": {
+        "d1_wins": 7,
+        "d2_wins": 11,
+        "draws": 2
+      },
+      "4-8": {
+        "d1_wins": 6,
+        "d2_wins": 8,
+        "draws": 6
+      },
+      "5-5": {
+        "d1_wins": 7,
+        "d2_wins": 7,
+        "draws": 6
+      },
+      "5-6": {
+        "d1_wins": 10,
+        "d2_wins": 7,
+        "draws": 3
+      },
+      "5-8": {
+        "d1_wins": 5,
+        "d2_wins": 11,
+        "draws": 4
+      },
+      "6-6": {
+        "d1_wins": 9,
+        "d2_wins": 9,
+        "draws": 2
+      },
+      "6-8": {
+        "d1_wins": 7,
+        "d2_wins": 9,
+        "draws": 4
+      },
+      "8-8": {
+        "d1_wins": 8,
+        "d2_wins": 8,
+        "draws": 4
+      }
+    },
+    "score_matrix_percent": {
+      "2": {
+        "2": 50.0,
+        "3": 47.5,
+        "4": 35.0,
+        "5": 40.0,
+        "6": 32.5,
+        "8": 30.0
+      },
+      "3": {
+        "2": 52.5,
+        "3": 50.0,
+        "4": 37.5,
+        "5": 35.0,
+        "6": 30.0,
+        "8": 17.5
+      },
+      "4": {
+        "2": 65.0,
+        "3": 62.5,
+        "4": 50.0,
+        "5": 45.0,
+        "6": 40.0,
+        "8": 45.0
+      },
+      "5": {
+        "2": 60.0,
+        "3": 65.0,
+        "4": 55.0,
+        "5": 50.0,
+        "6": 57.5,
+        "8": 35.0
+      },
+      "6": {
+        "2": 67.5,
+        "3": 70.0,
+        "4": 60.0,
+        "5": 42.5,
+        "6": 50.0,
+        "8": 45.0
+      },
+      "8": {
+        "2": 70.0,
+        "3": 82.5,
+        "4": 55.0,
+        "5": 65.0,
+        "6": 55.0,
+        "8": 50.0
+      }
+    },
+    "first_player_win_rate_percent": 66.181,
+    "games": 420
+  },
+  "latency_samples": [
+    {
+      "depth": 1,
+      "position": 0,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 0.136,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 1,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 0.102,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 2,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 0.086,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 3,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 0.123,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 4,
+      "phase": "early",
+      "moves_played": 3,
+      "latency_ms": 0.121,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 5,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.147,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 6,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.107,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 7,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 0.072,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 8,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.078,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 9,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.085,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 10,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 0.085,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 11,
+      "phase": "mid",
+      "moves_played": 15,
+      "latency_ms": 0.084,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 12,
+      "phase": "mid",
+      "moves_played": 18,
+      "latency_ms": 0.079,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 13,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 0.082,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 14,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 0.097,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 15,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 0.067,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 16,
+      "phase": "mid",
+      "moves_played": 17,
+      "latency_ms": 0.115,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 17,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 0.082,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 18,
+      "phase": "mid",
+      "moves_played": 14,
+      "latency_ms": 0.075,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 19,
+      "phase": "mid",
+      "moves_played": 19,
+      "latency_ms": 0.088,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 20,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.127,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 21,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.078,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 22,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 0.069,
+      "nodes": 5,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 23,
+      "phase": "late",
+      "moves_played": 26,
+      "latency_ms": 0.075,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 24,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 0.07,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 25,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 0.066,
+      "nodes": 5,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 26,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.069,
+      "nodes": 5,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 27,
+      "phase": "late",
+      "moves_played": 23,
+      "latency_ms": 0.098,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 28,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 0.074,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 1,
+      "position": 29,
+      "phase": "late",
+      "moves_played": 29,
+      "latency_ms": 0.06,
+      "nodes": 5,
+      "cutoffs": 0
+    },
+    {
+      "depth": 2,
+      "position": 0,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 0.513,
+      "nodes": 39,
+      "cutoffs": 4
+    },
+    {
+      "depth": 2,
+      "position": 1,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 0.332,
+      "nodes": 21,
+      "cutoffs": 6
+    },
+    {
+      "depth": 2,
+      "position": 2,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 0.313,
+      "nodes": 21,
+      "cutoffs": 6
+    },
+    {
+      "depth": 2,
+      "position": 3,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 0.455,
+      "nodes": 33,
+      "cutoffs": 5
+    },
+    {
+      "depth": 2,
+      "position": 4,
+      "phase": "early",
+      "moves_played": 3,
+      "latency_ms": 0.306,
+      "nodes": 27,
+      "cutoffs": 6
+    },
+    {
+      "depth": 2,
+      "position": 5,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.382,
+      "nodes": 27,
+      "cutoffs": 6
+    },
+    {
+      "depth": 2,
+      "position": 6,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.317,
+      "nodes": 27,
+      "cutoffs": 6
+    },
+    {
+      "depth": 2,
+      "position": 7,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 0.408,
+      "nodes": 39,
+      "cutoffs": 4
+    },
+    {
+      "depth": 2,
+      "position": 8,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.083,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 2,
+      "position": 9,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.287,
+      "nodes": 21,
+      "cutoffs": 6
+    },
+    {
+      "depth": 2,
+      "position": 10,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 0.485,
+      "nodes": 33,
+      "cutoffs": 4
+    },
+    {
+      "depth": 2,
+      "position": 11,
+      "phase": "mid",
+      "moves_played": 15,
+      "latency_ms": 0.261,
+      "nodes": 21,
+      "cutoffs": 6
+    },
+    {
+      "depth": 2,
+      "position": 12,
+      "phase": "mid",
+      "moves_played": 18,
+      "latency_ms": 0.316,
+      "nodes": 26,
+      "cutoffs": 3
+    },
+    {
+      "depth": 2,
+      "position": 13,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 0.347,
+      "nodes": 28,
+      "cutoffs": 6
+    },
+    {
+      "depth": 2,
+      "position": 14,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 0.324,
+      "nodes": 21,
+      "cutoffs": 5
+    },
+    {
+      "depth": 2,
+      "position": 15,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 0.09,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 2,
+      "position": 16,
+      "phase": "mid",
+      "moves_played": 17,
+      "latency_ms": 0.326,
+      "nodes": 28,
+      "cutoffs": 5
+    },
+    {
+      "depth": 2,
+      "position": 17,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 0.344,
+      "nodes": 27,
+      "cutoffs": 6
+    },
+    {
+      "depth": 2,
+      "position": 18,
+      "phase": "mid",
+      "moves_played": 14,
+      "latency_ms": 0.34,
+      "nodes": 23,
+      "cutoffs": 5
+    },
+    {
+      "depth": 2,
+      "position": 19,
+      "phase": "mid",
+      "moves_played": 19,
+      "latency_ms": 0.331,
+      "nodes": 26,
+      "cutoffs": 6
+    },
+    {
+      "depth": 2,
+      "position": 20,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.219,
+      "nodes": 18,
+      "cutoffs": 4
+    },
+    {
+      "depth": 2,
+      "position": 21,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.216,
+      "nodes": 18,
+      "cutoffs": 4
+    },
+    {
+      "depth": 2,
+      "position": 22,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 0.224,
+      "nodes": 18,
+      "cutoffs": 3
+    },
+    {
+      "depth": 2,
+      "position": 23,
+      "phase": "late",
+      "moves_played": 26,
+      "latency_ms": 0.261,
+      "nodes": 22,
+      "cutoffs": 5
+    },
+    {
+      "depth": 2,
+      "position": 24,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 0.265,
+      "nodes": 24,
+      "cutoffs": 4
+    },
+    {
+      "depth": 2,
+      "position": 25,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 0.241,
+      "nodes": 22,
+      "cutoffs": 3
+    },
+    {
+      "depth": 2,
+      "position": 26,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.261,
+      "nodes": 23,
+      "cutoffs": 2
+    },
+    {
+      "depth": 2,
+      "position": 27,
+      "phase": "late",
+      "moves_played": 23,
+      "latency_ms": 0.194,
+      "nodes": 17,
+      "cutoffs": 4
+    },
+    {
+      "depth": 2,
+      "position": 28,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 0.371,
+      "nodes": 40,
+      "cutoffs": 0
+    },
+    {
+      "depth": 2,
+      "position": 29,
+      "phase": "late",
+      "moves_played": 29,
+      "latency_ms": 0.065,
+      "nodes": 5,
+      "cutoffs": 0
+    },
+    {
+      "depth": 3,
+      "position": 0,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 7.94,
+      "nodes": 114,
+      "cutoffs": 25
+    },
+    {
+      "depth": 3,
+      "position": 1,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 1.647,
+      "nodes": 66,
+      "cutoffs": 17
+    },
+    {
+      "depth": 3,
+      "position": 2,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 2.635,
+      "nodes": 98,
+      "cutoffs": 20
+    },
+    {
+      "depth": 3,
+      "position": 3,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 3.719,
+      "nodes": 140,
+      "cutoffs": 23
+    },
+    {
+      "depth": 3,
+      "position": 4,
+      "phase": "early",
+      "moves_played": 3,
+      "latency_ms": 3.19,
+      "nodes": 138,
+      "cutoffs": 26
+    },
+    {
+      "depth": 3,
+      "position": 5,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 2.622,
+      "nodes": 109,
+      "cutoffs": 22
+    },
+    {
+      "depth": 3,
+      "position": 6,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 1.817,
+      "nodes": 72,
+      "cutoffs": 17
+    },
+    {
+      "depth": 3,
+      "position": 7,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 2.016,
+      "nodes": 90,
+      "cutoffs": 15
+    },
+    {
+      "depth": 3,
+      "position": 8,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.229,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 3,
+      "position": 9,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 2.087,
+      "nodes": 83,
+      "cutoffs": 12
+    },
+    {
+      "depth": 3,
+      "position": 10,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 1.682,
+      "nodes": 72,
+      "cutoffs": 10
+    },
+    {
+      "depth": 3,
+      "position": 11,
+      "phase": "mid",
+      "moves_played": 15,
+      "latency_ms": 2.161,
+      "nodes": 83,
+      "cutoffs": 12
+    },
+    {
+      "depth": 3,
+      "position": 12,
+      "phase": "mid",
+      "moves_played": 18,
+      "latency_ms": 1.75,
+      "nodes": 74,
+      "cutoffs": 18
+    },
+    {
+      "depth": 3,
+      "position": 13,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 1.659,
+      "nodes": 67,
+      "cutoffs": 18
+    },
+    {
+      "depth": 3,
+      "position": 14,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 1.721,
+      "nodes": 67,
+      "cutoffs": 16
+    },
+    {
+      "depth": 3,
+      "position": 15,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 0.139,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 3,
+      "position": 16,
+      "phase": "mid",
+      "moves_played": 17,
+      "latency_ms": 2.678,
+      "nodes": 111,
+      "cutoffs": 20
+    },
+    {
+      "depth": 3,
+      "position": 17,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 1.451,
+      "nodes": 60,
+      "cutoffs": 18
+    },
+    {
+      "depth": 3,
+      "position": 18,
+      "phase": "mid",
+      "moves_played": 14,
+      "latency_ms": 2.328,
+      "nodes": 93,
+      "cutoffs": 17
+    },
+    {
+      "depth": 3,
+      "position": 19,
+      "phase": "mid",
+      "moves_played": 19,
+      "latency_ms": 1.592,
+      "nodes": 63,
+      "cutoffs": 17
+    },
+    {
+      "depth": 3,
+      "position": 20,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.996,
+      "nodes": 44,
+      "cutoffs": 9
+    },
+    {
+      "depth": 3,
+      "position": 21,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 1.708,
+      "nodes": 70,
+      "cutoffs": 8
+    },
+    {
+      "depth": 3,
+      "position": 22,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 0.686,
+      "nodes": 36,
+      "cutoffs": 10
+    },
+    {
+      "depth": 3,
+      "position": 23,
+      "phase": "late",
+      "moves_played": 26,
+      "latency_ms": 1.628,
+      "nodes": 72,
+      "cutoffs": 13
+    },
+    {
+      "depth": 3,
+      "position": 24,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 1.561,
+      "nodes": 71,
+      "cutoffs": 17
+    },
+    {
+      "depth": 3,
+      "position": 25,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 0.806,
+      "nodes": 41,
+      "cutoffs": 11
+    },
+    {
+      "depth": 3,
+      "position": 26,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.772,
+      "nodes": 38,
+      "cutoffs": 6
+    },
+    {
+      "depth": 3,
+      "position": 27,
+      "phase": "late",
+      "moves_played": 23,
+      "latency_ms": 1.182,
+      "nodes": 51,
+      "cutoffs": 8
+    },
+    {
+      "depth": 3,
+      "position": 28,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 0.793,
+      "nodes": 40,
+      "cutoffs": 0
+    },
+    {
+      "depth": 3,
+      "position": 29,
+      "phase": "late",
+      "moves_played": 29,
+      "latency_ms": 0.127,
+      "nodes": 5,
+      "cutoffs": 0
+    },
+    {
+      "depth": 4,
+      "position": 0,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 6.269,
+      "nodes": 266,
+      "cutoffs": 54
+    },
+    {
+      "depth": 4,
+      "position": 1,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 3.674,
+      "nodes": 148,
+      "cutoffs": 45
+    },
+    {
+      "depth": 4,
+      "position": 2,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 5.851,
+      "nodes": 237,
+      "cutoffs": 60
+    },
+    {
+      "depth": 4,
+      "position": 3,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 11.418,
+      "nodes": 435,
+      "cutoffs": 95
+    },
+    {
+      "depth": 4,
+      "position": 4,
+      "phase": "early",
+      "moves_played": 3,
+      "latency_ms": 6.546,
+      "nodes": 268,
+      "cutoffs": 80
+    },
+    {
+      "depth": 4,
+      "position": 5,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 7.094,
+      "nodes": 299,
+      "cutoffs": 69
+    },
+    {
+      "depth": 4,
+      "position": 6,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 4.182,
+      "nodes": 170,
+      "cutoffs": 41
+    },
+    {
+      "depth": 4,
+      "position": 7,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 4.378,
+      "nodes": 188,
+      "cutoffs": 48
+    },
+    {
+      "depth": 4,
+      "position": 8,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.153,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 4,
+      "position": 9,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 4.493,
+      "nodes": 184,
+      "cutoffs": 50
+    },
+    {
+      "depth": 4,
+      "position": 10,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 4.482,
+      "nodes": 179,
+      "cutoffs": 40
+    },
+    {
+      "depth": 4,
+      "position": 11,
+      "phase": "mid",
+      "moves_played": 15,
+      "latency_ms": 4.11,
+      "nodes": 178,
+      "cutoffs": 49
+    },
+    {
+      "depth": 4,
+      "position": 12,
+      "phase": "mid",
+      "moves_played": 18,
+      "latency_ms": 5.169,
+      "nodes": 230,
+      "cutoffs": 61
+    },
+    {
+      "depth": 4,
+      "position": 13,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 3.676,
+      "nodes": 157,
+      "cutoffs": 41
+    },
+    {
+      "depth": 4,
+      "position": 14,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 3.405,
+      "nodes": 149,
+      "cutoffs": 45
+    },
+    {
+      "depth": 4,
+      "position": 15,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 0.132,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 4,
+      "position": 16,
+      "phase": "mid",
+      "moves_played": 17,
+      "latency_ms": 6.813,
+      "nodes": 344,
+      "cutoffs": 65
+    },
+    {
+      "depth": 4,
+      "position": 17,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 3.194,
+      "nodes": 138,
+      "cutoffs": 36
+    },
+    {
+      "depth": 4,
+      "position": 18,
+      "phase": "mid",
+      "moves_played": 14,
+      "latency_ms": 5.439,
+      "nodes": 232,
+      "cutoffs": 54
+    },
+    {
+      "depth": 4,
+      "position": 19,
+      "phase": "mid",
+      "moves_played": 19,
+      "latency_ms": 3.843,
+      "nodes": 161,
+      "cutoffs": 43
+    },
+    {
+      "depth": 4,
+      "position": 20,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 2.153,
+      "nodes": 93,
+      "cutoffs": 25
+    },
+    {
+      "depth": 4,
+      "position": 21,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 3.413,
+      "nodes": 147,
+      "cutoffs": 42
+    },
+    {
+      "depth": 4,
+      "position": 22,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 1.31,
+      "nodes": 65,
+      "cutoffs": 19
+    },
+    {
+      "depth": 4,
+      "position": 23,
+      "phase": "late",
+      "moves_played": 26,
+      "latency_ms": 3.486,
+      "nodes": 154,
+      "cutoffs": 40
+    },
+    {
+      "depth": 4,
+      "position": 24,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 4.113,
+      "nodes": 179,
+      "cutoffs": 37
+    },
+    {
+      "depth": 4,
+      "position": 25,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 1.43,
+      "nodes": 71,
+      "cutoffs": 19
+    },
+    {
+      "depth": 4,
+      "position": 26,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 1.229,
+      "nodes": 63,
+      "cutoffs": 14
+    },
+    {
+      "depth": 4,
+      "position": 27,
+      "phase": "late",
+      "moves_played": 23,
+      "latency_ms": 2.158,
+      "nodes": 106,
+      "cutoffs": 28
+    },
+    {
+      "depth": 4,
+      "position": 28,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 0.706,
+      "nodes": 40,
+      "cutoffs": 0
+    },
+    {
+      "depth": 4,
+      "position": 29,
+      "phase": "late",
+      "moves_played": 29,
+      "latency_ms": 0.117,
+      "nodes": 5,
+      "cutoffs": 0
+    },
+    {
+      "depth": 5,
+      "position": 0,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 18.042,
+      "nodes": 757,
+      "cutoffs": 220
+    },
+    {
+      "depth": 5,
+      "position": 1,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 8.414,
+      "nodes": 344,
+      "cutoffs": 85
+    },
+    {
+      "depth": 5,
+      "position": 2,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 11.879,
+      "nodes": 502,
+      "cutoffs": 112
+    },
+    {
+      "depth": 5,
+      "position": 3,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 27.24,
+      "nodes": 1095,
+      "cutoffs": 279
+    },
+    {
+      "depth": 5,
+      "position": 4,
+      "phase": "early",
+      "moves_played": 3,
+      "latency_ms": 16.884,
+      "nodes": 802,
+      "cutoffs": 175
+    },
+    {
+      "depth": 5,
+      "position": 5,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 18.872,
+      "nodes": 784,
+      "cutoffs": 192
+    },
+    {
+      "depth": 5,
+      "position": 6,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 14.199,
+      "nodes": 574,
+      "cutoffs": 175
+    },
+    {
+      "depth": 5,
+      "position": 7,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 11.176,
+      "nodes": 500,
+      "cutoffs": 113
+    },
+    {
+      "depth": 5,
+      "position": 8,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.167,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 5,
+      "position": 9,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 14.995,
+      "nodes": 624,
+      "cutoffs": 132
+    },
+    {
+      "depth": 5,
+      "position": 10,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 7.736,
+      "nodes": 317,
+      "cutoffs": 67
+    },
+    {
+      "depth": 5,
+      "position": 11,
+      "phase": "mid",
+      "moves_played": 15,
+      "latency_ms": 9.397,
+      "nodes": 417,
+      "cutoffs": 87
+    },
+    {
+      "depth": 5,
+      "position": 12,
+      "phase": "mid",
+      "moves_played": 18,
+      "latency_ms": 10.083,
+      "nodes": 441,
+      "cutoffs": 120
+    },
+    {
+      "depth": 5,
+      "position": 13,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 6.43,
+      "nodes": 329,
+      "cutoffs": 101
+    },
+    {
+      "depth": 5,
+      "position": 14,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 3.823,
+      "nodes": 321,
+      "cutoffs": 84
+    },
+    {
+      "depth": 5,
+      "position": 15,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 0.073,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 5,
+      "position": 16,
+      "phase": "mid",
+      "moves_played": 17,
+      "latency_ms": 8.908,
+      "nodes": 764,
+      "cutoffs": 177
+    },
+    {
+      "depth": 5,
+      "position": 17,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 4.388,
+      "nodes": 246,
+      "cutoffs": 83
+    },
+    {
+      "depth": 5,
+      "position": 18,
+      "phase": "mid",
+      "moves_played": 14,
+      "latency_ms": 5.987,
+      "nodes": 498,
+      "cutoffs": 126
+    },
+    {
+      "depth": 5,
+      "position": 19,
+      "phase": "mid",
+      "moves_played": 19,
+      "latency_ms": 3.769,
+      "nodes": 319,
+      "cutoffs": 92
+    },
+    {
+      "depth": 5,
+      "position": 20,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 2.087,
+      "nodes": 171,
+      "cutoffs": 45
+    },
+    {
+      "depth": 5,
+      "position": 21,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 4.248,
+      "nodes": 368,
+      "cutoffs": 91
+    },
+    {
+      "depth": 5,
+      "position": 22,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 0.968,
+      "nodes": 106,
+      "cutoffs": 32
+    },
+    {
+      "depth": 5,
+      "position": 23,
+      "phase": "late",
+      "moves_played": 26,
+      "latency_ms": 3.29,
+      "nodes": 310,
+      "cutoffs": 83
+    },
+    {
+      "depth": 5,
+      "position": 24,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 3.551,
+      "nodes": 325,
+      "cutoffs": 82
+    },
+    {
+      "depth": 5,
+      "position": 25,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 1.084,
+      "nodes": 115,
+      "cutoffs": 36
+    },
+    {
+      "depth": 5,
+      "position": 26,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.568,
+      "nodes": 63,
+      "cutoffs": 14
+    },
+    {
+      "depth": 5,
+      "position": 27,
+      "phase": "late",
+      "moves_played": 23,
+      "latency_ms": 2.333,
+      "nodes": 223,
+      "cutoffs": 52
+    },
+    {
+      "depth": 5,
+      "position": 28,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 0.346,
+      "nodes": 40,
+      "cutoffs": 0
+    },
+    {
+      "depth": 5,
+      "position": 29,
+      "phase": "late",
+      "moves_played": 29,
+      "latency_ms": 0.06,
+      "nodes": 5,
+      "cutoffs": 0
+    },
+    {
+      "depth": 6,
+      "position": 0,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 29.236,
+      "nodes": 2255,
+      "cutoffs": 550
+    },
+    {
+      "depth": 6,
+      "position": 1,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 11.144,
+      "nodes": 854,
+      "cutoffs": 217
+    },
+    {
+      "depth": 6,
+      "position": 2,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 12.697,
+      "nodes": 916,
+      "cutoffs": 283
+    },
+    {
+      "depth": 6,
+      "position": 3,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 26.613,
+      "nodes": 2005,
+      "cutoffs": 520
+    },
+    {
+      "depth": 6,
+      "position": 4,
+      "phase": "early",
+      "moves_played": 3,
+      "latency_ms": 18.942,
+      "nodes": 1495,
+      "cutoffs": 436
+    },
+    {
+      "depth": 6,
+      "position": 5,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 30.743,
+      "nodes": 1569,
+      "cutoffs": 452
+    },
+    {
+      "depth": 6,
+      "position": 6,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 17.856,
+      "nodes": 1438,
+      "cutoffs": 347
+    },
+    {
+      "depth": 6,
+      "position": 7,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 11.88,
+      "nodes": 996,
+      "cutoffs": 288
+    },
+    {
+      "depth": 6,
+      "position": 8,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.086,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 6,
+      "position": 9,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 17.522,
+      "nodes": 1403,
+      "cutoffs": 368
+    },
+    {
+      "depth": 6,
+      "position": 10,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 9.267,
+      "nodes": 762,
+      "cutoffs": 188
+    },
+    {
+      "depth": 6,
+      "position": 11,
+      "phase": "mid",
+      "moves_played": 15,
+      "latency_ms": 5.736,
+      "nodes": 417,
+      "cutoffs": 87
+    },
+    {
+      "depth": 6,
+      "position": 12,
+      "phase": "mid",
+      "moves_played": 18,
+      "latency_ms": 16.1,
+      "nodes": 843,
+      "cutoffs": 233
+    },
+    {
+      "depth": 6,
+      "position": 13,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 9.816,
+      "nodes": 729,
+      "cutoffs": 220
+    },
+    {
+      "depth": 6,
+      "position": 14,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 7.834,
+      "nodes": 643,
+      "cutoffs": 209
+    },
+    {
+      "depth": 6,
+      "position": 15,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 0.075,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 6,
+      "position": 16,
+      "phase": "mid",
+      "moves_played": 17,
+      "latency_ms": 15.193,
+      "nodes": 1250,
+      "cutoffs": 314
+    },
+    {
+      "depth": 6,
+      "position": 17,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 12.397,
+      "nodes": 948,
+      "cutoffs": 232
+    },
+    {
+      "depth": 6,
+      "position": 18,
+      "phase": "mid",
+      "moves_played": 14,
+      "latency_ms": 17.956,
+      "nodes": 1227,
+      "cutoffs": 330
+    },
+    {
+      "depth": 6,
+      "position": 19,
+      "phase": "mid",
+      "moves_played": 19,
+      "latency_ms": 12.56,
+      "nodes": 627,
+      "cutoffs": 190
+    },
+    {
+      "depth": 6,
+      "position": 20,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 4.777,
+      "nodes": 253,
+      "cutoffs": 79
+    },
+    {
+      "depth": 6,
+      "position": 21,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 11.605,
+      "nodes": 687,
+      "cutoffs": 215
+    },
+    {
+      "depth": 6,
+      "position": 22,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 2.463,
+      "nodes": 317,
+      "cutoffs": 106
+    },
+    {
+      "depth": 6,
+      "position": 23,
+      "phase": "late",
+      "moves_played": 26,
+      "latency_ms": 3.384,
+      "nodes": 310,
+      "cutoffs": 83
+    },
+    {
+      "depth": 6,
+      "position": 24,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 7.165,
+      "nodes": 614,
+      "cutoffs": 158
+    },
+    {
+      "depth": 6,
+      "position": 25,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 9.137,
+      "nodes": 1135,
+      "cutoffs": 421
+    },
+    {
+      "depth": 6,
+      "position": 26,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.663,
+      "nodes": 63,
+      "cutoffs": 14
+    },
+    {
+      "depth": 6,
+      "position": 27,
+      "phase": "late",
+      "moves_played": 23,
+      "latency_ms": 4.2,
+      "nodes": 404,
+      "cutoffs": 118
+    },
+    {
+      "depth": 6,
+      "position": 28,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 0.36,
+      "nodes": 40,
+      "cutoffs": 0
+    },
+    {
+      "depth": 6,
+      "position": 29,
+      "phase": "late",
+      "moves_played": 29,
+      "latency_ms": 0.063,
+      "nodes": 5,
+      "cutoffs": 0
+    },
+    {
+      "depth": 7,
+      "position": 0,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 77.619,
+      "nodes": 5903,
+      "cutoffs": 1598
+    },
+    {
+      "depth": 7,
+      "position": 1,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 32.675,
+      "nodes": 1765,
+      "cutoffs": 458
+    },
+    {
+      "depth": 7,
+      "position": 2,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 55.217,
+      "nodes": 2383,
+      "cutoffs": 580
+    },
+    {
+      "depth": 7,
+      "position": 3,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 123.015,
+      "nodes": 4532,
+      "cutoffs": 1350
+    },
+    {
+      "depth": 7,
+      "position": 4,
+      "phase": "early",
+      "moves_played": 3,
+      "latency_ms": 80.066,
+      "nodes": 4592,
+      "cutoffs": 1033
+    },
+    {
+      "depth": 7,
+      "position": 5,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 41.504,
+      "nodes": 3329,
+      "cutoffs": 913
+    },
+    {
+      "depth": 7,
+      "position": 6,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 43.552,
+      "nodes": 3460,
+      "cutoffs": 1026
+    },
+    {
+      "depth": 7,
+      "position": 7,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 23.162,
+      "nodes": 1946,
+      "cutoffs": 466
+    },
+    {
+      "depth": 7,
+      "position": 8,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.088,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 7,
+      "position": 9,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 44.432,
+      "nodes": 3056,
+      "cutoffs": 767
+    },
+    {
+      "depth": 7,
+      "position": 10,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 22.972,
+      "nodes": 1708,
+      "cutoffs": 426
+    },
+    {
+      "depth": 7,
+      "position": 11,
+      "phase": "mid",
+      "moves_played": 15,
+      "latency_ms": 5.064,
+      "nodes": 417,
+      "cutoffs": 87
+    },
+    {
+      "depth": 7,
+      "position": 12,
+      "phase": "mid",
+      "moves_played": 18,
+      "latency_ms": 17.823,
+      "nodes": 1385,
+      "cutoffs": 345
+    },
+    {
+      "depth": 7,
+      "position": 13,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 18.67,
+      "nodes": 1437,
+      "cutoffs": 465
+    },
+    {
+      "depth": 7,
+      "position": 14,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 13.873,
+      "nodes": 1040,
+      "cutoffs": 322
+    },
+    {
+      "depth": 7,
+      "position": 15,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 0.084,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 7,
+      "position": 16,
+      "phase": "mid",
+      "moves_played": 17,
+      "latency_ms": 33.767,
+      "nodes": 2751,
+      "cutoffs": 778
+    },
+    {
+      "depth": 7,
+      "position": 17,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 22.227,
+      "nodes": 1798,
+      "cutoffs": 572
+    },
+    {
+      "depth": 7,
+      "position": 18,
+      "phase": "mid",
+      "moves_played": 14,
+      "latency_ms": 34.781,
+      "nodes": 2648,
+      "cutoffs": 801
+    },
+    {
+      "depth": 7,
+      "position": 19,
+      "phase": "mid",
+      "moves_played": 19,
+      "latency_ms": 13.916,
+      "nodes": 1141,
+      "cutoffs": 379
+    },
+    {
+      "depth": 7,
+      "position": 20,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 3.966,
+      "nodes": 360,
+      "cutoffs": 113
+    },
+    {
+      "depth": 7,
+      "position": 21,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 12.879,
+      "nodes": 1122,
+      "cutoffs": 347
+    },
+    {
+      "depth": 7,
+      "position": 22,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 2.626,
+      "nodes": 317,
+      "cutoffs": 106
+    },
+    {
+      "depth": 7,
+      "position": 23,
+      "phase": "late",
+      "moves_played": 26,
+      "latency_ms": 3.209,
+      "nodes": 310,
+      "cutoffs": 83
+    },
+    {
+      "depth": 7,
+      "position": 24,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 14.054,
+      "nodes": 1211,
+      "cutoffs": 367
+    },
+    {
+      "depth": 7,
+      "position": 25,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 13.58,
+      "nodes": 1135,
+      "cutoffs": 421
+    },
+    {
+      "depth": 7,
+      "position": 26,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 0.663,
+      "nodes": 63,
+      "cutoffs": 14
+    },
+    {
+      "depth": 7,
+      "position": 27,
+      "phase": "late",
+      "moves_played": 23,
+      "latency_ms": 7.335,
+      "nodes": 703,
+      "cutoffs": 194
+    },
+    {
+      "depth": 7,
+      "position": 28,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 0.366,
+      "nodes": 40,
+      "cutoffs": 0
+    },
+    {
+      "depth": 7,
+      "position": 29,
+      "phase": "late",
+      "moves_played": 29,
+      "latency_ms": 0.065,
+      "nodes": 5,
+      "cutoffs": 0
+    },
+    {
+      "depth": 8,
+      "position": 0,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 148.539,
+      "nodes": 11516,
+      "cutoffs": 3153
+    },
+    {
+      "depth": 8,
+      "position": 1,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 41.006,
+      "nodes": 3234,
+      "cutoffs": 970
+    },
+    {
+      "depth": 8,
+      "position": 2,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 43.11,
+      "nodes": 3582,
+      "cutoffs": 1105
+    },
+    {
+      "depth": 8,
+      "position": 3,
+      "phase": "early",
+      "moves_played": 7,
+      "latency_ms": 115.949,
+      "nodes": 8656,
+      "cutoffs": 2362
+    },
+    {
+      "depth": 8,
+      "position": 4,
+      "phase": "early",
+      "moves_played": 3,
+      "latency_ms": 122.636,
+      "nodes": 8755,
+      "cutoffs": 2555
+    },
+    {
+      "depth": 8,
+      "position": 5,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 95.79,
+      "nodes": 6312,
+      "cutoffs": 1927
+    },
+    {
+      "depth": 8,
+      "position": 6,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 114.163,
+      "nodes": 6231,
+      "cutoffs": 1814
+    },
+    {
+      "depth": 8,
+      "position": 7,
+      "phase": "early",
+      "moves_played": 5,
+      "latency_ms": 44.971,
+      "nodes": 3685,
+      "cutoffs": 1047
+    },
+    {
+      "depth": 8,
+      "position": 8,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 0.085,
+      "nodes": 7,
+      "cutoffs": 0
+    },
+    {
+      "depth": 8,
+      "position": 9,
+      "phase": "early",
+      "moves_played": 8,
+      "latency_ms": 64.419,
+      "nodes": 5252,
+      "cutoffs": 1584
+    },
+    {
+      "depth": 8,
+      "position": 10,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 42.886,
+      "nodes": 3475,
+      "cutoffs": 1008
+    },
+    {
+      "depth": 8,
+      "position": 11,
+      "phase": "mid",
+      "moves_played": 15,
+      "latency_ms": 4.906,
+      "nodes": 417,
+      "cutoffs": 87
+    },
+    {
+      "depth": 8,
+      "position": 12,
+      "phase": "mid",
+      "moves_played": 18,
+      "latency_ms": 16.111,
+      "nodes": 1385,
+      "cutoffs": 345
+    },
+    {
+      "depth": 8,
+      "position": 13,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 31.619,
+      "nodes": 2563,
+      "cutoffs": 878
+    },
+    {
+      "depth": 8,
+      "position": 14,
+      "phase": "mid",
+      "moves_played": 12,
+      "latency_ms": 20.866,
+      "nodes": 1626,
+      "cutoffs": 536
+    },
+    {
+      "depth": 8,
+      "position": 15,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 0.074,
+      "nodes": 6,
+      "cutoffs": 0
+    },
+    {
+      "depth": 8,
+      "position": 16,
+      "phase": "mid",
+      "moves_played": 17,
+      "latency_ms": 49.496,
+      "nodes": 4020,
+      "cutoffs": 1226
+    },
+    {
+      "depth": 8,
+      "position": 17,
+      "phase": "mid",
+      "moves_played": 9,
+      "latency_ms": 45.328,
+      "nodes": 3670,
+      "cutoffs": 1036
+    },
+    {
+      "depth": 8,
+      "position": 18,
+      "phase": "mid",
+      "moves_played": 14,
+      "latency_ms": 66.879,
+      "nodes": 5266,
+      "cutoffs": 1595
+    },
+    {
+      "depth": 8,
+      "position": 19,
+      "phase": "mid",
+      "moves_played": 19,
+      "latency_ms": 34.227,
+      "nodes": 2187,
+      "cutoffs": 685
+    },
+    {
+      "depth": 8,
+      "position": 20,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 7.293,
+      "nodes": 492,
+      "cutoffs": 171
+    },
+    {
+      "depth": 8,
+      "position": 21,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 33.381,
+      "nodes": 1900,
+      "cutoffs": 632
+    },
+    {
+      "depth": 8,
+      "position": 22,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 4.34,
+      "nodes": 317,
+      "cutoffs": 106
+    },
+    {
+      "depth": 8,
+      "position": 23,
+      "phase": "late",
+      "moves_played": 26,
+      "latency_ms": 5.71,
+      "nodes": 310,
+      "cutoffs": 83
+    },
+    {
+      "depth": 8,
+      "position": 24,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 34.661,
+      "nodes": 1983,
+      "cutoffs": 597
+    },
+    {
+      "depth": 8,
+      "position": 25,
+      "phase": "late",
+      "moves_played": 30,
+      "latency_ms": 15.158,
+      "nodes": 1135,
+      "cutoffs": 421
+    },
+    {
+      "depth": 8,
+      "position": 26,
+      "phase": "late",
+      "moves_played": 27,
+      "latency_ms": 1.109,
+      "nodes": 63,
+      "cutoffs": 14
+    },
+    {
+      "depth": 8,
+      "position": 27,
+      "phase": "late",
+      "moves_played": 23,
+      "latency_ms": 16.615,
+      "nodes": 1141,
+      "cutoffs": 356
+    },
+    {
+      "depth": 8,
+      "position": 28,
+      "phase": "late",
+      "moves_played": 21,
+      "latency_ms": 0.558,
+      "nodes": 40,
+      "cutoffs": 0
+    },
+    {
+      "depth": 8,
+      "position": 29,
+      "phase": "late",
+      "moves_played": 29,
+      "latency_ms": 0.067,
+      "nodes": 5,
+      "cutoffs": 0
+    }
+  ],
+  "tournament_games": [
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 9.378
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 9.028
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.126
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.109
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 7.025
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 6.831
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 7.723
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 8.337
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 9.923
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 10.166
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 27,
+      "duration_ms": 8.223
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 27,
+      "duration_ms": 8.042
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 6.484
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 6.452
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 6.427
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 6.289
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 8.789
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 8.706
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 11.718
+    },
+    {
+      "depth1": 2,
+      "depth2": 2,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 11.841
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 32.131
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 23.03
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.191
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.171
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 17.839
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 12.004
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 30.347
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 25.594
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 25,
+      "duration_ms": 22.648
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 34,
+      "duration_ms": 28.928
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 22.292
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 23,
+      "duration_ms": 15.771
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 18.131
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 9.137
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 21.256
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 24.444
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 34.322
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 25,
+      "duration_ms": 22.156
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 15.811
+    },
+    {
+      "depth1": 2,
+      "depth2": 3,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 19.262
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 41.964
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 36.537
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.238
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.181
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 43.895
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 15,
+      "duration_ms": 16.33
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 30,
+      "duration_ms": 32.92
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 39.109
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 70.387
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 39.581
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 29,
+      "duration_ms": 30.674
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 37,
+      "duration_ms": 23.804
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 29.032
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 8.02
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 24,
+      "duration_ms": 24.834
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 22.859
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 47.279
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 38.979
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 30.465
+    },
+    {
+      "depth1": 2,
+      "depth2": 4,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 42.891
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 82.066
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 137.077
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.128
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.111
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 61.057
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 58.196
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 34,
+      "duration_ms": 77.891
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 78.829
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 16,
+      "duration_ms": 32.707
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 241.651
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 109.453
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 15,
+      "duration_ms": 35.185
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 107.311
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 18.733
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 77.104
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 52.292
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 86.42
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 71.788
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 70.543
+    },
+    {
+      "depth1": 2,
+      "depth2": 5,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 80.989
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 134.639
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 147.98
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.126
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.109
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 105.754
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 124.984
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 202.169
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 29,
+      "duration_ms": 210.79
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 16,
+      "duration_ms": 77.72
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 177.339
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 156.744
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 15,
+      "duration_ms": 31.354
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 106.466
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 30.849
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 147.596
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 95.411
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 221.739
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 137.969
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 146.952
+    },
+    {
+      "depth1": 2,
+      "depth2": 6,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 29,
+      "duration_ms": 199.302
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 472.45
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 527.619
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.125
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.107
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 366.311
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 454.225
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 737.884
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 694.118
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 488.984
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 460.567
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 616.474
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 239.812
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 353.816
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 127.369
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 34,
+      "duration_ms": 574.365
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 374.802
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 18,
+      "duration_ms": 214.984
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 713.774
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 780.729
+    },
+    {
+      "depth1": 2,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 880.975
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 20.098
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 20.02
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.117
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.099
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 13.904
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 14.673
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 29,
+      "duration_ms": 16.209
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 29,
+      "duration_ms": 17.156
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 26.002
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 23.738
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 21,
+      "duration_ms": 15.393
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 21,
+      "duration_ms": 13.785
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 5.821
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 5.643
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 17.037
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 18.533
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 24.853
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 27.98
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 11.623
+    },
+    {
+      "depth1": 3,
+      "depth2": 3,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 11.728
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 39.724
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 35.054
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.211
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.114
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 35.066
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 40.628
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 29,
+      "duration_ms": 35.746
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 37,
+      "duration_ms": 38.196
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 46.477
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 58.09
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 40.825
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 27,
+      "duration_ms": 36.571
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 25.578
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 9.703
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 41.234
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 28.95
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 16,
+      "duration_ms": 18.774
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 23,
+      "duration_ms": 27.968
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 34,
+      "duration_ms": 43.295
+    },
+    {
+      "depth1": 3,
+      "depth2": 4,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 24.711
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 75.176
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 95.534
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.164
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.107
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 58.849
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 56.371
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 93.134
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 85.589
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 64.541
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 127.051
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 84.349
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 22.618
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 34.201
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 18.44
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 83.444
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 52.658
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 34,
+      "duration_ms": 65.908
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 85.958
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 83.968
+    },
+    {
+      "depth1": 3,
+      "depth2": 5,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 54.43
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 165.97
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 179.084
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.197
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.164
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 115.371
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 141.063
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 198.852
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 29,
+      "duration_ms": 190.264
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 34,
+      "duration_ms": 178.967
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 23,
+      "duration_ms": 159.016
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 161.98
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 55.867
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 117.466
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 32.527
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 129.972
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 96.042
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 138.786
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 161.725
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 163.326
+    },
+    {
+      "depth1": 3,
+      "depth2": 6,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 74.095
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 18,
+      "duration_ms": 162.237
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 660.012
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.195
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.188
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 323.142
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 513.379
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 24,
+      "duration_ms": 604.899
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 740.14
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 591.921
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 578.864
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 519.487
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 127.314
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 20,
+      "duration_ms": 426.714
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 13,
+      "duration_ms": 141.759
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 710.067
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 529.672
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 16,
+      "duration_ms": 213.273
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 913.444
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 1051.282
+    },
+    {
+      "depth1": 3,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 425.094
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 34,
+      "duration_ms": 48.318
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 34,
+      "duration_ms": 49.948
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.119
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.104
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 79.502
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 104.375
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 29,
+      "duration_ms": 90.89
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 29,
+      "duration_ms": 59.906
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 24,
+      "duration_ms": 76.771
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 24,
+      "duration_ms": 83.868
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 78.018
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 71.71
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 46.166
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 40.811
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 64.424
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 62.468
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 86.518
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 81.655
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 84.246
+    },
+    {
+      "depth1": 4,
+      "depth2": 4,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 73.068
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 78.748
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 136.602
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.193
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.164
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 102.728
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 53.528
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 72.671
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 92.912
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 113.458
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 140.639
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 41,
+      "duration_ms": 74.076
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 48.165
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 76.97
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 89.154
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 37,
+      "duration_ms": 98.887
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 118.419
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 105.668
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 98.112
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 103.46
+    },
+    {
+      "depth1": 4,
+      "depth2": 5,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 116.915
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 34,
+      "duration_ms": 131.35
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 275.345
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.124
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.103
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 180.722
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 112.649
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 332.512
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 153.773
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 199.823
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 274.703
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 197.768
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 53.027
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 146.421
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 137.676
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 139.734
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 220.332
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 150.37
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 150.85
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 192.73
+    },
+    {
+      "depth1": 4,
+      "depth2": 6,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 212.688
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 485.555
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 740.224
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.119
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.102
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 533.576
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 315.69
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 691.866
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 633.577
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 28,
+      "duration_ms": 585.707
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 772.979
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 494.954
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 17,
+      "duration_ms": 106.943
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 411.21
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 363.176
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 648.716
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 606.765
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 33,
+      "duration_ms": 456.072
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 704.529
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 798.574
+    },
+    {
+      "depth1": 4,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 711.749
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 153.083
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 152.586
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.132
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.107
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 65.872
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 71.404
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 119.537
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 125.764
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 28,
+      "duration_ms": 113.783
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 28,
+      "duration_ms": 121.977
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 118.685
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 111.255
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 83.742
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 85.186
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 114.213
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 111.078
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 132.217
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 146.138
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 139.022
+    },
+    {
+      "depth1": 5,
+      "depth2": 5,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 128.65
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 240.994
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 314.884
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.177
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.165
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 211.105
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 155.638
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 184.952
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 175.017
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 240.988
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 364.038
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 60.696
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 177.608
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 107.088
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 160.828
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 288.999
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 188.591
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 390.324
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 25,
+      "duration_ms": 165.315
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 198.988
+    },
+    {
+      "depth1": 5,
+      "depth2": 6,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 273.361
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 749.931
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 956.242
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.156
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.106
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 225.111
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 520.229
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 623.698
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 23,
+      "duration_ms": 378.517
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 34,
+      "duration_ms": 661.67
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 711.957
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 156.682
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 497.894
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 242.622
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 357.174
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 692.786
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 772.697
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 870.927
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 823.635
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 1021.097
+    },
+    {
+      "depth1": 5,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 587.825
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 321.761
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 323.221
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.186
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.124
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 202.08
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 221.799
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 305.751
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 272.236
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 581.878
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 506.404
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 65.133
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 63.344
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 278.426
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 293.669
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 319.371
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 371.245
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 41,
+      "duration_ms": 489.707
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 41,
+      "duration_ms": 496.887
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 298.28
+    },
+    {
+      "depth1": 6,
+      "depth2": 6,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 300.766
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 765.437
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 1190.202
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.251
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.201
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 999.446
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 576.617
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 724.484
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 992.476
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 36,
+      "duration_ms": 770.797
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 38,
+      "duration_ms": 1709.032
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 19,
+      "duration_ms": 121.496
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 21,
+      "duration_ms": 203.408
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 488.239
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 603.822
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 37,
+      "duration_ms": 627.859
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 31,
+      "duration_ms": 576.789
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 40,
+      "duration_ms": 1103.511
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 901.98
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 1394.742
+    },
+    {
+      "depth1": 6,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 35,
+      "duration_ms": 805.452
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 988.471
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        5,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 1165.387
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.223
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        3,
+        1,
+        4,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 7,
+      "duration_ms": 0.18
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 1185.553
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        2,
+        3,
+        4,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 1014.254
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 1595.52
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 39,
+      "duration_ms": 1607.792
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 1412.392
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        0,
+        0,
+        6,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "draw",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 1371.736
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 21,
+      "duration_ms": 268.878
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 21,
+      "duration_ms": 311.125
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 836.849
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 915.31
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 1,
+      "winner": "d1",
+      "first_player_won": true,
+      "moves": 37,
+      "duration_ms": 1202.727
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        0,
+        6,
+        1,
+        6
+      ],
+      "depth1_piece": 2,
+      "winner": "d2",
+      "first_player_won": true,
+      "moves": 37,
+      "duration_ms": 1135.061
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 1740.624
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        1,
+        0,
+        5,
+        1
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 32,
+      "duration_ms": 1644.862
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 1,
+      "winner": "d2",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 2011.78
+    },
+    {
+      "depth1": 8,
+      "depth2": 8,
+      "opening": [
+        6,
+        6,
+        5,
+        3
+      ],
+      "depth1_piece": 2,
+      "winner": "d1",
+      "first_player_won": false,
+      "moves": 42,
+      "duration_ms": 1897.291
+    }
+  ]
+}

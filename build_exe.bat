@@ -4,6 +4,9 @@ echo   Connect Four Pro - EXE Builder
 echo ============================================
 echo.
 
+REM Proje bagimliliklari (exe'ye bunlar paketlenir)
+pip install -q -r src\requirements.txt
+
 REM PyInstaller yüklü mü kontrol et
 pip show pyinstaller >nul 2>&1
 if %errorlevel% neq 0 (
@@ -17,16 +20,21 @@ echo.
 
 cd src
 
+REM Ikon dosyasi varsa kullan (yoksa PyInstaller hata vermesin)
+set ICON_ARG=
+if exist "..\assets\icon.ico" set ICON_ARG=--icon "../assets/icon.ico"
+
 REM Tek dosya EXE oluştur (GUI için)
 pyinstaller --onefile --windowed ^
     --name "ConnectFourPro" ^
-    --icon "../assets/icon.ico" ^
+    %ICON_ARG% ^
     --add-data "game_core.py;." ^
     --add-data "ai_vs_human.py;." ^
     --hidden-import=pygame ^
     --hidden-import=requests ^
-    --hidden-import=python_socketio ^
+    --hidden-import=socketio ^
     --hidden-import=engineio ^
+    --hidden-import=websocket ^
     gui_app.py
 
 echo.

@@ -1,0 +1,281 @@
+{
+  "suite": "locust",
+  "environment": {
+    "timestamp": "2026-10-21T10:41:46",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "logical_cpus": "4",
+    "platform": "Linux-6.18.44-fc-v140-x86_64-with-glibc2.39",
+    "python": "3.11.17",
+    "implementation": "CPython",
+    "git_commit": "ae20f22"
+  },
+  "parameters": {
+    "server": "http://127.0.0.1:5055",
+    "levels": [
+      50,
+      100,
+      200
+    ],
+    "run_time": "2m"
+  },
+  "tests": [
+    {
+      "requests": 4577,
+      "failures": 0,
+      "rps": 38.449,
+      "mean_ms": 10.169,
+      "median_ms": 3.0,
+      "p95_ms": 68.0,
+      "p99_ms": 100.0,
+      "max_ms": 163.009,
+      "users": 50,
+      "spawn_rate": 5,
+      "run_time": "2m",
+      "error_rate_percent": 0.0,
+      "endpoints": {
+        "/active_games": {
+          "requests": 1336,
+          "failures": 0,
+          "rps": 11.223,
+          "mean_ms": 2.685,
+          "median_ms": 2.0,
+          "p95_ms": 4.0,
+          "p99_ms": 6.0,
+          "max_ms": 31.11
+        },
+        "/health": {
+          "requests": 44,
+          "failures": 0,
+          "rps": 0.37,
+          "mean_ms": 3.699,
+          "median_ms": 3.0,
+          "p95_ms": 5.0,
+          "p99_ms": 30.0,
+          "max_ms": 30.243
+        },
+        "/leaderboard": {
+          "requests": 2415,
+          "failures": 0,
+          "rps": 20.287,
+          "mean_ms": 3.51,
+          "median_ms": 3.0,
+          "p95_ms": 5.0,
+          "p99_ms": 7.0,
+          "max_ms": 20.34
+        },
+        "/login": {
+          "requests": 379,
+          "failures": 0,
+          "rps": 3.184,
+          "mean_ms": 73.26,
+          "median_ms": 67.0,
+          "p95_ms": 100.0,
+          "p99_ms": 120.0,
+          "max_ms": 142.246
+        },
+        "/signup": {
+          "requests": 50,
+          "failures": 0,
+          "rps": 0.42,
+          "mean_ms": 103.39,
+          "median_ms": 110.0,
+          "p95_ms": 140.0,
+          "p99_ms": 160.0,
+          "max_ms": 163.009
+        },
+        "/user/[name]": {
+          "requests": 128,
+          "failures": 0,
+          "rps": 1.075,
+          "mean_ms": 3.147,
+          "median_ms": 3.0,
+          "p95_ms": 5.0,
+          "p99_ms": 6.0,
+          "max_ms": 6.236
+        },
+        "/user/[name]/games": {
+          "requests": 225,
+          "failures": 0,
+          "rps": 1.89,
+          "mean_ms": 4.353,
+          "median_ms": 4.0,
+          "p95_ms": 6.0,
+          "p99_ms": 10.0,
+          "max_ms": 20.04
+        }
+      }
+    },
+    {
+      "requests": 9038,
+      "failures": 0,
+      "rps": 75.849,
+      "mean_ms": 11.573,
+      "median_ms": 3.0,
+      "p95_ms": 68.0,
+      "p99_ms": 170.0,
+      "max_ms": 297.399,
+      "users": 100,
+      "spawn_rate": 10,
+      "run_time": "2m",
+      "error_rate_percent": 0.0,
+      "endpoints": {
+        "/active_games": {
+          "requests": 2704,
+          "failures": 0,
+          "rps": 22.693,
+          "mean_ms": 2.754,
+          "median_ms": 2.0,
+          "p95_ms": 4.0,
+          "p99_ms": 9.0,
+          "max_ms": 47.367
+        },
+        "/health": {
+          "requests": 90,
+          "failures": 0,
+          "rps": 0.755,
+          "mean_ms": 3.233,
+          "median_ms": 3.0,
+          "p95_ms": 7.0,
+          "p99_ms": 22.0,
+          "max_ms": 22.096
+        },
+        "/leaderboard": {
+          "requests": 4820,
+          "failures": 0,
+          "rps": 40.451,
+          "mean_ms": 3.738,
+          "median_ms": 3.0,
+          "p95_ms": 6.0,
+          "p99_ms": 15.0,
+          "max_ms": 67.849
+        },
+        "/login": {
+          "requests": 688,
+          "failures": 0,
+          "rps": 5.774,
+          "mean_ms": 83.091,
+          "median_ms": 69.0,
+          "p95_ms": 160.0,
+          "p99_ms": 200.0,
+          "max_ms": 276.939
+        },
+        "/signup": {
+          "requests": 100,
+          "failures": 0,
+          "rps": 0.839,
+          "mean_ms": 191.675,
+          "median_ms": 200.0,
+          "p95_ms": 290.0,
+          "p99_ms": 300.0,
+          "max_ms": 297.399
+        },
+        "/user/[name]": {
+          "requests": 230,
+          "failures": 0,
+          "rps": 1.93,
+          "mean_ms": 3.189,
+          "median_ms": 3.0,
+          "p95_ms": 5.0,
+          "p99_ms": 9.0,
+          "max_ms": 16.339
+        },
+        "/user/[name]/games": {
+          "requests": 406,
+          "failures": 0,
+          "rps": 3.407,
+          "mean_ms": 4.373,
+          "median_ms": 4.0,
+          "p95_ms": 6.0,
+          "p99_ms": 10.0,
+          "max_ms": 17.584
+        }
+      }
+    },
+    {
+      "requests": 18049,
+      "failures": 0,
+      "rps": 151.49,
+      "mean_ms": 19.444,
+      "median_ms": 3.0,
+      "p95_ms": 86.0,
+      "p99_ms": 380.0,
+      "max_ms": 643.699,
+      "users": 200,
+      "spawn_rate": 20,
+      "run_time": "2m",
+      "error_rate_percent": 0.0,
+      "endpoints": {
+        "/active_games": {
+          "requests": 5307,
+          "failures": 0,
+          "rps": 44.543,
+          "mean_ms": 5.504,
+          "median_ms": 2.0,
+          "p95_ms": 10.0,
+          "p99_ms": 92.0,
+          "max_ms": 240.236
+        },
+        "/health": {
+          "requests": 183,
+          "failures": 0,
+          "rps": 1.536,
+          "mean_ms": 5.412,
+          "median_ms": 3.0,
+          "p95_ms": 9.0,
+          "p99_ms": 88.0,
+          "max_ms": 179.222
+        },
+        "/leaderboard": {
+          "requests": 9611,
+          "failures": 0,
+          "rps": 80.668,
+          "mean_ms": 6.592,
+          "median_ms": 3.0,
+          "p95_ms": 9.0,
+          "p99_ms": 110.0,
+          "max_ms": 359.08
+        },
+        "/login": {
+          "requests": 1430,
+          "failures": 0,
+          "rps": 12.002,
+          "mean_ms": 118.873,
+          "median_ms": 71.0,
+          "p95_ms": 400.0,
+          "p99_ms": 470.0,
+          "max_ms": 618.313
+        },
+        "/signup": {
+          "requests": 200,
+          "failures": 0,
+          "rps": 1.679,
+          "mean_ms": 386.698,
+          "median_ms": 380.0,
+          "p95_ms": 550.0,
+          "p99_ms": 640.0,
+          "max_ms": 643.699
+        },
+        "/user/[name]": {
+          "requests": 479,
+          "failures": 0,
+          "rps": 4.02,
+          "mean_ms": 7.464,
+          "median_ms": 3.0,
+          "p95_ms": 11.0,
+          "p99_ms": 170.0,
+          "max_ms": 280.93
+        },
+        "/user/[name]/games": {
+          "requests": 839,
+          "failures": 0,
+          "rps": 7.042,
+          "mean_ms": 7.719,
+          "median_ms": 4.0,
+          "p95_ms": 14.0,
+          "p99_ms": 110.0,
+          "max_ms": 230.429
+        }
+      }
+    }
+  ]
+}
