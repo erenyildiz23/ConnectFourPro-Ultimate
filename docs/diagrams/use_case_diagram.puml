@@ -82,7 +82,7 @@ UC16 <-- ai
 UC11 <-- timer
 UC17 <-- timer
 
-note "Kolay D2 / Orta D4 / Zor D6\nMinimax + Alpha-Beta, bitboard" as N1
+note "Kolay D2 / Orta D4 / Zor D8\nNegamax + Alpha-Beta, bitboard" as N1
 N1 .. UC05
 note "Zamanlayici: oyuncu 30 sn icinde\ndonmezse rakip hukmen kazanir" as N2
 N2 .. UC11

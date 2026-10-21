@@ -6,7 +6,7 @@
 ![Flask](https://img.shields.io/badge/Flask--SocketIO-5.3-green.svg)
 ![Pygame](https://img.shields.io/badge/Pygame-2.5+-red.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-blue.svg)
-![Tests](https://img.shields.io/badge/tests-205%20passing-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-250%20passing-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-Academic-yellow.svg)
 
 **Minimax yapay zekası, gerçek zamanlı çok oyunculu mod ve ELO sıralaması içeren Connect Four.**
@@ -22,19 +22,19 @@ Yeditepe Üniversitesi bitirme projesi.
 
 **Oyun**
 - Pygame arayüzü: animasyonlu taş düşüşü, kazanan dörtlü vurgusu
-- Yapay zekaya karşı 3 zorluk: Kolay (D2), Orta (D4), Zor (D6)
+- Yapay zekaya karşı 3 zorluk: Kolay (D2), Orta (D4), Zor (D8)
 - Online çok oyunculu: oda oluştur / katıl, lobi, seyirci modu
 - ELO sıralaması, liderlik tablosu, maç geçmişi
 - Bağlantı koparsa 30 sn içinde otomatik geri dönüş; dönülmezse rakip hükmen kazanır
-- Maç sonu hamle analizi (her iki oyuncunun hamlelerinin D6 AI ile isabet oranı)
+- Maç sonu hamle analizi (her iki oyuncunun hamlelerinin D8 AI ile isabet oranı)
 - Misafir modu (hesapsız oynama)
 
 **Teknik**
 - Bitboard oyun motoru: O(1) kazanma kontrolü
-- Minimax + Alpha-Beta budama, merkez öncelikli hamle sıralaması, iptal edilebilir arama
+- AI v2: negamax + alpha-beta, transpozisyon tablosu, yinelemeli derinleştirme, oyun teorisine dayalı (satır paritesi) tehdit değerlendirmesi, oyun sonunda kesin çözüm, kusursuz çözücüyle doğrulanmış açılış kitabı — ayrıntı ve ölçümler: [docs/AI.md](docs/AI.md)
 - Flask-SocketIO sunucusu: sunucu tarafında hamle doğrulama, kilitle korunan oda durumu, otomatik oda temizliği
 - PostgreSQL: sabit boyutlu bağlantı havuzu, ELO için transaction, tuzlu PBKDF2 şifre özetleri
-- 205 otomatik test (birim, entegrasyon, uçtan uca GUI), GitHub Actions CI
+- 250 otomatik test (birim, entegrasyon, uçtan uca GUI), GitHub Actions CI
 
 ## 📁 Proje Yapısı
 
@@ -53,6 +53,7 @@ ConnectFourPro/
 ├── benchmarks/               # Performans ölçümleri, grafikler, RESULTS.md
 ├── docs/
 │   ├── USE_CASES.md          # Use case'ler + gereksinim izlenebilirliği
+│   ├── AI.md                 # Oyun teorisi, AI v1 sorunları, v2 tasarımı
 │   └── diagrams/             # UML (PlantUML + PNG)
 ├── requirements-dev.txt      # Test / benchmark bağımlılıkları
 ├── pyproject.toml            # pytest, coverage, ruff ayarları
@@ -111,7 +112,7 @@ AI'ya karşı oynamak için sunucu gerekmez: "Misafir Olarak Devam" → "Yapay Z
 ```bash
 pip install -r requirements-dev.txt
 export TEST_DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4_test   # AYRI veritabanı
-pytest                     # 205 test, ~40 sn
+pytest                     # 250 test, ~40 sn
 pytest --cov               # kapsam raporu (%88)
 pytest tests/unit          # sadece birim testleri (veritabanı gerekmez)
 ruff check src tests benchmarks
@@ -119,7 +120,7 @@ ruff check src tests benchmarks
 
 | Klasör | İçerik |
 |---|---|
-| `tests/unit` | Oyun motoru sınır durumları, AI taktikleri, alpha-beta'nın referans uygulamayla düğüm düğüm karşılaştırması, şifreleme ve ELO |
+| `tests/unit` | Oyun motoru sınır durumları, AI taktikleri, aramanın tam genişlikli referans negamax ve kaba kuvvet oyun sonu çözümüyle karşılaştırılması, şifreleme ve ELO |
 | `tests/integration` | PostgreSQL katmanı, REST API, Socket.IO odaları, hamle doğrulama, seyirci, yeniden bağlanma/hükmen yenilgi, temizlik |
 | `tests/gui` | Ekransız Pygame istemcileri gerçek sunucuya bağlanıp her use case'i uçtan uca oynar (iki oyuncu + seyirci) |
 

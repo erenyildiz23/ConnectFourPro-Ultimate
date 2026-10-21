@@ -11,7 +11,7 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 | **Kayıtlı Oyuncu** | Birincil | Hesabı olan kullanıcı. ELO puanı, maç geçmişi ve liderlik tablosunda yeri vardır. |
 | **Misafir** | Birincil | Hesap açmadan oynayan kullanıcı. AI'ya karşı ve online oynayabilir, izleyebilir; ELO ve geçmiş tutulmaz. |
 | **Seyirci** | Birincil | Devam eden bir maçı izleyen kullanıcı (kayıtlı veya misafir). Hamle yapamaz. |
-| **AI Motoru** | Sistem | Minimax + Alpha-Beta ile hamle hesaplar (Kolay D2, Orta D4, Zor D6). |
+| **AI Motoru** | Sistem | Negamax + Alpha-Beta ile hamle hesaplar (Kolay D2, Orta D4, Zor D8). Ayrıntı: [AI.md](AI.md) |
 | **Zamanlayıcı** | Sistem | Sunucunun arka plan görevleri: oda temizliği, yeniden bağlanma süresi. |
 
 "Oyuncu" ifadesi Kayıtlı Oyuncu ve Misafir'i birlikte kapsar.
@@ -87,7 +87,7 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 - **Aktör:** Oyuncu, AI Motoru · **Gereksinim:** FR-05, FR-06, NFR-01
 - **Ön koşul:** Oturum açık (kayıtlı veya misafir). Sunucu gerekmez.
 - **Ana akış:**
-  1. "Yapay Zekaya Karşı" → zorluk seçer: Kolay (D2), Orta (D4), Zor (D6).
+  1. "Yapay Zekaya Karşı" → zorluk seçer: Kolay (D2), Orta (D4), Zor (D8).
   2. Oyuncu (kırmızı) sütuna tıklar; taş düşme animasyonu oynar.
   3. Oyun motoru hamleyi doğrular ve kazanma/beraberlik kontrol eder.
   4. AI ayrı thread'de hamlesini hesaplar ("AI düşünüyor..."), sonra hamle animasyonla uygulanır.
@@ -97,7 +97,7 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
   - Dolu sütun / tahta dışı tıklama yok sayılır.
   - Oyuncu AI düşünürken menüye dönerse AI oturumu geçersiz kılınır; geç gelen AI hamlesi uygulanmaz.
 - **Son koşul:** Oyun sonucu ekranda; sunucuya kayıt yapılmaz.
-- **Testler:** `TestPlayVsAI` (3 test), `tests/unit/test_ai.py` (taktik, arama, değerlendirme), `tests/unit/test_game_core.py`
+- **Testler:** `TestPlayVsAI` (3 test), `tests/unit/test_ai.py` (taktik, arama doğruluğu, oyun sonu), `tests/unit/test_game_core.py`; hamle kalitesi: `benchmarks/ai_quality_benchmark.py`
 
 ### UC-06 Online oyun odası oluştur
 - **Aktör:** Oyuncu · **Gereksinim:** FR-03
@@ -184,7 +184,7 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 
 ### UC-16 Hamle analizini görüntüle
 - **Aktör:** Oyuncu
-- **Ana akış:** Online maç sırasında her hamleden önceki pozisyon arka planda D6 AI ile analiz edilir. Maç sonunda bilgi panelinde "Hamle analizi (isabet): Sen %X, Rakip %Y" gösterilir (oynanan hamlenin AI'nın en iyi hamlesiyle aynı olma oranı).
+- **Ana akış:** Online maç sırasında her hamleden önceki pozisyon arka planda D8 AI ile analiz edilir. Maç sonunda bilgi panelinde "Hamle analizi (isabet): Sen %X, Rakip %Y" gösterilir (oynanan hamlenin AI'nın en iyi hamlesiyle aynı olma oranı).
 - **Testler:** `test_uc09_uc13_uc16_full_online_match`
 
 ### UC-17 Eski odaları temizle
@@ -203,12 +203,12 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 | FR-03 Oda oluşturma | UC-06, UC-07 | GUI + Socket testleri |
 | FR-04 Odaya katılma | UC-07, UC-08 | GUI + Socket testleri |
 | FR-05 Oyun kuralları | UC-05, UC-09 | `test_game_core.py` (sınır durumları dahil), Socket doğrulama testleri |
-| FR-06 Üç seviyeli AI | UC-05 | `test_ai.py`, GUI AI oyunu |
+| FR-06 Üç seviyeli AI | UC-05 | `test_ai.py`, GUI AI oyunu, kusursuz çözücüye karşı kalite ölçümü |
 | FR-07 ELO / liderlik | UC-13, UC-14 | DB + Socket + GUI testleri |
 | FR-08 Gerçek zamanlı senkron | UC-09 | GUI iki istemci + seyirci testi, Socket yayın testleri |
 | FR-09 Seyirci modu | UC-07, UC-10 | GUI + Socket testleri |
 | FR-10 Sonuç kaydı | UC-13, UC-15 | DB + Socket + GUI testleri |
-| NFR-01 AI D6 < 500 ms | UC-05 | `benchmarks/ai_performance_suite.py` |
+| NFR-01 AI yanıt < 500 ms (D6 ve Zor D8) | UC-05 | `benchmarks/ai_performance_suite.py` |
 | NFR-02 WebSocket < 5 ms | UC-09 | `benchmarks/network_benchmark.py` |
 | NFR-03 ≥ 50 eşzamanlı bağlantı | UC-17 | `benchmarks/network_benchmark.py`, Locust |
 | NFR-04 > 500 istek/sn | — | `benchmarks/network_benchmark.py`, Locust |
