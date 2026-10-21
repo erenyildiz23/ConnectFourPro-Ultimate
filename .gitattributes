@@ -1,0 +1,3 @@
+# Windows betikleri CRLF, Unix betikleri LF satir sonuyla checkout edilir
+*.bat text eol=crlf
+*.sh  text eol=lf

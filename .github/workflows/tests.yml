@@ -39,6 +39,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
       - name: Lint
-        run: ruff check src tests benchmarks
+        run: ruff check src tests benchmarks scripts
       - name: Run tests
         run: pytest --cov --cov-report=term-missing

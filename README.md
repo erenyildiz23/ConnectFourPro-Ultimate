@@ -56,6 +56,9 @@ ConnectFourPro/
 │   ├── AI.md                 # Oyun teorisi, AI v1 sorunları, v2 tasarımı
 │   ├── KURULUM.md            # Adım adım kurulum ve çalıştırma
 │   └── diagrams/             # UML (PlantUML + PNG)
+├── scripts/                  # Kurulum yardımcıları (setup betikleri kullanır)
+├── setup.bat / setup.sh      # Tek komutla kurulum
+├── run.bat / run.sh          # Çalıştırma kısayolları
 ├── requirements-dev.txt      # Test / benchmark bağımlılıkları
 ├── pyproject.toml            # pytest, coverage, ruff ayarları
 └── .env.example              # Örnek ortam değişkenleri
@@ -63,13 +66,30 @@ ConnectFourPro/
 
 ## 🚀 Kurulum
 
-> Adım adım Windows rehberi (PostgreSQL, online oyun, ağ, EXE, sorun giderme): **[docs/KURULUM.md](docs/KURULUM.md)**
+Python 3.12 kurulu olduktan sonra proje klasöründe:
+
+```bash
+setup.bat            # Windows (cmd veya çift tık)  |  PowerShell: .\setup.bat
+./setup.sh           # Git Bash, WSL, macOS, Linux
+```
+
+Betik sanal ortamı ve paketleri kurar, isterseniz PostgreSQL veritabanlarını oluşturup ayarları `.env` dosyasına yazar. Sonra:
+
+```bash
+run.bat client       # oyunu aç (AI'ya karşı sunucu gerekmez)   |  ./run.sh client
+run.bat online       # sunucu + iki oyuncu penceresi              |  ./run.sh online
+```
+
+Adım adım elle kurulum, ağ üzerinden oynama, EXE ve sorun giderme: **[docs/KURULUM.md](docs/KURULUM.md)**
+
+<details>
+<summary>Elle kurulum</summary>
 
 ```bash
 git clone https://github.com/erenyildiz23/ConnectFourPro.git
 cd ConnectFourPro
 python -m venv venv
-source venv/bin/activate              # Windows: venv\Scripts\activate
+source venv/bin/activate              # Windows cmd: venv\Scripts\activate  |  Git Bash: source venv/Scripts/activate
 pip install -r src/requirements.txt   # geliştirme için: pip install -r requirements-dev.txt
 ```
 
@@ -79,7 +99,7 @@ pip install -r src/requirements.txt   # geliştirme için: pip install -r requir
 createdb connect4
 ```
 
-Ayarlar ortam değişkenlerinden okunur; şifreler koda yazılmaz (bkz. [`.env.example`](.env.example)):
+Ayarlar proje kökündeki `.env` dosyasından (setup betiği oluşturur) veya ortam değişkenlerinden okunur; terminaldeki değişken önceliklidir. Şifreler koda yazılmaz (bkz. [`.env.example`](.env.example)):
 
 ```bash
 export DATABASE_URL="postgresql://postgres:SIFRE@localhost/connect4"   # Linux/Mac
@@ -98,6 +118,8 @@ set DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4        # Windows
 
 Veritabanı yoksa sunucu yine açılır; kayıt ve giriş 503 döner, misafir modu çalışır.
 Eski SHA-256 ile kayıtlı hesaplar giriş yapabilir; şifreleri ilk girişte otomatik olarak PBKDF2'ye yükseltilir.
+
+</details>
 
 ## 🎮 Kullanım
 

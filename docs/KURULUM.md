@@ -1,5 +1,42 @@
 # Connect Four Pro — Kurulum ve Çalıştırma Rehberi
 
+## Hızlı kurulum (önerilen)
+
+Python 3.12 kurulu olduktan sonra (bkz. bölüm 1) proje klasöründe **tek komut** yeterlidir.
+
+| Terminal | Kurulum | Çalıştırma |
+|---|---|---|
+| Windows **cmd** (veya `setup.bat` dosyasına çift tık) | `setup.bat` | `run.bat client` |
+| Windows **PowerShell** | `.\setup.bat` | `.\run.bat client` |
+| **Git Bash**, WSL, macOS, Linux | `./setup.sh` | `./run.sh client` |
+
+Kurulum betiği şunları yapar:
+1. Python 3.10–3.13'ü bulur.
+2. Sanal ortamı (`venv`) oluşturur ve paketleri yükler.
+3. Online mod isteyip istemediğinizi sorar. "Evet" derseniz PostgreSQL kullanıcı adı ve şifresini ister (şifre yazılırken görünmez).
+4. `connect4` ve `connect4_test` veritabanlarını yoksa oluşturur, tabloları kurar. Mevcut `connect4` veritabanınız varsa aynen kullanılır.
+5. Ayarları proje kökündeki **`.env`** dosyasına yazar.
+
+Bundan sonra ortam değişkeni yazmanıza veya sanal ortamı etkinleştirmenize gerek kalmaz. Uygulama ayarları `.env` dosyasından okur; terminalde ayarladığınız bir değişken her zaman önceliklidir. `.env` git'e eklenmez, çünkü şifre içerir.
+
+| Komut (Windows'ta `run.bat`, bash'te `./run.sh`) | Ne yapar |
+|---|---|
+| `run client` | Oyunu açar. AI'ya karşı oynamak için sunucu gerekmez |
+| `run client 192.168.1.20:5000` | Başka bilgisayardaki sunucuya bağlanır |
+| `run server` | Online mod için sunucuyu başlatır |
+| `run online` | Sunucuyu ve iki oyuncu penceresini birlikte açar (tek bilgisayarda deneme) |
+| `run test` | Testleri çalıştırır; önce `setup --dev` ile test paketlerini kurun |
+
+Kurulum seçenekleri:
+- `setup --dev`: test ve benchmark paketlerini de kurar.
+- `setup --no-db`: veritabanı adımını atlar (yalnızca AI'ya karşı ve misafir modu).
+
+Betiği istediğiniz kadar tekrar çalıştırabilirsiniz: mevcut kurulumu ve `.env` ayarlarını tanır.
+
+Aşağıdaki bölümler aynı adımları elle yapmak isteyenler ve sorun giderme içindir.
+
+---
+
 Komutlar **Windows** için yazılmıştır; Linux/Mac karşılıkları her adımda ayrıca verilmiştir.
 
 | Ne yapmak istiyorum? | Gerekenler | Bölüm |

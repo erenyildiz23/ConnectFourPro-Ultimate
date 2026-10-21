@@ -4,7 +4,9 @@
 # =============================================================================
 """
 Tum ayarlar ortam degiskenlerinden okunur; koda sifre/anahtar yazilmaz.
-Ornek degerler icin proje kokundeki `.env.example` dosyasina bakin.
+Proje kokunde bir `.env` dosyasi varsa (setup betigi olusturur) oradaki
+degerler de yuklenir; terminalde ayarlanmis degiskenler her zaman onceliklidir.
+Ornek degerler icin `.env.example` dosyasina bakin.
 
     DATABASE_URL            PostgreSQL baglanti adresi
     SECRET_KEY              Flask oturum anahtari (bos ise rastgele uretilir)
@@ -15,6 +17,39 @@ Ornek degerler icin proje kokundeki `.env.example` dosyasina bakin.
 
 import logging
 import os
+from typing import Dict
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ENV_FILE = os.path.join(PROJECT_ROOT, '.env')
+
+
+def parse_env_file(path: str) -> Dict[str, str]:
+    """KEY=VALUE satirlarini okur; bos satir ve # yorumlari atlanir, tirnaklar soyulur."""
+    values: Dict[str, str] = {}
+    try:
+        with open(path, encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, value = line.split('=', 1)
+                key, value = key.strip(), value.strip()
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in '"\'':
+                    value = value[1:-1]
+                if key:
+                    values[key] = value
+    except OSError:
+        pass
+    return values
+
+
+def load_env_file(path: str = ENV_FILE) -> None:
+    """`.env` degerlerini, ortamda zaten tanimli OLMAYAN degiskenler icin yukler."""
+    for key, value in parse_env_file(path).items():
+        os.environ.setdefault(key, value)
+
+
+load_env_file()
 
 
 def _env_int(name: str, default: int) -> int:
