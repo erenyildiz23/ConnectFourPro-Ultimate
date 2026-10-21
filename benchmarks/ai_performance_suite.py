@@ -24,7 +24,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 import bench_common as bc
-from ai_vs_human import AIEngine
+from ai_vs_human import BOARD_MASK, BOTTOM_MASK, AIEngine, winning_cells
 from game_core import PLAYER1_PIECE, PLAYER2_PIECE, ConnectFourGame
 
 PHASES = {'early': (2, 8), 'mid': (9, 20), 'late': (21, 30)}
@@ -89,14 +89,22 @@ class AIPerformanceSuite:
     # ------------------------------------------------------------------
     @staticmethod
     def random_position(rng: random.Random, n_moves: int) -> Optional[ConnectFourGame]:
-        """Rastgele hamlelerle, bitmemis ve tek hamlede kazanma olmayan pozisyon."""
-        for _ in range(100):
+        """
+        Rastgele hamlelerle SAKIN pozisyon: oyun bitmemis ve iki tarafin da oynanabilir
+        kazanma hucresi yok. (Tehdit olan pozisyonlarda motor aramadan cevap verir;
+        bunlar dahil edilirse olcum arama maliyetini degil kisayolu olcer.)
+        """
+        for _ in range(1000):
             g = ConnectFourGame()
             for _ in range(n_moves):
                 g.make_move(rng.choice(g.get_valid_locations()))
                 if g.game_over:
                     break
-            if not g.game_over:
+            if g.game_over:
+                continue
+            mask = g.bitboards[1] | g.bitboards[2]
+            playable = (mask + BOTTOM_MASK) & BOARD_MASK
+            if not any(winning_cells(g.bitboards[p], mask) & playable for p in (1, 2)):
                 return g
         return None
 
@@ -216,14 +224,14 @@ def main():
     parser = argparse.ArgumentParser(description='AI Performance Suite v4.0')
     parser.add_argument('--seed', type=int, default=2024)
     parser.add_argument('--iterations', type=int, default=30, help='Derinlik basina pozisyon sayisi')
-    parser.add_argument('--max-depth', type=int, default=7)
+    parser.add_argument('--max-depth', type=int, default=8)
     parser.add_argument('--openings', type=int, default=10, help='Turnuva eslesmesi basina acilis')
     parser.add_argument('--quick', action='store_true', help='Hizli kontrol (kucuk parametreler)')
     args = parser.parse_args()
 
     latency_depths = list(range(1, args.max_depth + 1))
-    tournament_depths = [2, 3, 4, 5, 6]
-    scenario_depths = [1, 2, 3, 4, 5, 6]
+    tournament_depths = [2, 3, 4, 5, 6, 8]
+    scenario_depths = [1, 2, 3, 4, 6, 8]
     if args.quick:
         args.iterations, args.openings = 6, 2
         latency_depths, tournament_depths, scenario_depths = [1, 2, 3, 4], [2, 4], [2, 4]

@@ -4,10 +4,11 @@
 
 ## Ortam
 
-- **AI:** Intel(R) Xeon(R) Processor @ 2.10GHz (4 mantiksal cekirdek), Linux-6.18.44-fc-v140-x86_64-with-glibc2.39, Python 3.11.17, commit `ae20f22`, 2026-10-21T10:16:22
+- **AI:** Intel(R) Xeon(R) Processor @ 2.10GHz (4 mantiksal cekirdek), Linux-6.18.44-fc-v140-x86_64-with-glibc2.39, Python 3.11.17, commit `1113e42`, 2026-10-21T11:32:04
+- **AI kalitesi:** Intel(R) Xeon(R) Processor @ 2.10GHz (4 mantiksal cekirdek), Linux-6.18.44-fc-v140-x86_64-with-glibc2.39, Python 3.11.17, commit `1113e42`, 2026-10-21T11:27:05
 - **Ag:** Intel(R) Xeon(R) Processor @ 2.10GHz (4 mantiksal cekirdek), Linux-6.18.44-fc-v140-x86_64-with-glibc2.39, Python 3.11.17, commit `ae20f22`, 2026-10-21T10:23:36
 - **Locust:** Intel(R) Xeon(R) Processor @ 2.10GHz (4 mantiksal cekirdek), Linux-6.18.44-fc-v140-x86_64-with-glibc2.39, Python 3.11.17, commit `ae20f22`, 2026-10-21T10:41:46
-- **GUI:** Intel(R) Xeon(R) Processor @ 2.10GHz (4 mantiksal cekirdek), Linux-6.18.44-fc-v140-x86_64-with-glibc2.39, Python 3.11.17, commit `ae20f22`, 2026-10-21T10:23:35
+- **GUI:** Intel(R) Xeon(R) Processor @ 2.10GHz (4 mantiksal cekirdek), Linux-6.18.44-fc-v140-x86_64-with-glibc2.39, Python 3.11.17, commit `1113e42`, 2026-10-21T11:27:05
 
 Sunucu, istemciler (yuk ureticileri) ve PostgreSQL ayni makinede calisti; sunucu Flask-SocketIO `threading` modunda (Werkzeug). Sonuclar donanima baglidir, farkli makinede yeniden olculmelidir.
 
@@ -15,7 +16,7 @@ Sunucu, istemciler (yuk ureticileri) ve PostgreSQL ayni makinede calisti; sunucu
 
 | Gereksinim | Hedef | Olculen | Sonuc | Not |
 |---|---|---|---|---|
-| NFR-01 AI D6 yanit suresi | < 500 ms (ortalama) | ort 192 ms, p95 602 ms | **GECTI** | p95 sinirin uzerinde |
+| NFR-01 AI yanit suresi | < 500 ms (ortalama) | D6 ort 11 ms, p95 28 ms; Zor (D8) ort 41 ms, p95 120 ms | **GECTI** |  |
 | NFR-02 WebSocket gecikmesi | < 5 ms (ortalama) | ort 1.64 ms, p99 3.37 ms | **GECTI** | tasima: websocket |
 | NFR-03 Eszamanli baglanti | >= 50, hatasiz | 100 eszamanli baglantiya kadar 0 hata | **GECTI** |  |
 | NFR-04 Sunucu verimi | > 500 istek/sn | REST (DB) 712, WS 1465 istek/sn | **GECTI** | REST, veritabani okuyan uc nokta |
@@ -31,13 +32,14 @@ Yontem: derinlik basina 30 rastgele pozisyon (erken/orta/gec oyun esit, tohum 20
 
 | Derinlik | Ortalama (ms) | Std (ms) | Medyan | p95 (ms) | Maks (ms) | Ort. dugum | Ort. budama | us/dugum |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 0.56 | 0.13 | 0.60 | 0.71 | 0.73 | 8 | 0 | 74.9 |
-| 2 | 1.05 | 0.71 | 0.99 | 2.27 | 3.06 | 26 | 4 | 39.7 |
-| 3 | 4.07 | 2.99 | 4.28 | 8.65 | 12.87 | 105 | 14 | 38.8 |
-| 4 | 13.15 | 13.59 | 10.11 | 33.48 | 59.60 | 348 | 68 | 37.8 |
-| 5 | 59.49 | 72.66 | 27.54 | 161.09 | 325.27 | 1,180 | 224 | 50.4 |
-| 6 | 191.90 | 290.15 | 100.15 | 601.62 | 1434.94 | 4,095 | 788 | 46.9 |
-| 7 | 596.84 | 1278.48 | 93.70 | 1671.07 | 6860.06 | 13,745 | 2,930 | 43.4 |
+| 1 | 0.09 | 0.02 | 0.08 | 0.13 | 0.15 | 6 | 0 | 13.8 |
+| 2 | 0.30 | 0.11 | 0.31 | 0.47 | 0.51 | 24 | 4 | 12.5 |
+| 3 | 1.84 | 1.43 | 1.67 | 3.48 | 7.94 | 69 | 14 | 26.6 |
+| 4 | 3.81 | 2.47 | 3.76 | 6.97 | 11.42 | 163 | 40 | 23.4 |
+| 5 | 7.37 | 6.83 | 5.19 | 18.50 | 27.24 | 379 | 95 | 19.4 |
+| 6 | 10.92 | 8.46 | 10.48 | 28.06 | 30.74 | 807 | 222 | 13.5 |
+| 7 | 25.44 | 28.45 | 15.94 | 78.97 | 123.02 | 1,686 | 467 | 15.1 |
+| 8 | 40.73 | 41.24 | 33.80 | 119.63 | 148.54 | 2,974 | 876 | 13.7 |
 
 ![AI gecikme](visualization_outputs/ai_latency_vs_depth.png)
 ![AI karmasiklik](visualization_outputs/ai_computational_complexity.png)
@@ -46,7 +48,7 @@ Yontem: derinlik basina 30 rastgele pozisyon (erken/orta/gec oyun esit, tohum 20
 
 Dogru cevap kumesi 4 yari-hamlelik kesin aramayla (zorla kazanc/kayip) hesaplandi.
 
-| Senaryo | Dogru hamle(ler) | D1 | D2 | D3 | D4 | D5 | D6 |
+| Senaryo | Dogru hamle(ler) | D1 | D2 | D3 | D4 | D6 | D8 |
 |---|---|---|---|---|---|---|---|
 | Win in 1 (vertical) | [3] | OK | OK | OK | OK | OK | OK |
 | Win in 1 (horizontal) | [3] | OK | OK | OK | OK | OK | OK |
@@ -56,34 +58,97 @@ Dogru cevap kumesi 4 yari-hamlelik kesin aramayla (zorla kazanc/kayip) hesapland
 | Block (diagonal) | [3] | OK | OK | OK | OK | OK | OK |
 | Win before block | [0] | OK | OK | OK | OK | OK | OK |
 | Avoid trap square | [0, 1, 3, 4, 5, 6] | OK | OK | OK | OK | OK | OK |
-| Double threat (win in 3) | [2, 5] | X (3) | X (6) | OK | OK | OK | OK |
-| **Dogruluk** | | **%89** | **%89** | **%100** | **%100** | **%100** | **%100** |
+| Double threat (win in 3) | [2, 5] | OK | OK | OK | OK | OK | OK |
+| **Dogruluk** | | **%100** | **%100** | **%100** | **%100** | **%100** | **%100** |
 
 ![Senaryolar](visualization_outputs/ai_scenarios.png)
 
 ### Turnuva
 
-Her eslesme 10 farkli rastgele acilistan (4 yari-hamle), her acilis renkler degistirilerek iki kez oynandi. Toplam 300 oyun. Kazanan oyunlarda ilk oyuncunun kazanma orani: %56.
+Her eslesme 10 farkli rastgele acilistan (4 yari-hamle), her acilis renkler degistirilerek iki kez oynandi. Toplam 420 oyun. Kazanan oyunlarda ilk oyuncunun kazanma orani: %66.
 
 | Eslesme | 1. derinlik galibiyet | 2. derinlik galibiyet | Beraberlik |
 |---|---|---|---|
-| D2 vs D2 | 7 | 7 | 6 |
-| D2 vs D3 | 5 | 12 | 3 |
-| D2 vs D4 | 6 | 7 | 7 |
-| D2 vs D5 | 4 | 15 | 1 |
-| D2 vs D6 | 5 | 13 | 2 |
+| D2 vs D2 | 4 | 4 | 12 |
+| D2 vs D3 | 8 | 9 | 3 |
+| D2 vs D4 | 5 | 11 | 4 |
+| D2 vs D5 | 7 | 11 | 2 |
+| D2 vs D6 | 5 | 12 | 3 |
+| D2 vs D8 | 5 | 13 | 2 |
 | D3 vs D3 | 9 | 9 | 2 |
-| D3 vs D4 | 7 | 6 | 7 |
-| D3 vs D5 | 9 | 9 | 2 |
-| D3 vs D6 | 4 | 13 | 3 |
-| D4 vs D4 | 10 | 10 | 0 |
-| D4 vs D5 | 6 | 11 | 3 |
-| D4 vs D6 | 7 | 8 | 5 |
-| D5 vs D5 | 9 | 9 | 2 |
-| D5 vs D6 | 6 | 10 | 4 |
-| D6 vs D6 | 6 | 6 | 8 |
+| D3 vs D4 | 5 | 10 | 5 |
+| D3 vs D5 | 6 | 12 | 2 |
+| D3 vs D6 | 5 | 13 | 2 |
+| D3 vs D8 | 2 | 15 | 3 |
+| D4 vs D4 | 8 | 8 | 4 |
+| D4 vs D5 | 8 | 10 | 2 |
+| D4 vs D6 | 7 | 11 | 2 |
+| D4 vs D8 | 6 | 8 | 6 |
+| D5 vs D5 | 7 | 7 | 6 |
+| D5 vs D6 | 10 | 7 | 3 |
+| D5 vs D8 | 5 | 11 | 4 |
+| D6 vs D6 | 9 | 9 | 2 |
+| D6 vs D8 | 7 | 9 | 4 |
+| D8 vs D8 | 8 | 8 | 4 |
 
 ![Turnuva](visualization_outputs/tournament_heatmap.png)
+
+## AI kalitesi - kusursuz cozucuye karsi
+
+Hakem: Pascal Pons connect4 solver (c4solver -a, 7x6.book). Sadece kritik pozisyonlar (hamle secimi oyunun teorik sonucunu degistirebiliyorsa) sayilir. v1 = onceki motor (`legacy_ai_v1.py`), v2 = yeni motor.
+
+### Acilis kitabi
+
+| Motor | Giris | Hatali | Sonucu degistiren |
+|---|---|---|---|
+| v1 | 12 | 5 | 4 |
+| v2 | 57 | 0 | 0 |
+
+### Hamle kalitesi - Gercekci oyun pozisyonlari (159 kritik pozisyon)
+
+| Motor | Optimal % | Sonucu koruyan % | Hata % | Erken % | Orta % | Gec % | Ort. sure (ms) |
+|---|---|---|---|---|---|---|---|
+| v1 D2 | 63 | 72 | 28 | 70 | 66 | 93 | 1.1 |
+| v1 D4 | 67 | 76 | 24 | 77 | 76 | 74 | 17.6 |
+| v1 D6 | 70 | 78 | 22 | 76 | 74 | 93 | 185.0 |
+| v2 D2 | 72 | 80 | 20 | 73 | 82 | 96 | 0.3 |
+| v2 D4 | 78 | 84 | 16 | 82 | 82 | 96 | 2.4 |
+| v2 D6 | 82 | 86 | 14 | 78 | 92 | 100 | 12.9 |
+| v2 D8 | 86 | 91 | 9 | 89 | 88 | 100 | 49.2 |
+
+### Hamle kalitesi - Rastgele oyun pozisyonlari (189 kritik pozisyon)
+
+| Motor | Optimal % | Sonucu koruyan % | Hata % | Erken % | Orta % | Gec % | Ort. sure (ms) |
+|---|---|---|---|---|---|---|---|
+| v1 D2 | 67 | 77 | 23 | 59 | 86 | 97 | 1.2 |
+| v1 D4 | 70 | 80 | 20 | 61 | 90 | 100 | 14.9 |
+| v1 D6 | 76 | 84 | 16 | 70 | 90 | 100 | 196.2 |
+| v2 D2 | 78 | 84 | 16 | 70 | 90 | 100 | 0.3 |
+| v2 D4 | 81 | 88 | 12 | 75 | 95 | 100 | 1.7 |
+| v2 D6 | 79 | 86 | 14 | 70 | 95 | 100 | 9.8 |
+| v2 D8 | 81 | 86 | 14 | 71 | 95 | 100 | 43.2 |
+
+![AI kalitesi](visualization_outputs/ai_quality.png)
+
+### Kusursuz rakibe karsi
+
+Cozucuye gore berabere olan acilislardan baslayip beraberligi koruyabilme orani (her acilis iki renkle).
+
+| Motor | Oyun | Beraberligi koruma % | Kayba kadar ort. hamle |
+|---|---|---|---|
+| v1 D6 | 20 | 5 | 33.1 |
+| v2 D4 | 20 | 10 | 31.2 |
+| v2 D6 | 20 | 5 | 33.7 |
+| v2 D8 | 20 | 5 | 35.3 |
+
+### v2 - v1 karsilasmalari
+
+| Eslesme | v2 galibiyet | v1 galibiyet | Beraberlik |
+|---|---|---|---|
+| v2 D2 - v1 D2 | 12 | 5 | 3 |
+| v2 D4 - v1 D4 | 16 | 1 | 3 |
+| v2 D6 - v1 D6 | 14 | 4 | 2 |
+| v2 D8 - v1 D6 | 18 | 2 | 0 |
 
 ## Ag performansi
 
@@ -150,6 +215,6 @@ Gercek ana dongu (60 FPS siniri), ekransiz SDL surucusu; kareler arasi sure.
 
 | Durum | Ort. FPS | p99 kare (ms) | En uzun kare (ms) | >33 ms kare |
 |---|---|---|---|---|
-| Bos | 62.2 | 17.0 | 17.1 | 0 / 249 |
-| AI (D6) ararken | 47.0 | 22.4 | 22.8 | 0 / 69 |
+| Bos | 62.2 | 17.1 | 19.4 | 0 / 249 |
+| AI (D8) ararken | 47.0 | 21.8 | 21.9 | 0 / 52 |
 

@@ -1,43 +1,43 @@
 {
   "suite": "gui_fps",
   "environment": {
-    "timestamp": "2026-10-21T10:23:35",
+    "timestamp": "2026-10-21T11:27:05",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
     "logical_cpus": "4",
     "platform": "Linux-6.18.44-fc-v140-x86_64-with-glibc2.39",
     "python": "3.11.17",
     "implementation": "CPython",
-    "git_commit": "ae20f22"
+    "git_commit": "1113e42"
   },
   "parameters": {
-    "ai_depth": 6,
+    "ai_depth": 8,
     "fps_cap": 60,
     "video_driver": "dummy"
   },
   "idle": {
     "n": 249,
-    "mean": 16.067,
-    "stdev": 0.676,
-    "min": 6.264,
-    "median": 16.051,
-    "max": 17.145,
-    "p95": 16.39,
-    "p99": 17.049,
-    "fps_mean": 62.238,
-    "fps_worst_frame": 58.325,
+    "mean": 16.082,
+    "stdev": 0.647,
+    "min": 7.642,
+    "median": 16.042,
+    "max": 19.421,
+    "p95": 16.64,
+    "p99": 17.086,
+    "fps_mean": 62.18,
+    "fps_worst_frame": 51.49,
     "frames_over_33ms": 0
   },
   "ai_searching": {
-    "n": 69,
-    "mean": 21.283,
-    "stdev": 0.305,
-    "min": 20.411,
-    "median": 21.207,
-    "max": 22.792,
-    "p95": 21.606,
-    "p99": 22.358,
-    "fps_mean": 46.987,
-    "fps_worst_frame": 43.874,
+    "n": 52,
+    "mean": 21.279,
+    "stdev": 0.32,
+    "min": 20.348,
+    "median": 21.324,
+    "max": 21.86,
+    "p95": 21.645,
+    "p99": 21.789,
+    "fps_mean": 46.995,
+    "fps_worst_frame": 45.746,
     "frames_over_33ms": 0
   }
 }

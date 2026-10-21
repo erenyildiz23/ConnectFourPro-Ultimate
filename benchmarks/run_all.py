@@ -74,6 +74,7 @@ def main():
     parser.add_argument('--skip-locust', action='store_true')
     parser.add_argument('--locust-users', default='50,100,200')
     parser.add_argument('--locust-time', default='2m')
+    parser.add_argument('--solver-dir', help='Kusursuz cozucu klasoru (verilirse AI kalite benchmarki da calisir)')
     args = parser.parse_args()
     os.makedirs(bc.RESULTS_DIR, exist_ok=True)
     quick = ['--quick'] if args.quick else []
@@ -81,6 +82,8 @@ def main():
     if not args.skip_ai:
         run([PY, 'ai_performance_suite.py', *quick])
         run([PY, 'gui_fps_benchmark.py'])
+        if args.solver_dir:
+            run([PY, 'ai_quality_benchmark.py', '--solver-dir', args.solver_dir, *quick])
 
     server_proc = None
     url = args.server

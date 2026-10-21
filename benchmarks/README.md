@@ -8,8 +8,10 @@ Son ölçümün sonuçları ve tüm tablolar: **[RESULTS.md](RESULTS.md)**
 
 | Dosya | Ölçtüğü |
 |---|---|
-| `ai_performance_suite.py` | AI gecikmesi ve karmaşıklığı (D1–D7), doğrulanmış taktik senaryolar, AI turnuvası |
-| `gui_fps_benchmark.py` | GUI kare hızı; boşta ve D6 AI ararken (NFR-05) |
+| `ai_performance_suite.py` | AI gecikmesi ve karmaşıklığı (D1–D8), doğrulanmış taktik senaryolar, AI turnuvası |
+| `ai_quality_benchmark.py` | Hamle kalitesi kusursuz çözücüye karşı (v1 ve v2), açılış kitabı doğrulaması, kusursuz rakibe karşı oyunlar, v2–v1 maçları |
+| `legacy_ai_v1.py` | AI motorunun ilk sürümü (yalnızca karşılaştırma için) |
+| `gui_fps_benchmark.py` | GUI kare hızı; boşta ve Zor (D8) AI ararken (NFR-05) |
 | `network_benchmark.py` | WebSocket vs REST, işlem gecikmeleri, mesaj boyutu, eşzamanlılık, eşzamanlı oyunlar |
 | `locustfile.py` | Locust REST yük testi (3 kullanıcı profili) |
 | `visualize_all_results.py` | `results/*.json` → `visualization_outputs/*.png` + `RESULTS.md` |
@@ -33,9 +35,20 @@ python run_all.py --server http://localhost:5000 --skip-ai   # çalışan sunucu
 
 Tek tek çalıştırmak da mümkündür, örn. `python ai_performance_suite.py --iterations 45 --seed 7`.
 
+### AI kalite ölçümü için kusursuz çözücü (isteğe bağlı)
+
+Hakem olarak Pascal Pons'un çözücüsü kullanılır. Bu çözücü AGPL-3.0 lisanslıdır ve **repoya dahil değildir**:
+
+```bash
+git clone https://github.com/PascalPons/connect4 && cd connect4 && make
+curl -LO https://github.com/PascalPons/connect4/releases/download/book/7x6.book
+cd -  &&  python run_all.py --solver-dir /yol/connect4
+```
+
 ## Yöntem
 
 **AI**
+- Kalite: her kritik pozisyonda AI'nın hamlesi kusursuz çözücünün kesin puanlarıyla karşılaştırılır. Ölçülenler: optimal hamle oranı, sonucu koruma oranı, hata oranı. İki küme kullanılır: rastgele oyun pozisyonları ve gerçekçi (AI + %25 rastgele) oyun pozisyonları. v2'nin değerlendirme ağırlıkları farklı tohumlu bir eğitim kümesinde ayarlandı; rapordaki kümeler ayarda hiç kullanılmadı.
 - Gecikme: derinlik başına 30 rastgele pozisyon (erken/orta/geç oyun eşit, sabit tohum). Bütün derinlikler **aynı pozisyonlarda** ölçülür. Açılış kitabı kapalıdır; kitaptan gelen 0 ms'lik hamleler ortalamayı düşürmez.
 - Senaryolar: her senaryonun doğru cevap kümesi 4 yarı-hamlelik **kesin arama** (zorla kazanç/kayıp çözücü) ile hesaplanır, elle yazılmaz.
 - Turnuva: AI deterministiktir, aynı başlangıçtan hep aynı oyun çıkar. Bu yüzden her eşleşme 10 farklı rastgele açılıştan oynanır ve her açılış renkler değiştirilerek iki kez oynanır (eşleşme başına 20 oyun). Puan = galibiyet + beraberlik/2.

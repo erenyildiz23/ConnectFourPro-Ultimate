@@ -151,6 +151,31 @@ def ai_charts(ai):
         save(fig, 'tournament_heatmap.png')
 
 
+def ai_quality_charts(q):
+    sets = [('game_play', 'Gercekci oyun pozisyonlari'), ('random_play', 'Rastgele oyun pozisyonlari')]
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.4), sharey=True)
+    for ax, (key, title) in zip(axes, sets, strict=True):
+        data = q['move_quality'][key]
+        depths = sorted({int(k.split('_D')[1]) for k in data})
+        x = np.arange(len(depths))
+        for offset, (eng, color, label) in zip((-0.19, 0.19), (('v1', S2, 'v1 (onceki)'), ('v2', S1, 'v2 (yeni)')),
+                                               strict=True):
+            vals = [data.get(f'{eng}_D{d}', {}).get('value_kept_percent') for d in depths]
+            bars = ax.bar([i + offset for i, v in zip(x, vals, strict=True) if v is not None],
+                          [v for v in vals if v is not None], 0.36, color=color, label=label)
+            bar_labels(ax, bars, lambda v: f'%{v:.0f}')
+        n = next(iter(data.values()))['n']
+        ax.set_xticks(x, [f'D{d}' for d in depths])
+        ax.set_ylim(0, 105)
+        ax.set_xlabel('Arama derinligi')
+        ax.set_title(f'{title} (n={n})')
+    axes[0].set_ylabel('Sonucu koruyan hamle (%)')
+    axes[0].legend(loc='lower right')
+    fig.suptitle('Hamle kalitesi - kusursuz cozucuye gore (kritik pozisyonlar)', fontweight='bold', color=INK)
+    fig.tight_layout()
+    save(fig, 'ai_quality.png')
+
+
 # =============================================================================
 # AG
 # =============================================================================
@@ -290,10 +315,13 @@ def nfr_rows(ai, net, loc, fps):
         rows.append((req, target, measured, 'GECTI' if ok else 'KALDI', note))
 
     if ai:
-        d6 = ai['latency_summary'].get('6')
+        lat = ai['latency_summary']
+        d6, d8 = lat.get('6'), lat.get('8')
         if d6:
-            add('NFR-01 AI D6 yanit suresi', '< 500 ms (ortalama)', f"ort {d6['mean']:.0f} ms, p95 {d6['p95']:.0f} ms",
-                d6['mean'] < 500, '' if d6['p95'] < 500 else 'p95 sinirin uzerinde')
+            hard = f"; Zor (D8) ort {d8['mean']:.0f} ms, p95 {d8['p95']:.0f} ms" if d8 else ''
+            worst_p95 = max(d6['p95'], d8['p95'] if d8 else 0)
+            add('NFR-01 AI yanit suresi', '< 500 ms (ortalama)', f"D6 ort {d6['mean']:.0f} ms, p95 {d6['p95']:.0f} ms{hard}",
+                d6['mean'] < 500 and (not d8 or d8['mean'] < 500), '' if worst_p95 < 500 else 'p95 sinirin uzerinde')
     if net:
         ws = net['protocol']['websocket_ping']
         add('NFR-02 WebSocket gecikmesi', '< 5 ms (ortalama)', f"ort {ws['mean']:.2f} ms, p99 {ws['p99']:.2f} ms",
@@ -350,13 +378,46 @@ def fmt_env(env):
             f"Python {env['python']}, commit `{env['git_commit']}`, {env['timestamp']}")
 
 
-def write_report(ai, net, loc, fps, rows):
+def quality_report(q):
+    L = ["## AI kalitesi - kusursuz cozucuye karsi", "",
+         f"Hakem: {q['parameters']['oracle']}. Sadece kritik pozisyonlar (hamle secimi oyunun teorik sonucunu "
+         "degistirebiliyorsa) sayilir. v1 = onceki motor (`legacy_ai_v1.py`), v2 = yeni motor.", "",
+         "### Acilis kitabi", "", "| Motor | Giris | Hatali | Sonucu degistiren |", "|---|---|---|---|"]
+    for k, b in q['opening_books'].items():
+        L.append(f"| {k} | {b['entries']} | {b['wrong']} | {sum(d['changes_result'] for d in b['details'])} |")
+    for key, title in (('game_play', 'Gercekci oyun pozisyonlari'), ('random_play', 'Rastgele oyun pozisyonlari')):
+        data = q['move_quality'][key]
+        n = next(iter(data.values()))['n']
+        L += ["", f"### Hamle kalitesi - {title} ({n} kritik pozisyon)", "",
+              "| Motor | Optimal % | Sonucu koruyan % | Hata % | Erken % | Orta % | Gec % | Ort. sure (ms) |",
+              "|---|---|---|---|---|---|---|---|"]
+        for name, r in data.items():
+            ph = {p: (f"{v['value_kept_percent']:.0f}" if v['n'] else '-') for p, v in r['by_phase'].items()}
+            L.append(f"| {name.replace('_', ' ')} | {r['optimal_percent']:.0f} | {r['value_kept_percent']:.0f} | "
+                     f"{r['blunder_percent']:.0f} | {ph.get('erken', '-')} | {ph.get('orta', '-')} | "
+                     f"{ph.get('gec', '-')} | {r['time_ms']['mean']:.1f} |")
+    L += ["", "![AI kalitesi](visualization_outputs/ai_quality.png)", "",
+          "### Kusursuz rakibe karsi", "", "Cozucuye gore berabere olan acilislardan baslayip beraberligi "
+          "koruyabilme orani (her acilis iki renkle).", "", "| Motor | Oyun | Beraberligi koruma % | "
+          "Kayba kadar ort. hamle |", "|---|---|---|---|"]
+    for name, r in q['versus_perfect'].items():
+        mv = f"{r['mean_moves_before_loss']:.1f}" if r['mean_moves_before_loss'] else '-'
+        L.append(f"| {name.replace('_', ' ')} | {r['games']} | {r['draw_held_percent']:.0f} | {mv} |")
+    L += ["", "### v2 - v1 karsilasmalari", "", "| Eslesme | v2 galibiyet | v1 galibiyet | Beraberlik |",
+          "|---|---|---|---|"]
+    for h in q['head_to_head']:
+        L.append(f"| {h['a']} - {h['b']} | {h['a_wins']} | {h['b_wins']} | {h['draws']} |")
+    L.append("")
+    return L
+
+
+def write_report(ai, net, loc, fps, rows, quality=None):
     L = ["# Connect Four Pro - Performans Sonuclari", "",
          "> Bu dosya `benchmarks/visualize_all_results.py` tarafindan `results/*.json` dosyalarindan "
          "otomatik uretilir. Tum sayilar olculmustur; ornek/varsayilan veri yoktur.", ""]
 
     L += ["## Ortam", ""]
-    for name, data in (('AI', ai), ('Ag', net), ('Locust', loc), ('GUI', fps)):
+    for name, data in (('AI', ai), ('AI kalitesi', quality), ('Ag', net), ('Locust', loc), ('GUI', fps)):
         L.append(f"- **{name}:** " + (fmt_env(data['environment']) if data else 'olculmedi'))
     L += ["", "Sunucu, istemciler (yuk ureticileri) ve PostgreSQL ayni makinede calisti; sunucu Flask-SocketIO "
           "`threading` modunda (Werkzeug). Sonuclar donanima baglidir, farkli makinede yeniden olculmelidir.", ""]
@@ -401,6 +462,9 @@ def write_report(ai, net, loc, fps, rows):
             L.append(f"| D{a} vs D{b} | {s['d1_wins']} | {s['d2_wins']} | {s['draws']} |")
         L += ["", "![Turnuva](visualization_outputs/tournament_heatmap.png)", ""]
 
+    if quality:
+        L += quality_report(quality)
+
     if net:
         pr = net['protocol']
         L += ["## Ag performansi", "",
@@ -443,7 +507,7 @@ def write_report(ai, net, loc, fps, rows):
     if fps:
         L += ["## GUI kare hizi", "", "Gercek ana dongu (60 FPS siniri), ekransiz SDL surucusu; kareler arasi sure.", "",
               "| Durum | Ort. FPS | p99 kare (ms) | En uzun kare (ms) | >33 ms kare |", "|---|---|---|---|---|"]
-        for name, label in (('idle', 'Bos'), ('ai_searching', 'AI (D6) ararken')):
+        for name, label in (('idle', 'Bos'), ('ai_searching', f"AI (D{fps['parameters']['ai_depth']}) ararken")):
             s = fps[name]
             L.append(f"| {label} | {s['fps_mean']:.1f} | {s['p99']:.1f} | {s['max']:.1f} | "
                      f"{s['frames_over_33ms']} / {s['n']} |")
@@ -464,9 +528,12 @@ def main():
     bc.progress("Sonuclar okunuyor:")
     ai, net = load('ai_results.json'), load('network_results.json')
     loc, fps = load('locust_results.json'), load('gui_fps_results.json')
+    quality = load('ai_quality_results.json')
     bc.progress("Grafikler:")
     if ai:
         ai_charts(ai)
+    if quality:
+        ai_quality_charts(quality)
     if net:
         network_charts(net)
     if loc:
@@ -474,7 +541,7 @@ def main():
     rows = nfr_rows(ai, net, loc, fps)
     if rows:
         summary_dashboard(rows)
-    write_report(ai, net, loc, fps, rows)
+    write_report(ai, net, loc, fps, rows, quality)
 
 
 if __name__ == '__main__':

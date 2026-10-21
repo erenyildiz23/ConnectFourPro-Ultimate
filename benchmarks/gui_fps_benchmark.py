@@ -5,7 +5,7 @@ GUI kare hizi olcumu (NFR-05: >= 30 FPS).
 Pygame istemcisi ekransiz (SDL dummy) ve GERCEK ana donguyle (tick + 60 FPS
 siniri) calistirilir; ardisik kareler arasindaki sure olculur. Iki durum:
   * bos: oyun ekrani, AI calismiyor
-  * AI aramada: Zor (D6) AI ayri thread'de arama yaparken. Bir kare araligi,
+  * AI aramada: Zor (D8) AI ayri thread'de arama yaparken. Bir kare araligi,
     o aralikta AI'nin dugum sayaci degistiyse "aramada" sayilir.
 
 Not: Dummy surucude ekrana cizim (GPU/pencere yoneticisi) maliyeti yoktur; olcum
@@ -36,7 +36,7 @@ def run_loop(gui, seconds, play=False):
     while time.perf_counter() < end:
         if play:
             if gui.game.game_over:
-                gui.start_ai_game(6)
+                gui.start_ai_game(8)
             elif not gui.ai_thinking and gui.can_human_move():
                 gui.handle_click(next(c for c in HUMAN_COLS if gui.game.is_valid_location(c)))
         gui.tick()
@@ -62,7 +62,7 @@ def describe(intervals):
 def main():
     gui = gui_app.ConnectFourGUI(server_url='http://127.0.0.1:1')
     gui.guest_login()
-    gui.start_ai_game(6)
+    gui.start_ai_game(8)
 
     idle = [ms for ms, _ in run_loop(gui, IDLE_SECONDS)]
     played = run_loop(gui, PLAY_SECONDS, play=True)
@@ -70,7 +70,7 @@ def main():
     gui.invalidate_ai_session()
 
     result = {'suite': 'gui_fps', 'environment': bc.environment_info(),
-              'parameters': {'ai_depth': 6, 'fps_cap': gui_app.FPS, 'video_driver': os.environ['SDL_VIDEODRIVER']},
+              'parameters': {'ai_depth': 8, 'fps_cap': gui_app.FPS, 'video_driver': os.environ['SDL_VIDEODRIVER']},
               'idle': describe(idle), 'ai_searching': describe(searching)}
     for name in ('idle', 'ai_searching'):
         s = result[name]
