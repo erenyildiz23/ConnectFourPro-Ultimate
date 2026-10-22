@@ -8,6 +8,7 @@
 ![Flask](https://img.shields.io/badge/Flask--SocketIO-5.3-green.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-blue.svg)
 ![Tests](https://img.shields.io/badge/tests-266%20Python%20%2B%20129%20C%23-brightgreen.svg)
+[![Unity WebGL](https://github.com/erenyildiz23/ConnectFourPro-Ultimate/actions/workflows/unity-webgl.yml/badge.svg)](https://github.com/erenyildiz23/ConnectFourPro-Ultimate/actions/workflows/unity-webgl.yml)
 ![License](https://img.shields.io/badge/License-Academic-yellow.svg)
 
 **Minimax yapay zekası, gerçek zamanlı çok oyunculu mod ve ELO sıralaması içeren Connect Four — tarayıcıda oynanan Unity/C# (WebGL) istemcisiyle.**
@@ -95,6 +96,8 @@ run.bat client       # Python/Pygame istemcisi                               |  
 run.bat online       # sunucu + iki Pygame oyuncu penceresi                  |  ./run.sh online
 ```
 
+Unity kurmadan son build'i denemek için: **Actions → Unity WebGL → Artifacts → `webgl-build`** indirip klasörü `CONNECT4_WEB_BUILD` ile verin (build GitHub Actions'ta her push'ta alınır, bkz. KURULUM 11.5).
+
 Unity kurulumu (Unity CLI, Editor, WebGL modülü), adım adım elle kurulum, ağ üzerinden oynama, EXE ve sorun giderme: **[docs/KURULUM.md](docs/KURULUM.md)**
 
 <details>
@@ -169,6 +172,7 @@ CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket
 | `tests/unit` | Oyun motoru sınır durumları, AI taktikleri, aramanın tam genişlikli referans negamax ve kaba kuvvet oyun sonu çözümüyle karşılaştırılması, şifreleme ve ELO |
 | `tests/integration` | PostgreSQL katmanı, REST API, Socket.IO odaları, hamle doğrulama, seyirci, yeniden bağlanma/hükmen yenilgi, temizlik |
 | `tests/gui` | Ekransız Pygame istemcileri gerçek sunucuya bağlanıp her use case'i uçtan uca oynar (iki oyuncu + seyirci) |
+| `tests/e2e` | Derlenmiş Unity WebGL oyununu Chromium'da gerçek sunucuya karşı oynar: misafir girişi, AI maçı, iki tarayıcı arası online maç, seyirci (GitHub Actions) |
 | `tests/csharp` | C# oyun motoru ve AI (Python testlerinin karşılığı + Python motoruyla birebir altın vektör karşılaştırması), JSON/protokol, gerçek sunucuya karşı Socket.IO |
 
 `TEST_DATABASE_URL` erişilemezse veritabanı gerektiren testler atlanır. Testler bu veritabanını her testte boşaltır.

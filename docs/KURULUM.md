@@ -302,6 +302,31 @@ unity status             # bağlı Editor'ü gösterir ("ready")
 unity command            # Editor'ün sunduğu komutlar
 ```
 
+### 11.5 GitHub Actions ile otomatik build
+
+`unity/` klasörü değişince GitHub Actions oyunu WebGL olarak derler (GameCI) ve derlenen oyunu Chromium'da, gerçek sunucuya karşı oynatır (`tests/e2e/webgl.spec.mjs`). Build ve ekran görüntüleri **Actions → Unity WebGL → Artifacts** altından indirilebilir (`webgl-build`, `e2e-screenshots`).
+
+Bunun için bir kez üç *repository secret* eklenmelidir:
+
+1. Unity Hub'ı açın, giriş yapın: **Preferences (Tercihler) → Licenses → Add → Get a free personal license**.
+2. Oluşan lisans dosyasını bir metin düzenleyiciyle açıp **tüm içeriğini** kopyalayın:
+   - Windows: `C:\ProgramData\Unity\Unity_lic.ulf`
+   - macOS: `/Library/Application Support/Unity/Unity_lic.ulf`
+   - Linux: `~/.local/share/unity3d/Unity/Unity_lic.ulf`
+3. GitHub'da repo → **Settings → Secrets and variables → Actions → New repository secret**:
+
+   | Ad | Değer |
+   |---|---|
+   | `UNITY_LICENSE` | Lisans dosyasının içeriği |
+   | `UNITY_EMAIL` | Unity hesabınızın e-postası |
+   | `UNITY_PASSWORD` | Unity hesabınızın şifresi |
+
+4. **Actions → Unity WebGL → Run workflow** ile ilk build'i başlatın (sonrakiler push ile kendiliğinden çalışır).
+
+Secret'lar yalnızca GitHub'da şifreli saklanır; loglarda `***` olarak görünür. Secret yoksa iş hata vermez, "atlandı" notuyla geçer. Unity hesabında iki adımlı doğrulama açıksa CI'da giriş başarısız olabilir.
+
+İlk başarılı build, Unity'nin ürettiği proje dosyalarını (`ProjectSettings/`, `Packages/`, `.meta`) `unity-project-files` adlı artifact olarak da yükler; bunlar repoya eklenmelidir (bölüm 11.2'deki commit'in CI karşılığı).
+
 ---
 
 ## Sorun giderme
@@ -320,6 +345,8 @@ unity command            # Editor'ün sunduğu komutlar
 | Diğer bilgisayar bağlanamıyor | Güvenlik duvarında 5000 numaralı TCP portunu açın; iki bilgisayarın aynı ağda olduğunu kontrol edin |
 | `/play/` adresi `WebGL build bulunamadi` diyor | Önce `run build-web` ile build alın (bölüm 11.3) |
 | Tarayıcıda oyun "Unable to parse Build/....gz" hatası veriyor | Build'i Python sunucusu dışında (ör. `python -m http.server`) sunuyorsunuz; gzip dosyaları için `Content-Encoding: gzip` gerekir. `run web` kullanın |
+| Actions'ta "Unity WebGL" işi "atlandı" diyor | Secret'lar eksik (bölüm 11.5) |
+| Actions'ta Unity lisans hatası | `UNITY_LICENSE` içeriğinin tamamı kopyalanmalı; e-posta/şifre doğru olmalı; 2 adımlı doğrulama kapalı olmalı |
 | `unity: command not found` | Unity CLI kurulumundan sonra yeni bir terminal açın (bölüm 11.1) |
 | Unity'de `unity status` bağlanamıyor | Projede derleme hatası varsa Editor "Safe Mode"da açılır; Console'daki hatayı düzeltin. `unity pipeline list` ile kontrol edin |
 | Unity Console'da `WebGL modulu bulunamadi` uyarısı | `unity install-modules --module webgl` |

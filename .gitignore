@@ -71,3 +71,7 @@ unity/crashlytics-build.properties
 tests/csharp/bin/
 tests/csharp/obj/
 tests/csharp/TestResults/
+
+# Uctan uca tarayici testleri (tests/e2e)
+tests/e2e/node_modules/
+tests/e2e/screenshots/

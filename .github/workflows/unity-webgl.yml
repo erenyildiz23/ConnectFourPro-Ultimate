@@ -1,0 +1,161 @@
+name: Unity WebGL
+
+# Unity istemcisini WebGL olarak derler (GameCI) ve derlenen oyunu gercek
+# tarayicida, gercek sunucuya karsi oynatir (tests/e2e/webgl.spec.mjs).
+#
+# Gerekli repository secret'lari (Settings > Secrets and variables > Actions):
+#   UNITY_LICENSE   Unity_lic.ulf dosyasinin icerigi (Personal lisans)
+#   UNITY_EMAIL     Unity hesabi e-postasi
+#   UNITY_PASSWORD  Unity hesabi sifresi
+# Ayrinti: docs/KURULUM.md -> 11.5. Secret'lar yoksa is atlanir.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "unity/**"
+      - "src/server.py"
+      - "tests/e2e/**"
+      - ".github/workflows/unity-webgl.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unity-webgl-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UNITY_VERSION: 6000.3.27f1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      built: ${{ steps.license.outputs.ok }}
+    steps:
+      - name: Check Unity secrets
+        id: license
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::UNITY_LICENSE / UNITY_EMAIL / UNITY_PASSWORD secret'lari tanimli degil; WebGL build atlandi (docs/KURULUM.md -> 11.5)."
+          fi
+
+      # Unity Docker imaji buyuk; runner'da yer ac
+      - name: Free disk space
+        if: steps.license.outputs.ok == 'true'
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          swap-storage: false
+
+      - uses: actions/checkout@v4
+        if: steps.license.outputs.ok == 'true'
+
+      - name: Cache Library
+        if: steps.license.outputs.ok == 'true'
+        uses: actions/cache@v4
+        with:
+          path: unity/Library
+          key: Library-WebGL-${{ env.UNITY_VERSION }}-${{ hashFiles('unity/Assets/**', 'unity/Packages/**', 'unity/ProjectSettings/**') }}
+          restore-keys: |
+            Library-WebGL-${{ env.UNITY_VERSION }}-
+
+      - name: Build WebGL
+        if: steps.license.outputs.ok == 'true'
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: unity
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: WebGL
+          # Sahneyi kurar, web ayarlarini uygular ve unity/Build/WebGL'e derler
+          buildMethod: ConnectFourPro.EditorTools.ProjectSetup.BuildWebGL
+          versioning: None
+          allowDirtyBuild: true
+
+      - name: Check build output
+        if: steps.license.outputs.ok == 'true'
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" unity
+          ls -la unity/Build/WebGL unity/Build/WebGL/Build
+          test -f unity/Build/WebGL/index.html
+          ls unity/Build/WebGL/Build/*.wasm.gz
+
+      - uses: actions/upload-artifact@v4
+        if: steps.license.outputs.ok == 'true'
+        with:
+          name: webgl-build
+          path: unity/Build/WebGL
+          retention-days: 14
+
+      # Unity'nin ilk acilista urettigi proje dosyalari (repoya eklemek icin)
+      - uses: actions/upload-artifact@v4
+        if: steps.license.outputs.ok == 'true'
+        with:
+          name: unity-project-files
+          path: |
+            unity/ProjectSettings
+            unity/Packages
+            unity/Assets/**/*.meta
+            unity/Assets/Scenes
+          retention-days: 14
+
+  e2e:
+    needs: build
+    if: needs.build.outputs.built == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgresql://nobody@127.0.0.1:1/none   # veritabani yok: misafir modu yeterli
+      CONNECT4_WEB_BUILD: ${{ github.workspace }}/webgl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: webgl-build
+          path: webgl
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+          cd tests/e2e && npm ci && npx playwright install --with-deps chromium
+      - name: Start server
+        run: |
+          (cd src && python server.py > ../server.log 2>&1 &)
+          python scripts/wait_for_server.py || (cat server.log; exit 1)
+      - name: Play the game in Chromium
+        working-directory: tests/e2e
+        run: BASE_URL=http://localhost:5000 node webgl.spec.mjs
+      - name: Server log
+        if: always()
+        run: tail -100 server.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: tests/e2e/screenshots
+          retention-days: 14
