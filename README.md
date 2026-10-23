@@ -96,7 +96,7 @@ run.bat client       # Python/Pygame istemcisi                               |  
 run.bat online       # sunucu + iki Pygame oyuncu penceresi                  |  ./run.sh online
 ```
 
-Unity kurmadan son build'i denemek için: **Actions → Unity WebGL → Artifacts → `webgl-build`** indirip klasörü `CONNECT4_WEB_BUILD` ile verin (build GitHub Actions'ta her push'ta alınır; Student/Pro lisansının seri numarası veya Personal lisansın `.ulf` dosyası secret olarak eklenmelidir, bkz. KURULUM 11.5).
+Unity kurmadan son build'i denemek için: **Actions → Unity WebGL → Artifacts → `webgl-build`** indirip klasörü `CONNECT4_WEB_BUILD` ile verin (PowerShell: `$env:CONNECT4_WEB_BUILD = "C:\yol\webgl"; .\run.bat web`) (build GitHub Actions'ta her push'ta alınır; Student/Pro lisansının seri numarası veya Personal lisansın `.ulf` dosyası secret olarak eklenmelidir, bkz. KURULUM 11.5).
 
 Unity kurulumu (Unity CLI, Editor, WebGL modülü), adım adım elle kurulum, ağ üzerinden oynama, EXE ve sorun giderme: **[docs/KURULUM.md](docs/KURULUM.md)**
 

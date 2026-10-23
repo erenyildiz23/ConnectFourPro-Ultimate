@@ -292,6 +292,16 @@ run web              # sunucu + http://localhost:5000/play/
 
 Build `unity/Build/WebGL` klasörüne yazılır (Editor'den: **Tools > Connect Four > Build WebGL**). Başka bir klasör kullanmak için `CONNECT4_WEB_BUILD` ayarlayın.
 
+**GitHub Actions'tan indirilen build'i oynatmak:** başarılı bir "Unity WebGL" çalışmasının sayfasında en altta **Artifacts → `webgl-build`** zip'ini indirip açın (ör. `C:\ConnectFour\webgl`; içinde `index.html` ve `Build\` olmalı). Sonra terminalinize göre:
+
+| Terminal | Komut |
+|---|---|
+| PowerShell | `$env:CONNECT4_WEB_BUILD = "C:\ConnectFour\webgl"` ve sonra `.\run.bat web` |
+| cmd | `set CONNECT4_WEB_BUILD=C:\ConnectFour\webgl` ve sonra `run.bat web` |
+| Git Bash | `CONNECT4_WEB_BUILD=/c/ConnectFour/webgl ./run.sh web` |
+
+Kalıcı olması için proje kökündeki `.env` dosyasına `CONNECT4_WEB_BUILD=C:\ConnectFour\webgl` satırını ekleyebilirsiniz. `index.html`'e çift tıklamak çalışmaz; dosyalar gzip'li olduğu için oyun sunucu üzerinden açılmalıdır.
+
 ### 11.4 Claude Code + Unity eklentisi ile canlı düzenleme (isteğe bağlı)
 
 Unity Editor açıkken Claude Code'daki Unity eklentisi Editor'ü komut satırından yönetebilir (nesne ekleme, ayar okuma, C# çalıştırma):
@@ -359,6 +369,7 @@ Her değer **ayrı** bir secret olmalıdır (tek bir secret içinde hepsi çalı
 | Actions'ta "Unity WebGL" işi "atlandı" diyor | Secret'lar eksik (bölüm 11.5) |
 | Actions'ta Unity lisans hatası | E-posta/şifre doğru olmalı; 2 adımlı doğrulama kapalı olmalı; `UNITY_LICENSE` kullanıyorsanız dosyanın tamamı kopyalanmalı |
 | Seri lisansta "activation limit" / `Code 20111` hatası | id.unity.com → Subscriptions → aboneliğiniz → eski aktivasyonları kaldırın (CI normalde her işin sonunda iade eder) |
+| PowerShell'de `set ...` yazınca `PositionalParameterNotFound` | PowerShell'de `set` farklı bir komuttur: `$env:AD = "deger"` kullanın |
 | `unity: command not found` | Unity CLI kurulumundan sonra yeni bir terminal açın (bölüm 11.1) |
 | Unity'de `unity status` bağlanamıyor | Projede derleme hatası varsa Editor "Safe Mode"da açılır; Console'daki hatayı düzeltin. `unity pipeline list` ile kontrol edin |
 | Unity Console'da `WebGL modulu bulunamadi` uyarısı | `unity install-modules --module webgl` |
