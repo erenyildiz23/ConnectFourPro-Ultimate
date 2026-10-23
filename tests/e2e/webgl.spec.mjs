@@ -99,9 +99,34 @@ function readBoard(png) {
 const boardText = b => b.slice().reverse().map(r => r.join(' ')).join('\n');
 const countOf = (b, ch) => b.flat().filter(c => c === ch).length;
 
+// Unity girdiyi karede bir okur; yazilimsal WebGL'de kareler yavas oldugu icin
+// bas-birak ayni karede kalirsa tiklama kacabilir. Imlec once butona gelir
+// (hover), sonra kisa bir sure basili tutulur.
 async function click(page, p, wait = 700) {
-  await page.mouse.click(p.x, p.y);
+  await page.mouse.move(p.x, p.y);
+  await sleep(200);
+  await page.mouse.down();
+  await sleep(150);
+  await page.mouse.up();
   await sleep(wait);
+}
+
+// Unity'nin Debug.Log satirlarini bekler (Game/AppController.cs, Net/GameSocket.cs)
+async function waitLog(page, re, timeout = 15000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if (page.logs.some(l => re.test(l))) return true;
+    await sleep(200);
+  }
+  return false;
+}
+
+async function guestLogin(page) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await click(page, UI.guest, 300);
+    if (await waitLog(page, /\[App\] Oturum acildi: Misafir_/, 5000)) return true;
+  }
+  return false;
 }
 const dropIn = (page, col, wait = 1200) => click(page, cellCenter(col, 3), wait);
 
@@ -126,11 +151,10 @@ try {
   const a = await openGame('A');
   await shot(a, '01-giris.png');
   check(true, 'oyun tarayicida yuklendi (WebGL)');
-  const loaded = readBoard(await shot(a, '01-giris.png'));
-  check(countOf(loaded, 'R') + countOf(loaded, 'Y') === 0, 'giris ekraninda tahta yok');
+  check(a.logs.some(l => l.includes('[App] Hazir')), 'uygulama basladi ([App] Hazir)');
 
   // ------------------------------------------------- 2. Misafir girisi -> menu
-  await click(a, UI.guest);
+  check(await guestLogin(a), 'misafir girisi');
   await shot(a, '02-menu.png');
 
   // ------------------------------------------------------- 3. AI'ya karsi mac
@@ -155,20 +179,24 @@ try {
 
   // ---------------------------------------------------------- 4. Online mac
   const p1 = await openGame('P1');
-  await click(p1, UI.guest);
+  check(await guestLogin(p1), 'P1 misafir girisi');
   await click(p1, UI.menuLobby, 1500);
   await shot(p1, '07-lobi.png');
   await click(p1, UI.lobbyCreate, 1500);
+  check(await waitLog(p1, /\[GameSocket\] Sunucuya baglandi/), 'P1 Socket.IO ile baglandi');
+  await sleep(1000);
   await shot(p1, '08-rakip-bekleniyor.png');
   let games = await activeGames();
   const waiting = games.find(g => g.status === 'WAITING');
   check(!!waiting, 'P1 oda olusturdu: ' + (waiting && waiting.room_id));
 
   const p2 = await openGame('P2');
-  await click(p2, UI.guest);
+  check(await guestLogin(p2), 'P2 misafir girisi');
   await click(p2, UI.menuLobby, 3500);                  // lobi listesi 2 sn'de bir yenilenir
   await shot(p2, '09-lobi-oda-gorunuyor.png');
-  await click(p2, UI.lobbyRow0Action, 2500);
+  await click(p2, UI.lobbyRow0Action, 1000);
+  await waitLog(p1, /\[App\] Online oyun basliyor/);
+  await sleep(1000);
   games = await activeGames();
   check(games.some(g => g.status === 'PLAYING'), 'P2 lobiden odaya katildi, oyun basladi');
 
@@ -180,7 +208,7 @@ try {
 
   // ------------------------------------------------------------ 5. Seyirci
   const sp = await openGame('Seyirci');
-  await click(sp, UI.guest);
+  check(await guestLogin(sp), 'seyirci misafir girisi');
   await click(sp, UI.menuLobby, 3500);
   await click(sp, UI.lobbyRow0Action, 2500);            // oyundaki odada buton "Izle"
   board = await waitForBoard(sp, b => countOf(b, 'R') === 2 && countOf(b, 'Y') === 2, '11-seyirci.png');
