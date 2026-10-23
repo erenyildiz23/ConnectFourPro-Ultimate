@@ -61,7 +61,9 @@ jobs:
             if ! printf '%s' "$UNITY_SERIAL" | grep -Eq '^[A-Z0-9]{2}(-[A-Z0-9]{4}){5}$'; then
               echo "::warning::UNITY_SERIAL beklenen XX-XXXX-XXXX-XXXX-XXXX-XXXX biciminde degil (bosluk/etiket olabilir). Unity 'serial invalid' derse docs/KURULUM.md -> 11.5"
             fi
-            [ -n "$UNITY_LICENSE" ] && echo "::notice::UNITY_LICENSE de tanimli; GameCI seri numarasini kullanir. Personal .ulf ile denemek icin UNITY_SERIAL'i silin."
+            if [ -n "$UNITY_LICENSE" ]; then
+              echo "::notice::UNITY_LICENSE de tanimli; GameCI seri numarasini kullanir. Personal .ulf ile denemek icin UNITY_SERIAL'i silin."
+            fi
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Lisans: Personal (.ulf)"
