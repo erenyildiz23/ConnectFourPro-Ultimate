@@ -358,7 +358,7 @@ Her değer **ayrı** bir secret olmalıdır (tek bir secret içinde hepsi çalı
 | Tarayıcıda oyun "Unable to parse Build/....gz" hatası veriyor | Build'i Python sunucusu dışında (ör. `python -m http.server`) sunuyorsunuz; gzip dosyaları için `Content-Encoding: gzip` gerekir. `run web` kullanın |
 | Actions'ta "Unity WebGL" işi "atlandı" diyor | Secret'lar eksik (bölüm 11.5) |
 | Actions'ta Unity lisans hatası | E-posta/şifre doğru olmalı; 2 adımlı doğrulama kapalı olmalı; `UNITY_LICENSE` kullanıyorsanız dosyanın tamamı kopyalanmalı |
-| Seri lisansta "activation limit" hatası | id.unity.com → Subscriptions → aboneliğiniz → eski aktivasyonları kaldırın (CI normalde her işin sonunda iade eder) |
+| Seri lisansta "activation limit" / `Code 20111` hatası | id.unity.com → Subscriptions → aboneliğiniz → eski aktivasyonları kaldırın (CI normalde her işin sonunda iade eder) |
 | `unity: command not found` | Unity CLI kurulumundan sonra yeni bir terminal açın (bölüm 11.1) |
 | Unity'de `unity status` bağlanamıyor | Projede derleme hatası varsa Editor "Safe Mode"da açılır; Console'daki hatayı düzeltin. `unity pipeline list` ile kontrol edin |
 | Unity Console'da `WebGL modulu bulunamadi` uyarısı | `unity install-modules --module webgl` |

@@ -8,6 +8,8 @@ name: Unity WebGL
 #   UNITY_PASSWORD  Unity hesabi sifresi
 #   ve lisansa gore biri:
 #     UNITY_SERIAL  Student / Pro / Plus seri numarasi (GameCI is sonunda koltugu iade eder)
+#                   'Code 20111 ... maximum number of activations' hatasinda bir aktivasyonu
+#                   bosaltin (Hub > Licenses > Return veya id.unity.com)
 #     UNITY_LICENSE Unity_lic.ulf dosyasinin icerigi (Personal lisans)
 # Ayrinti: docs/KURULUM.md -> 11.5. Secret'lar yoksa is atlanir.
 
