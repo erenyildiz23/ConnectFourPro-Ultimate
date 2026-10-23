@@ -1,0 +1,13 @@
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.AI.csproj.AssemblyReference.cache
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.AI.GeneratedMSBuildEditorConfig.editorconfig
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.AI.AssemblyInfoInputs.cache
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.AI.AssemblyInfo.cs
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.AI.csproj.CoreCompileInputs.cache
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.AI.sourcelink.json
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.AI.deps.json
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.AI.dll
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.AI.pdb
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.Core.pdb
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectF.B6F3666F.Up2Date
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.AI.dll
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.AI.pdb

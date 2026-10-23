@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     Unity'den bagimsiz testler: unity/Assets/Scripts altindaki saf C# kodu
-    (Core, AI, Net/Json) buraya link'lenir ve Unity olmadan derlenip test edilir.
+    (Core, AI, Net/Protocol) asm/ altinda Unity asmdef'leriyle ayni sinirlarla
+    ayri assembly'ler olarak derlenir ve Unity olmadan derlenip test edilir.
     LangVersion 9: Unity 6'nin destekledigi C# surumu; daha yeni soz dizimi derlenmez.
   -->
   <PropertyGroup>
@@ -13,9 +14,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="../../unity/Assets/Scripts/Core/**/*.cs" LinkBase="Linked/Core" />
-    <Compile Include="../../unity/Assets/Scripts/AI/**/*.cs" LinkBase="Linked/AI" />
-    <Compile Include="../../unity/Assets/Scripts/Net/Protocol/**/*.cs" LinkBase="Linked/Net" />
+    <Compile Remove="asm/**" />
+    <ProjectReference Include="asm/ConnectFourPro.Core.csproj" />
+    <ProjectReference Include="asm/ConnectFourPro.AI.csproj" />
+    <ProjectReference Include="asm/ConnectFourPro.Protocol.csproj" />
     <None Include="vectors/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

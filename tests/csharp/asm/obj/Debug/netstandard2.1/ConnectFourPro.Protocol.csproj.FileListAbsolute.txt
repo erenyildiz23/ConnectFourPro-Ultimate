@@ -1,0 +1,13 @@
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.Protocol.deps.json
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.Protocol.dll
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.Protocol.pdb
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.Core.pdb
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Protocol.csproj.AssemblyReference.cache
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Protocol.GeneratedMSBuildEditorConfig.editorconfig
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Protocol.AssemblyInfoInputs.cache
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Protocol.AssemblyInfo.cs
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Protocol.csproj.CoreCompileInputs.cache
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Protocol.sourcelink.json
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectF.CDC8EBD7.Up2Date
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Protocol.dll
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Protocol.pdb

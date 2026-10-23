@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- unity/Assets/Scripts/AI asmdef'inin karsiligi: Unity'deki assembly sinirlari
+       (internal erisim, referanslar) burada da ayni olsun diye ayri derlenir. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>ConnectFourPro.AI</AssemblyName>
+    <LangVersion>9.0</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../unity/Assets/Scripts/AI/**/*.cs" LinkBase="AI" />
+    <ProjectReference Include="ConnectFourPro.Core.csproj" />
+  </ItemGroup>
+</Project>

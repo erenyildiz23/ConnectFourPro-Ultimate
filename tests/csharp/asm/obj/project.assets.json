@@ -1,0 +1,95 @@
+{
+  "version": 3,
+  "targets": {
+    ".NETStandard,Version=v2.1": {
+      "ConnectFourPro.Core/1.0.0": {
+        "type": "project",
+        "framework": ".NETStandard,Version=v2.1",
+        "compile": {
+          "bin/placeholder/ConnectFourPro.Core.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/ConnectFourPro.Core.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ConnectFourPro.Core/1.0.0": {
+      "type": "project",
+      "path": "ConnectFourPro.Core.csproj",
+      "msbuildProject": "ConnectFourPro.Core.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    ".NETStandard,Version=v2.1": [
+      "ConnectFourPro.Core >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "/root/.nuget/packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "/home/user/ConnectFourPro/tests/csharp/asm/ConnectFourPro.AI.csproj",
+      "projectName": "ConnectFourPro.AI",
+      "projectPath": "/home/user/ConnectFourPro/tests/csharp/asm/ConnectFourPro.AI.csproj",
+      "packagesPath": "/root/.nuget/packages/",
+      "outputPath": "/home/user/ConnectFourPro/tests/csharp/asm/obj/",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "/root/.nuget/NuGet/NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "netstandard2.1"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "netstandard2.1": {
+          "targetAlias": "netstandard2.1",
+          "projectReferences": {
+            "/home/user/ConnectFourPro/tests/csharp/asm/ConnectFourPro.Core.csproj": {
+              "projectPath": "/home/user/ConnectFourPro/tests/csharp/asm/ConnectFourPro.Core.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "allWarningsAsErrors": true,
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      }
+    },
+    "frameworks": {
+      "netstandard2.1": {
+        "targetAlias": "netstandard2.1",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "NETStandard.Library": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "/root/.dotnet/sdk/8.0.426/RuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

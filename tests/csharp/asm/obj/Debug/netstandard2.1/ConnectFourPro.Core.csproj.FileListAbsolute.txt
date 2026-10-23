@@ -1,0 +1,10 @@
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.Core.deps.json
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.Core.dll
+/home/user/ConnectFourPro/tests/csharp/asm/bin/Debug/netstandard2.1/ConnectFourPro.Core.pdb
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Core.GeneratedMSBuildEditorConfig.editorconfig
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Core.AssemblyInfoInputs.cache
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Core.AssemblyInfo.cs
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Core.csproj.CoreCompileInputs.cache
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Core.sourcelink.json
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Core.dll
+/home/user/ConnectFourPro/tests/csharp/asm/obj/Debug/netstandard2.1/ConnectFourPro.Core.pdb

@@ -148,9 +148,12 @@ namespace ConnectFourPro.AI
             return r & (BoardMask ^ mask);
         }
 
+        // Kazanma yonleri: dikey, yatay, capraz /, capraz \ (GameState ile ayni)
+        private static readonly int[] Directions = { 1, H1, H1 + 1, H1 - 1 };
+
         public static bool HasFour(ulong position)
         {
-            foreach (int d in Board.Directions)
+            foreach (int d in Directions)
             {
                 ulong m = position & (position >> d);
                 if ((m & (m >> (2 * d))) != 0)

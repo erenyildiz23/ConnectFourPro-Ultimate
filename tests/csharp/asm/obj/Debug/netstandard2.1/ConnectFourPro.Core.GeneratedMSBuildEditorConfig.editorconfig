@@ -1,0 +1,5 @@
+is_global = true
+build_property.RootNamespace = ConnectFourPro.Core
+build_property.ProjectDir = /home/user/ConnectFourPro/tests/csharp/asm/
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
