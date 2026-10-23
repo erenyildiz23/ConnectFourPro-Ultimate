@@ -46,9 +46,14 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ] || { [ -z "$UNITY_SERIAL" ] && [ -z "$UNITY_LICENSE" ]; }; then
+          # Yalnizca eksik secret'larin ADLARI yazilir (degerler asla)
+          missing=""
+          [ -z "$UNITY_EMAIL" ] && missing="$missing UNITY_EMAIL"
+          [ -z "$UNITY_PASSWORD" ] && missing="$missing UNITY_PASSWORD"
+          [ -z "$UNITY_SERIAL" ] && [ -z "$UNITY_LICENSE" ] && missing="$missing UNITY_SERIAL(veya_UNITY_LICENSE)"
+          if [ -n "$missing" ]; then
             echo "ok=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Unity secret'lari eksik (UNITY_EMAIL, UNITY_PASSWORD ve UNITY_SERIAL ya da UNITY_LICENSE); WebGL build atlandi (docs/KURULUM.md -> 11.5)."
+            echo "::notice::Eksik Unity secret'lari:$missing. Her biri ayri bir repository secret olmali; WebGL build atlandi (docs/KURULUM.md -> 11.5)."
           elif [ -n "$UNITY_SERIAL" ]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Lisans: seri numarasi (Student / Pro / Plus)"

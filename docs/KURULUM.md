@@ -334,7 +334,7 @@ Sonra:
 
 **Actions → Unity WebGL → Run workflow** ile ilk build'i başlatın (sonrakiler push ile kendiliğinden çalışır).
 
-Secret'lar yalnızca GitHub'da şifreli saklanır; loglarda `***` olarak görünür. Secret yoksa iş hata vermez, "atlandı" notuyla geçer. Unity hesabında iki adımlı doğrulama açıksa CI'da giriş başarısız olabilir.
+Her değer **ayrı** bir secret olmalıdır (tek bir secret içinde hepsi çalışmaz). Secret'lar yalnızca GitHub'da şifreli saklanır; loglarda `***` olarak görünür. Secret yoksa iş hata vermez, "atlandı" notuyla geçer. Unity hesabında iki adımlı doğrulama açıksa CI'da giriş başarısız olabilir.
 
 İlk başarılı build, Unity'nin ürettiği proje dosyalarını (`ProjectSettings/`, `Packages/`, `.meta`) `unity-project-files` adlı artifact olarak da yükler; bunlar repoya eklenmelidir (bölüm 11.2'deki commit'in CI karşılığı).
 
