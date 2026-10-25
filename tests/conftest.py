@@ -145,12 +145,31 @@ def sio(server):
         c.disconnect()
 
 
-def start_match(sio, p1="alice", p2="bob"):
-    """Iki oyunculu bir odayi baslatir: (oda_id, p1_istemci, p2_istemci)."""
+def login_token(http, username, password="pw123"):
+    """Kayit olur (gerekirse) ve /login'in verdigi oturum token'ini dondurur."""
+    http.post('/signup', json={'username': username, 'password': password})
+    r = http.post('/login', json={'username': username, 'password': password})
+    assert r.status_code == 200, r.get_json()
+    return r.get_json()['token']
+
+
+def identity(user, token=None):
+    """Socket kimlik alanlari; token verilirse kayitli kullanici olarak."""
+    return {'user_id': user, 'token': token} if token else {'user_id': user}
+
+
+def start_match(sio, p1="alice", p2="bob", tokens=(None, None)):
+    """
+    Iki oyunculu bir odayi baslatir: (oda_id, p1_istemci, p2_istemci).
+    Her istemcinin `rejoin_token` niteligi sunucunun verdigi koltuk anahtaridir.
+    """
     a, b = sio(), sio()
-    a.emit('create_game', {'user_id': p1})
-    room_id = a.wait_for('game_created')['room_id']
-    b.emit('join_game', {'room_id': room_id, 'user_id': p2})
+    a.emit('create_game', identity(p1, tokens[0]))
+    created = a.wait_for('game_created')
+    room_id = created['room_id']
+    b.emit('join_game', {'room_id': room_id, **identity(p2, tokens[1])})
+    a.rejoin_token = created['rejoin_token']
+    b.rejoin_token = b.wait_for('game_joined')['rejoin_token']
     b.wait_for('game_start')
     a.wait_for('game_start')
     a.clear()

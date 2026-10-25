@@ -78,6 +78,8 @@ namespace ConnectFourPro.Game
         // Kullanici
         public string Username { get; private set; } = "";
         public bool IsGuest { get; private set; }
+        /// <summary>/login (veya /signup) token'i; sunucu kayitli kimligi bununla dogrular. Misafirde null.</summary>
+        private string _authToken;
         public int UserElo { get; private set; } = UserInfo.DefaultRating;
         public bool AuthPending { get; private set; }
         public string OpponentName { get; private set; } = "Rakip";
@@ -212,7 +214,7 @@ namespace ConnectFourPro.Game
                 else if (r.Status == 200)
                 {
                     var user = UserInfo.From(r.BodyObject.GetObject("user"), username);
-                    EnterMenu(user.Username, user.Rating, false);
+                    EnterMenu(user.Username, user.Rating, false, r.BodyObject.GetString("token"));
                     SetStatus($"Hoş geldin {Username}!", StatusTone.Good);
                 }
                 else if (r.Status == 401)
@@ -248,7 +250,7 @@ namespace ConnectFourPro.Game
                     SetStatus("Sunucuya bağlanılamadı!", StatusTone.Bad);
                 else if (r.Status == 201)
                 {
-                    EnterMenu(username, UserInfo.DefaultRating, false);
+                    EnterMenu(username, UserInfo.DefaultRating, false, r.BodyObject.GetString("token"));
                     SetStatus($"Kayıt başarılı! Hoş geldin {username}!", StatusTone.Good);
                 }
                 else if (r.Status == 409)
@@ -269,9 +271,10 @@ namespace ConnectFourPro.Game
             SetStatus("");
         }
 
-        private void EnterMenu(string username, int elo, bool isGuest)
+        private void EnterMenu(string username, int elo, bool isGuest, string authToken = null)
         {
             Username = username;
+            _authToken = authToken;
             UserElo = elo;
             IsGuest = isGuest;
             SetScreen(AppScreen.Menu);
@@ -282,6 +285,7 @@ namespace ConnectFourPro.Game
         public void Logout()
         {
             Username = "";
+            _authToken = null;
             UserElo = UserInfo.DefaultRating;
             IsGuest = false;
             SetScreen(AppScreen.Login);
@@ -481,7 +485,7 @@ namespace ConnectFourPro.Game
             RoomId = null;
             SetScreen(AppScreen.Waiting);
             SetStatus("");
-            _socket.CreateGame(Username);
+            _socket.CreateGame(Username, _authToken);
         }
 
         public void JoinOnlineGame(string roomId)
@@ -490,7 +494,7 @@ namespace ConnectFourPro.Game
             RoomId = roomId.ToUpperInvariant();
             IsSpectator = false;
             SetStatus("Odaya katılınıyor...");
-            _socket.JoinGame(RoomId, Username);
+            _socket.JoinGame(RoomId, Username, _authToken);
         }
 
         public void SpectateGame(string roomId)
@@ -501,7 +505,7 @@ namespace ConnectFourPro.Game
             ResetOnlineGame();
             SetScreen(AppScreen.Spectating);
             SetStatus("Yayına bağlanılıyor...");
-            _socket.JoinGame(RoomId, Username);
+            _socket.JoinGame(RoomId, Username, _authToken);
         }
 
         private void ConnectionFailed()

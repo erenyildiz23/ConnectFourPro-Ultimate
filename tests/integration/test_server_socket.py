@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from conftest import DRAW_SEQUENCE, P1_VERTICAL_WIN, play, start_match, wait_until
+from conftest import DRAW_SEQUENCE, P1_VERTICAL_WIN, identity, login_token, play, start_match, wait_until
 
 
 def errors(client):
@@ -181,7 +181,7 @@ class TestDisconnectAndReconnect:
         assert notice['grace_seconds'] == 1
 
         a2 = sio()
-        a2.emit('join_game', {'room_id': room_id, 'user_id': 'alice'})
+        a2.emit('join_game', {'room_id': room_id, 'user_id': 'alice', 'rejoin_token': a.rejoin_token})
         rejoined = a2.wait_for('game_joined')
         assert rejoined['rejoined'] and rejoined['player_piece'] == 1
         assert rejoined['current_state']['history'] == [3, 4]
@@ -249,9 +249,8 @@ class TestCleanup:
 @pytest.mark.db
 class TestRegisteredPlayers:
     def test_elo_update_and_history_after_win(self, sio, http, database):
-        for name in ("alice", "bob"):
-            http.post('/signup', json={'username': name, 'password': 'pw123'})
-        room_id, a, b = start_match(sio)
+        tokens = (login_token(http, "alice"), login_token(http, "bob"))
+        room_id, a, b = start_match(sio, tokens=tokens)
         play(room_id, a, b, P1_VERTICAL_WIN)
         elo_a, elo_b = a.wait_for('elo_update'), b.wait_for('elo_update')
         assert elo_a == {'new_elo': 1215, 'change': 15, 'winner': True}
@@ -262,20 +261,113 @@ class TestRegisteredPlayers:
         assert http.get('/user/alice/games').get_json()['games'][0]['result'] == 'win'
 
     def test_forfeit_updates_elo_and_is_recorded(self, sio, http, database):
-        for name in ("alice", "bob"):
-            http.post('/signup', json={'username': name, 'password': 'pw123'})
-        room_id, a, b = start_match(sio)
+        tokens = (login_token(http, "alice"), login_token(http, "bob"))
+        room_id, a, b = start_match(sio, tokens=tokens)
         b.emit('leave_game', {'room_id': room_id})
         assert a.wait_for('elo_update')['change'] == 15
         game = http.get('/user/bob/games').get_json()['games'][0]
         assert game['result'] == 'loss' and game['end_reason'] == 'forfeit'
 
     def test_draw_is_recorded_without_elo_change(self, sio, http, database):
-        for name in ("alice", "bob"):
-            http.post('/signup', json={'username': name, 'password': 'pw123'})
-        room_id, a, b = start_match(sio)
+        tokens = (login_token(http, "alice"), login_token(http, "bob"))
+        room_id, a, b = start_match(sio, tokens=tokens)
         play(room_id, a, b, DRAW_SEQUENCE)
         a.wait_for('game_over')
         assert a.events('elo_update') == []
         assert http.get('/user/alice/games').get_json()['games'][0]['result'] == 'draw'
         assert http.get('/user/alice').get_json()['user']['rating'] == 1200
+
+
+class TestIdentity:
+    """Kimlik istemcinin yazdigi ada degil, sunucunun verdigi token/anahtara dayanir."""
+
+    def test_login_and_signup_return_verifiable_token(self, http, server, database):
+        r = http.post('/signup', json={'username': 'alice', 'password': 'pw123'})
+        assert server.verify_session_token(r.get_json()['token']) == 'alice'
+        r = http.post('/login', json={'username': 'alice', 'password': 'pw123'})
+        assert server.verify_session_token(r.get_json()['token']) == 'alice'
+
+    @pytest.mark.parametrize("token", ["", "garbage", "alice", 123, "x" * 600])
+    def test_forged_or_malformed_token_is_rejected(self, sio, server, token):
+        a = sio()
+        a.emit('create_game', {'user_id': 'alice', 'token': token})
+        assert a.wait_for('error')['msg'] == 'Oturum gecersiz, tekrar giris yapin'
+        assert not server.GAMES
+
+    def test_token_signed_with_other_key_is_rejected(self, sio, server, database):
+        from itsdangerous import URLSafeTimedSerializer
+        database.create_user('alice', 'pw123')
+        forged = URLSafeTimedSerializer('not-the-key', salt='connect4-session').dumps('alice')
+        a = sio()
+        a.emit('create_game', {'token': forged})
+        assert a.wait_for('error')['msg'] == 'Oturum gecersiz, tekrar giris yapin'
+
+    def test_expired_token_is_rejected(self, sio, http, server, database, monkeypatch):
+        token = login_token(http, 'alice')
+        monkeypatch.setattr(server.config, 'SESSION_MAX_AGE', -1)
+        a = sio()
+        a.emit('create_game', {'token': token})
+        assert a.wait_for('error')['msg'] == 'Oturum gecersiz, tekrar giris yapin'
+
+    def test_registered_name_cannot_be_used_without_token(self, sio, http, server, database):
+        login_token(http, 'alice')
+        a = sio()
+        a.emit('create_game', {'user_id': 'alice'})
+        assert a.wait_for('error')['msg'] == 'Bu kullanici adi kayitli, giris yapin'
+        room_id, _, _ = start_match(sio, 'p1', 'p2')
+        b = sio()
+        b.emit('join_game', {'room_id': room_id, 'user_id': 'alice'})
+        assert b.wait_for('error')['msg'] == 'Bu kullanici adi kayitli, giris yapin'
+        assert server.GAMES[room_id]['p1_uid'] == 'p1'
+
+    def test_token_identity_overrides_claimed_user_id(self, sio, http, database):
+        token = login_token(http, 'alice')
+        login_token(http, 'bob')
+        a = sio()
+        a.emit('create_game', {'user_id': 'bob', 'token': token})
+        assert a.wait_for('game_created')['your_info']['username'] == 'alice'
+
+    def test_impersonating_victim_cannot_tank_their_elo(self, sio, http, database):
+        """Eski saldiri: kurbanin adiyla oda acip kendi hesabina hukmen kaybetmek."""
+        login_token(http, 'victim')
+        attacker = login_token(http, 'attacker')
+        fake = sio()
+        fake.emit('create_game', {'user_id': 'victim'})
+        assert fake.wait_for('error')['msg'] == 'Bu kullanici adi kayitli, giris yapin'
+        # Misafir adiyla oynanan oyun kayitli rakibin puanini degistirmez
+        room_id, a, b = start_match(sio, 'guest_x', 'attacker', tokens=(None, attacker))
+        a.emit('leave_game', {'room_id': room_id})
+        assert b.wait_for('game_over')['elo_changes'] == {'p1': 0, 'p2': 0}
+        assert b.events('elo_update') == []
+        assert http.get('/user/attacker').get_json()['user']['rating'] == 1200
+        assert http.get('/user/victim').get_json()['user']['rating'] == 1200
+        assert http.get('/user/attacker/games').get_json()['games'] == []
+
+    def test_guest_seat_cannot_be_taken_without_rejoin_token(self, sio, server):
+        room_id, a, b = start_match(sio)
+        a.disconnect()
+        b.wait_for('opponent_disconnected')
+        for payload in ({'user_id': 'alice'}, {'user_id': 'alice', 'rejoin_token': 'wrong'},
+                        {'user_id': 'alice', 'rejoin_token': b.rejoin_token}):
+            intruder = sio()
+            intruder.emit('join_game', {'room_id': room_id, **payload})
+            assert intruder.wait_for('error')['msg'] == 'Yeniden baglanma anahtari gecersiz'
+        assert 1 in server.GAMES[room_id]['disconnected']
+
+    def test_registered_player_rejoins_with_session_token(self, sio, http, database):
+        tokens = (login_token(http, 'alice'), login_token(http, 'bob'))
+        room_id, a, b = start_match(sio, tokens=tokens)
+        a.disconnect()
+        b.wait_for('opponent_disconnected')
+        a2 = sio()
+        a2.emit('join_game', {'room_id': room_id, **identity('alice', tokens[0])})
+        assert a2.wait_for('game_joined')['rejoined']
+
+    def test_guest_cannot_replace_another_connections_waiting_room(self, sio, server):
+        a = sio()
+        a.emit('create_game', {'user_id': 'Misafir_000001'})
+        room_id = a.wait_for('game_created')['room_id']
+        b = sio()
+        b.emit('create_game', {'user_id': 'Misafir_000001'})
+        assert b.wait_for('error')['msg'] == 'Bu misafir adi kullanimda'
+        assert list(server.GAMES) == [room_id]

@@ -9,7 +9,9 @@ degerler de yuklenir; terminalde ayarlanmis degiskenler her zaman onceliklidir.
 Ornek degerler icin `.env.example` dosyasina bakin.
 
     DATABASE_URL            PostgreSQL baglanti adresi
-    SECRET_KEY              Flask oturum anahtari (bos ise rastgele uretilir)
+    SECRET_KEY              Oturum token'larini imzalar (bos ise rastgele uretilir;
+                            o zaman sunucu yeniden baslayinca herkes tekrar giris yapar)
+    SESSION_MAX_AGE         Oturum token'inin gecerlilik suresi (saniye)
     CONNECT4_HOST / _PORT   Sunucunun dinledigi adres
     CONNECT4_SERVER         Istemcinin baglanacagi sunucu adresi
     LOG_LEVEL               DEBUG, INFO, WARNING, ERROR
@@ -84,6 +86,7 @@ USERNAME_MAX_LENGTH = 20
 PASSWORD_MIN_LENGTH = 3
 PASSWORD_MAX_LENGTH = 128
 PBKDF2_ITERATIONS = _env_int("PBKDF2_ITERATIONS", 200_000)
+SESSION_MAX_AGE = _env_int("SESSION_MAX_AGE", 7 * 24 * 3600)
 
 # --- Veritabani ---
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost/connect4")

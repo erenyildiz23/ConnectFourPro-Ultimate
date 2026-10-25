@@ -127,7 +127,8 @@ set DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4        # Windows
 | Değişken | Varsayılan | Açıklama |
 |---|---|---|
 | `DATABASE_URL` | `postgresql://postgres@localhost/connect4` | PostgreSQL adresi |
-| `SECRET_KEY` | rastgele | Flask oturum anahtarı |
+| `SECRET_KEY` | rastgele | Oturum token'larını imzalar (ayarlanmazsa sunucu yeniden başlayınca herkes tekrar giriş yapar) |
+| `SESSION_MAX_AGE` | `604800` | Oturum token'ının geçerlilik süresi (saniye) |
 | `CONNECT4_HOST` / `CONNECT4_PORT` | `0.0.0.0` / `5000` | Sunucunun dinlediği adres |
 | `CONNECT4_SERVER` | `http://localhost:5000` | İstemcinin bağlanacağı sunucu (Pygame istemcisi ve Unity Editor) |
 | `CONNECT4_WEB_BUILD` | `unity/Build/WebGL` | `/play` adresinden sunulan Unity WebGL build klasörü |
@@ -206,6 +207,7 @@ CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket
 - **İstemci thread modeli:** Oyun durumunu yalnızca Pygame ana thread'i değiştirir. Socket.IO olayları ve HTTP cevapları bir kuyruğa alınır, AI ve analiz aramaları ayrı thread'lerde çalışır ve iptal edilebilir.
 - **Sıra güvenliği:** python-socketio istemcisi her mesajı ayrı thread'de işler, olaylar sırasız gelebilir. İstemci gelen hamleleri hamle geçmişinin uzunluğuna göre uygular, yeni ELO'yu da `game_over` mesajından okur.
 - **Sunucu:** Oda durumu tek bir kilitle korunur. Hamleyi yalnızca o taşın sahibi olan bağlantı yapabilir.
+- **Kimlik:** Kayıtlı kullanıcı, `/login` (veya `/signup`) cevabındaki imzalı `token` ile tanınır; socket olaylarındaki `user_id` sadece misafir adıdır ve kayıtlı bir kullanıcının adı misafir olarak kullanılamaz. ELO yalnızca iki oyuncu da token ile doğrulanmışsa değişir. Misafir, kopmadan sonra koltuğunu sunucunun verdiği `rejoin_token` ile geri alır.
 
 ## 📡 API
 
@@ -213,8 +215,8 @@ CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket
 
 | Endpoint | Method | Açıklama |
 |---|---|---|
-| `/signup` | POST | Kayıt (`201`, `400` doğrulama, `409` alınmış, `503` veritabanı yok) |
-| `/login` | POST | Giriş (`200`, `401`, `503`) |
+| `/signup` | POST | Kayıt (`201` + `token`, `400` doğrulama, `409` alınmış, `503` veritabanı yok) |
+| `/login` | POST | Giriş (`200` + `token`, `401`, `503`) |
 | `/user/<username>` | GET | Profil |
 | `/user/<username>/games` | GET | Maç geçmişi (`?limit=`) |
 | `/leaderboard` | GET | Liderlik tablosu (`?limit=` 1–100) |
@@ -227,7 +229,8 @@ CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket
 
 | Olay | Yön | Açıklama |
 |---|---|---|
-| `create_game` / `join_game` / `make_move` / `leave_game` | İstemci → Sunucu | Oda ve oyun işlemleri (`join_game` aynı zamanda yeniden bağlanma) |
+| `create_game` / `join_game` / `make_move` / `leave_game` | İstemci → Sunucu | Oda ve oyun işlemleri (`join_game` aynı zamanda yeniden bağlanma). Kimlik: kayıtlı kullanıcı `token`, misafir `user_id` (+ yeniden bağlanırken `rejoin_token`) gönderir |
+| `game_created` / `game_joined` → `rejoin_token` | Sunucu → Oyuncu | Koltuk anahtarı; misafir yeniden bağlanırken gönderir |
 | `latency_ping` | İstemci → Sunucu | Gecikme ölçümü (`latency_pong` döner) |
 | `game_created` / `game_joined` / `game_start` | Sunucu → İstemci | Oda durumu |
 | `move_made` | Sunucu → Oda | Hamle sonrası tam oyun durumu |

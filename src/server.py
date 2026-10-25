@@ -9,15 +9,21 @@ Unity WebGL istemcisi (/play).
 
 Ozellikler:
   * Sunucu tarafli hamle dogrulama; hamleyi sadece tasin sahibi yapabilir
+  * Kayitli kimlik sadece /login (veya /signup) ile verilen imzali `token` ile
+    kanitlanir; token'siz baglantilar misafirdir ve ELO'yu etkilemez
+  * Yeniden baglanan misafir, oda olusturulurken/katilirken verilen
+    `rejoin_token` ile koltugunu geri alir (baska misafir adini kullanamaz)
   * Baglantisi kopan oyuncu RECONNECT_GRACE_SECONDS icinde geri donebilir,
     donmezse rakip hukmen kazanir (NFR-08)
   * Bekleyen / hareketsiz / bitmis odalar otomatik temizlenir
   * Tum oda durumuna erisim tek bir kilitle korunur (thread-safe)
 """
 
+import hmac
 import os
 import random
 import re
+import secrets
 import string
 import threading
 import time
@@ -25,6 +31,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from flask import Flask, abort, jsonify, redirect, request, send_from_directory
 from flask_socketio import SocketIO, close_room, emit, join_room, leave_room
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 import config
 import database as db
@@ -53,6 +60,10 @@ CLEANUP_INTERVAL = config.CLEANUP_INTERVAL
 _USERNAME_RE = re.compile(r'^[\w.-]+$', re.UNICODE)
 _ROOM_ID_RE = re.compile(r'^[A-Z0-9]{5}$')
 
+# Oturum token'i: SECRET_KEY ile imzali kullanici adi (SECRET_KEY ayarlanmazsa
+# her sunucu baslangicinda degisir ve eski token'lar gecersiz olur)
+_session_signer = URLSafeTimedSerializer(config.SECRET_KEY, salt='connect4-session')
+
 
 # =============================================================================
 # YARDIMCI FONKSIYONLAR
@@ -62,6 +73,11 @@ def generate_room_id(length: int = 5) -> str:
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
+def guest_info(username: str) -> Dict[str, Any]:
+    return {'username': str(username), 'rating': config.DEFAULT_RATING,
+            'wins': 0, 'losses': 0, 'guest': True}
+
+
 def get_user_info(username: Optional[str]) -> Dict[str, Any]:
     """Kayitli kullanici bilgisi; kayitli degilse (misafir) varsayilan profil."""
     if username:
@@ -69,8 +85,47 @@ def get_user_info(username: Optional[str]) -> Dict[str, Any]:
         if user:
             user['guest'] = False
             return user
-    return {'username': str(username), 'rating': config.DEFAULT_RATING,
-            'wins': 0, 'losses': 0, 'guest': True}
+    return guest_info(str(username))
+
+
+def issue_session_token(username: str) -> str:
+    return _session_signer.dumps(username)
+
+
+def verify_session_token(token: Any) -> Optional[str]:
+    """Gecerli ve suresi dolmamis token'in kullanici adi; degilse None."""
+    if not isinstance(token, str) or not token or len(token) > 512:
+        return None
+    try:
+        username = _session_signer.loads(token, max_age=config.SESSION_MAX_AGE)
+    except BadSignature:   # SignatureExpired da BadSignature alt sinifidir
+        return None
+    return username if isinstance(username, str) else None
+
+
+def resolve_player(data: Any) -> Tuple[Optional[str], Optional[Dict[str, Any]], bool, Optional[str]]:
+    """
+    Socket verisinden oyuncu kimligi: (kullanici, profil, kayitli_mi, hata_mesaji).
+    `token` varsa kayitli kullanici odur ve `user_id` yok sayilir. Token yoksa
+    `user_id` misafir adidir; kayitli bir kullanicinin adi misafir olarak kullanilamaz.
+    """
+    token = data.get('token') if isinstance(data, dict) else None
+    if token is not None:
+        username = verify_session_token(token)
+        if not username:
+            return None, None, False, 'Oturum gecersiz, tekrar giris yapin'
+        user = db.get_user_by_username(username)
+        if not user:
+            return None, None, False, 'Oturum gecersiz, tekrar giris yapin'
+        user['guest'] = False
+        return username, user, True, None
+
+    user_id = _clean_str(data, 'user_id', config.USERNAME_MAX_LENGTH + 20)
+    if not user_id:
+        return None, None, False, 'Gecersiz kullanici'
+    if db.get_user_by_username(user_id):
+        return None, None, False, 'Bu kullanici adi kayitli, giris yapin'
+    return user_id, guest_info(user_id), False, None
 
 
 def validate_credentials(data: Any) -> Tuple[Optional[str], Optional[str], Optional[str]]:
@@ -100,12 +155,15 @@ def _clean_str(data: Any, key: str, max_len: int = 64) -> Optional[str]:
     return value[:max_len] if value else None
 
 
-def _new_room(p1_sid: str, p1_uid: str, p1_info: dict) -> Dict[str, Any]:
+def _new_room(p1_sid: str, p1_uid: str, p1_info: dict, p1_auth: bool = False) -> Dict[str, Any]:
     now = time.time()
     return {
         'game': ConnectFourGame(),
+        # *_auth: kimlik token ile dogrulandi; *_rejoin: koltugu geri alma anahtari
         'p1_sid': p1_sid, 'p1_uid': p1_uid, 'p1_info': p1_info,
+        'p1_auth': p1_auth, 'p1_rejoin': secrets.token_urlsafe(16),
         'p2_sid': None, 'p2_uid': None, 'p2_info': None,
+        'p2_auth': False, 'p2_rejoin': None,
         'created_at': now,
         'last_move_at': now,
         'disconnected': {},      # piece -> kopma zamani
@@ -129,10 +187,15 @@ def _sid_of(room: dict, piece: int) -> Optional[str]:
     return room['p1_sid'] if piece == PLAYER1_PIECE else room['p2_sid']
 
 
-def get_user_waiting_game(user_id: str) -> Optional[str]:
+def _seat_key(piece: int) -> str:
+    return 'p1' if piece == PLAYER1_PIECE else 'p2'
+
+
+def get_user_waiting_game(user_id: str, authenticated: Optional[bool] = None) -> Optional[str]:
     with GAMES_LOCK:
         for room_id, room in GAMES.items():
-            if room['p1_uid'] == user_id and room['p2_uid'] is None:
+            if (room['p1_uid'] == user_id and room['p2_uid'] is None
+                    and (authenticated is None or room['p1_auth'] == authenticated)):
                 return room_id
     return None
 
@@ -165,7 +228,9 @@ def _finish_game(room_id: str, room: dict, reason: str = 'normal',
     new_ratings = {'p1': None, 'p2': None}
     moves = str(game.move_history)
 
-    if winner_uid and loser_uid:
+    # Sadece iki kimligi de token ile dogrulanmis oyuncular puanlanir/kaydedilir
+    rated = room['p1_auth'] and room['p2_auth']
+    if rated and winner_uid and loser_uid:
         change = db.update_elo_by_username(str(winner_uid), str(loser_uid))['winner_change']
         winner_key = 'p1' if game.winner == PLAYER1_PIECE else 'p2'
         loser_key = 'p2' if winner_key == 'p1' else 'p1'
@@ -182,7 +247,7 @@ def _finish_game(room_id: str, room: dict, reason: str = 'normal',
                         'change': elo_changes[key],
                         'winner': piece == game.winner,
                     }, to=sid)
-    elif game.winner is None and p2_uid:
+    elif rated and game.winner is None and p2_uid:
         db.record_game(str(p1_uid), str(p2_uid), None, moves, reason)  # Beraberlik (FR-10)
 
     socketio.emit('game_over', {
@@ -276,7 +341,8 @@ def signup():
     user_id = db.create_user(username, password)
     if user_id:
         log.info("Yeni kullanici: %s", username)
-        return jsonify({'message': 'Created', 'user_id': user_id}), 201
+        return jsonify({'message': 'Created', 'user_id': user_id,
+                        'token': issue_session_token(username)}), 201
     return jsonify({'error': 'Username already taken'}), 409
 
 
@@ -290,7 +356,8 @@ def login():
     user = db.verify_user(username, password)
     if user:
         log.info("Giris: %s", username)
-        return jsonify({'message': 'Success', 'user': user}), 200
+        return jsonify({'message': 'Success', 'user': user,
+                        'token': issue_session_token(user['username'])}), 200
     return jsonify({'error': 'Invalid credentials'}), 401
 
 
@@ -455,15 +522,18 @@ def on_disconnect():
 
 @socketio.on('create_game')
 def on_create_game(data):
-    user_id = _clean_str(data, 'user_id', config.USERNAME_MAX_LENGTH + 20)
-    if not user_id:
-        emit('error', {'msg': 'Gecersiz kullanici'})
+    user_id, user_info, authenticated, error = resolve_player(data)
+    if error:
+        emit('error', {'msg': error})
         return
 
-    user_info = get_user_info(user_id)
     with GAMES_LOCK:
-        # Kullanicinin onceki bekleyen odasi varsa sil (tek bekleyen oda kurali)
-        existing = get_user_waiting_game(user_id)
+        # Kullanicinin onceki bekleyen odasi varsa sil (tek bekleyen oda kurali).
+        # Misafir adi kanit olmadigindan baska baglantinin odasina dokunulmaz.
+        existing = get_user_waiting_game(user_id, authenticated)
+        if existing and not authenticated and GAMES[existing]['p1_sid'] != request.sid:
+            emit('error', {'msg': 'Bu misafir adi kullanimda'})
+            return
         if existing:
             GAMES.pop(existing, None)
             try:
@@ -473,23 +543,27 @@ def on_create_game(data):
         room_id = generate_room_id()
         while room_id in GAMES:
             room_id = generate_room_id()
-        GAMES[room_id] = _new_room(request.sid, user_id, user_info)
+        GAMES[room_id] = _new_room(request.sid, user_id, user_info, authenticated)
+        rejoin_token = GAMES[room_id]['p1_rejoin']
 
     CONNECTED_USERS[request.sid] = user_id
     join_room(room_id)
     log.info("Oda %s olusturuldu: %s", room_id, user_id)
-    emit('game_created', {'room_id': room_id, 'player_piece': PLAYER1_PIECE, 'your_info': user_info})
+    emit('game_created', {'room_id': room_id, 'player_piece': PLAYER1_PIECE, 'your_info': user_info,
+                          'rejoin_token': rejoin_token})
 
 
 @socketio.on('join_game')
 def on_join_game(data):
     room_id = (_clean_str(data, 'room_id', 10) or '').upper()
-    user_id = _clean_str(data, 'user_id', config.USERNAME_MAX_LENGTH + 20)
-    if not _ROOM_ID_RE.match(room_id) or not user_id:
+    if not _ROOM_ID_RE.match(room_id):
         emit('error', {'msg': 'Gecersiz istek'})
         return
+    user_id, user_info, authenticated, error = resolve_player(data)
+    if error:
+        emit('error', {'msg': 'Gecersiz istek' if error == 'Gecersiz kullanici' else error})
+        return
 
-    user_info = get_user_info(user_id)
     with GAMES_LOCK:
         room = GAMES.get(room_id)
         if room is None:
@@ -499,23 +573,35 @@ def on_join_game(data):
         CONNECTED_USERS[request.sid] = user_id
 
         # 1) Oyunculardan biri geri donuyor (yeniden baglanma)
-        own_piece = (PLAYER1_PIECE if room['p1_uid'] == user_id else
-                     PLAYER2_PIECE if room['p2_uid'] == user_id else None)
+        own_piece = None
+        for piece in (PLAYER1_PIECE, PLAYER2_PIECE):
+            key = _seat_key(piece)
+            if room[f'{key}_uid'] == user_id and room[f'{key}_auth'] == authenticated:
+                own_piece = piece
+                break
         if own_piece is not None:
+            key = _seat_key(own_piece)
             if room['p2_uid'] is None:
                 emit('error', {'msg': 'Kendi oyununuza katilamazsiniz'})
                 return
             if own_piece not in room['disconnected'] and _sid_of(room, own_piece) != request.sid:
                 emit('error', {'msg': 'Bu oyuna zaten bagli durumdasiniz'})
                 return
+            # Misafirin adi kanit degildir; koltugu sadece anahtarin sahibi geri alir
+            given = data.get('rejoin_token') if isinstance(data, dict) else None
+            if not authenticated and not (isinstance(given, str)
+                                          and hmac.compare_digest(given, room[f'{key}_rejoin'])):
+                emit('error', {'msg': 'Yeniden baglanma anahtari gecersiz'})
+                return
             room['disconnected'].pop(own_piece, None)
-            room['p1_sid' if own_piece == PLAYER1_PIECE else 'p2_sid'] = request.sid
+            room[f'{key}_sid'] = request.sid
             join_room(room_id)
             opponent_info = room['p2_info'] if own_piece == PLAYER1_PIECE else room['p1_info']
             log.info("Oda %s: %s yeniden baglandi", room_id, user_id)
             emit('game_joined', {
                 'room_id': room_id, 'player_piece': own_piece, 'role': 'player',
                 'rejoined': True, 'current_state': game.to_dict(), 'opponent_info': opponent_info,
+                'rejoin_token': room[f'{key}_rejoin'],
             })
             emit('opponent_reconnected', {'msg': 'Rakip geri dondu'}, to=room_id, include_self=False)
             return
@@ -525,12 +611,14 @@ def on_join_game(data):
         # 2) Ikinci oyuncu olarak katil
         if room['p2_uid'] is None:
             room['p2_sid'], room['p2_uid'], room['p2_info'] = request.sid, user_id, user_info
+            room['p2_auth'], room['p2_rejoin'] = authenticated, secrets.token_urlsafe(16)
             room['last_move_at'] = time.time()
             p1_info = room['p1_info']
             log.info("Oda %s: %s P2 olarak katildi", room_id, user_id)
 
             emit('game_joined', {'room_id': room_id, 'player_piece': PLAYER2_PIECE,
-                                 'role': 'player', 'opponent_info': p1_info})
+                                 'role': 'player', 'opponent_info': p1_info,
+                                 'rejoin_token': room['p2_rejoin']})
             for sid, opponent in ((room['p1_sid'], user_info), (request.sid, p1_info)):
                 emit('game_start', {
                     'msg': 'Oyun Basladi!', 'p1_info': p1_info, 'p2_info': user_info,

@@ -24,6 +24,10 @@ namespace ConnectFourPro.Net
         public string RoomId { get; private set; }
         public int MyPiece { get; private set; }
         public string UserId { get; private set; }
+        /// <summary>/login token'i (misafirde null); varsa sunucu user_id yerine buna bakar.</summary>
+        public string AuthToken { get; private set; }
+        /// <summary>Sunucunun verdigi koltuk anahtari; misafir yeniden baglanirken gonderir.</summary>
+        public string RejoinToken { get; private set; }
         /// <summary>Oyuncu olarak bir odada (seyirci degil); yeniden baglaninca geri katilir.</summary>
         public bool InGame { get; private set; }
         public bool IsConnected => _transport.IsConnected;
@@ -44,20 +48,30 @@ namespace ConnectFourPro.Net
             _transport.EventReceived += OnEvent;
         }
 
-        public void CreateGame(string userId)
+        public void CreateGame(string userId, string authToken = null)
         {
             UserId = userId;
-            Send(SocketEvents.CreateGame, Json.Serialize(new Dictionary<string, object> { ["user_id"] = userId }));
+            AuthToken = authToken;
+            RejoinToken = null;
+            Send(SocketEvents.CreateGame, Json.Serialize(Identity()));
         }
 
-        public void JoinGame(string roomId, string userId)
+        public void JoinGame(string roomId, string userId, string authToken = null)
         {
             UserId = userId;
-            Send(SocketEvents.JoinGame, Json.Serialize(new Dictionary<string, object>
-            {
-                ["room_id"] = roomId,
-                ["user_id"] = userId,
-            }));
+            AuthToken = authToken;
+            RejoinToken = null;
+            var payload = Identity();
+            payload["room_id"] = roomId;
+            Send(SocketEvents.JoinGame, Json.Serialize(payload));
+        }
+
+        private Dictionary<string, object> Identity()
+        {
+            var payload = new Dictionary<string, object> { ["user_id"] = UserId };
+            if (!string.IsNullOrEmpty(AuthToken))
+                payload["token"] = AuthToken;
+            return payload;
         }
 
         public void SendMove(int col)
@@ -88,6 +102,7 @@ namespace ConnectFourPro.Net
             _transport.Disconnect();
             RoomId = null;
             MyPiece = 0;
+            RejoinToken = null;
         }
 
         /// <summary>Olay aboneliklerini kaldirir (nesne atilmadan once).</summary>
@@ -122,7 +137,11 @@ namespace ConnectFourPro.Net
             if (InGame && RoomId != null && UserId != null && _pending.Count == 0)
             {
                 Debug.Log("[GameSocket] Oyuna yeniden katiliniyor: " + RoomId);
-                JoinGame(RoomId, UserId);
+                var payload = Identity();
+                payload["room_id"] = RoomId;
+                if (RejoinToken != null)
+                    payload["rejoin_token"] = RejoinToken;
+                _transport.Emit(SocketEvents.JoinGame, Json.Serialize(payload));
             }
             while (_pending.Count > 0)
             {
@@ -166,6 +185,7 @@ namespace ConnectFourPro.Net
                 RoomId = data.GetString("room_id", RoomId);
                 MyPiece = data.GetInt("player_piece", MyPiece);
                 InGame = data.GetString("role") != "spectator";
+                RejoinToken = data.GetString("rejoin_token", RejoinToken);
             }
             else if (name == SocketEvents.GameOver)
             {

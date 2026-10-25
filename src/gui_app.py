@@ -118,6 +118,7 @@ class ConnectFourGUI:
         # Kullanici
         self.username = ""
         self.user_id = None
+        self.auth_token: Optional[str] = None   # /login token'i; misafirde None
         self.user_elo = config.DEFAULT_RATING
         self.is_guest = False
         self.opponent_name = "Rakip"
@@ -553,8 +554,10 @@ class ConnectFourGUI:
         if error is not None:
             self.set_status("Sunucuya baglanilamadi!")
         elif response.status_code == 200:
-            user = response.json()['user']
-            self._enter_menu(user['username'], user['user_id'], user.get('rating', config.DEFAULT_RATING), False)
+            body = response.json()
+            user = body['user']
+            self._enter_menu(user['username'], user['user_id'], user.get('rating', config.DEFAULT_RATING), False,
+                             body.get('token'))
             self.set_status(f"Hosgeldin {self.username}!")
         elif response.status_code == 401:
             self.set_status("Yanlis kullanici adi veya sifre!")
@@ -582,7 +585,8 @@ class ConnectFourGUI:
         if error is not None:
             self.set_status("Sunucuya baglanilamadi!")
         elif response.status_code == 201:
-            self._enter_menu(username, response.json().get('user_id'), config.DEFAULT_RATING, False)
+            body = response.json()
+            self._enter_menu(username, body.get('user_id'), config.DEFAULT_RATING, False, body.get('token'))
             self.set_status(f"Kayit basarili! Hosgeldin {username}!")
         elif response.status_code == 409:
             self.set_status("Bu kullanici adi zaten alinmis!")
@@ -597,14 +601,16 @@ class ConnectFourGUI:
         self._enter_menu(f"Misafir_{secrets.randbelow(10 ** 6):06d}", None, config.DEFAULT_RATING, True)
         self.set_status("")
 
-    def _enter_menu(self, username, user_id, elo, is_guest):
+    def _enter_menu(self, username, user_id, elo, is_guest, token=None):
         self.username, self.user_id, self.user_elo, self.is_guest = username, user_id, elo, is_guest
+        self.auth_token = token
         self.state = "MENU"
         self.clear_inputs()
         log.info("Oturum acildi: %s (misafir=%s)", username, is_guest)
 
     def logout(self):
         self.username, self.user_id, self.user_elo, self.is_guest = "", None, config.DEFAULT_RATING, False
+        self.auth_token = None
         self.state = "LOGIN"
         self.set_status("")
         self.clear_inputs()
@@ -745,7 +751,7 @@ class ConnectFourGUI:
         self.room_id = None
         self.state = "WAITING"
         self.set_status("")
-        self.run_in_background(lambda: self.network.create_game(self.username),
+        self.run_in_background(lambda: self.network.create_game(self.username, self.auth_token),
                                lambda ok, err: ok or self._connection_failed())
 
     def join_online_game(self, room_id):
@@ -753,7 +759,7 @@ class ConnectFourGUI:
         self.room_id = room_id.upper()
         self.is_spectator = False
         self.set_status("Odaya katiliniyor...")
-        self.run_in_background(lambda: self.network.join_game(self.room_id, self.username),
+        self.run_in_background(lambda: self.network.join_game(self.room_id, self.username, self.auth_token),
                                lambda ok, err: ok or self._connection_failed())
 
     def spectate_game(self, room_id):
@@ -763,7 +769,7 @@ class ConnectFourGUI:
         self._reset_online_game()
         self.state = "SPECTATING"
         self.set_status("Yayina baglaniliyor...")
-        self.run_in_background(lambda: self.network.join_game(self.room_id, self.username),
+        self.run_in_background(lambda: self.network.join_game(self.room_id, self.username, self.auth_token),
                                lambda ok, err: ok or self._connection_failed())
 
     def _connection_failed(self):

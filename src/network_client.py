@@ -50,6 +50,8 @@ class NetworkManager:
         self.room_id: Optional[str] = None
         self.my_piece: Optional[int] = None
         self.user_id: Optional[str] = None
+        self.token: Optional[str] = None          # /login token'i (misafirde None)
+        self.rejoin_token: Optional[str] = None   # Sunucunun verdigi koltuk anahtari
         self.in_game = False             # Yeniden baglaninca odaya geri katil
         self._lock = threading.Lock()
         self._setup_events()
@@ -62,7 +64,9 @@ class NetworkManager:
             # Kopma sonrasi otomatik yeniden baglanma: oyuna geri don (NFR-08)
             if self.in_game and self.room_id and self.user_id:
                 log.info("Oyuna yeniden katiliniyor: %s", self.room_id)
-                self.sio.emit('join_game', {'room_id': self.room_id, 'user_id': self.user_id})
+                payload = self._identity()
+                payload.update(room_id=self.room_id, rejoin_token=self.rejoin_token)
+                self.sio.emit('join_game', payload)
 
         @self.sio.event
         def disconnect():
@@ -79,6 +83,7 @@ class NetworkManager:
                 self.room_id = data.get('room_id', self.room_id)
                 self.my_piece = data.get('player_piece', self.my_piece)
                 self.in_game = data.get('role') != 'spectator'
+                self.rejoin_token = data.get('rejoin_token', self.rejoin_token)
             elif event == 'game_over':
                 self.in_game = False
             self._post(getattr(self._handler, method), data or {})
@@ -99,18 +104,27 @@ class NetworkManager:
                 log.warning("Baglanti basarisiz: %s", e)
                 return False
 
-    def create_game(self, user_id: str) -> bool:
+    def _identity(self) -> Dict[str, Any]:
+        """Kimlik alanlari: kayitli kullanicida sunucu token'a bakar, user_id'yi yok sayar."""
+        payload: Dict[str, Any] = {'user_id': self.user_id}
+        if self.token:
+            payload['token'] = self.token
+        return payload
+
+    def create_game(self, user_id: str, token: Optional[str] = None) -> bool:
         if not self.connect_to_server():
             return False
-        self.user_id = user_id
-        self.sio.emit('create_game', {'user_id': user_id})
+        self.user_id, self.token, self.rejoin_token = user_id, token, None
+        self.sio.emit('create_game', self._identity())
         return True
 
-    def join_game(self, room_id: str, user_id: str) -> bool:
+    def join_game(self, room_id: str, user_id: str, token: Optional[str] = None) -> bool:
         if not self.connect_to_server():
             return False
-        self.user_id = user_id
-        self.sio.emit('join_game', {'room_id': room_id, 'user_id': user_id})
+        self.user_id, self.token, self.rejoin_token = user_id, token, None
+        payload = self._identity()
+        payload['room_id'] = room_id
+        self.sio.emit('join_game', payload)
         return True
 
     def send_move(self, col: int) -> None:
@@ -136,6 +150,7 @@ class NetworkManager:
         self.connected = False
         self.room_id = None
         self.my_piece = None
+        self.rejoin_token = None
 
     # ------------------------------------------------------------------
     # REST (bloklayan cagrilar; GUI bunlari arka plan thread'inde calistirir)
