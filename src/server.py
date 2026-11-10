@@ -15,11 +15,14 @@ Ozellikler:
     `rejoin_token` ile koltugunu geri alir (baska misafir adini kullanamaz)
   * Baglantisi kopan oyuncu RECONNECT_GRACE_SECONDS icinde geri donebilir,
     donmezse rakip hukmen kazanir (NFR-08)
+  * Hatali girisler kullanici adi basina, /login + /signup istekleri IP basina
+    sinirlanir (HTTP 429 + Retry-After)
   * Bekleyen / hareketsiz / bitmis odalar otomatik temizlenir
   * Tum oda durumuna erisim tek bir kilitle korunur (thread-safe)
 """
 
 import hmac
+import math
 import os
 import random
 import re
@@ -27,7 +30,7 @@ import secrets
 import string
 import threading
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Flask, abort, jsonify, redirect, request, send_from_directory
 from flask_socketio import SocketIO, close_room, emit, join_room, leave_room
@@ -41,7 +44,8 @@ log = config.get_logger("server")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.SECRET_KEY
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+# cors_allowed_origins=None: tarayicidan sadece ayni origin (bkz. config.CORS_ALLOWED_ORIGINS)
+socketio = SocketIO(app, cors_allowed_origins=config.CORS_ALLOWED_ORIGINS, async_mode='threading')
 
 # Werkzeug istek loglari cok gurultulu
 config.get_logger("werkzeug").setLevel("ERROR")
@@ -63,6 +67,72 @@ _ROOM_ID_RE = re.compile(r'^[A-Z0-9]{5}$')
 # Oturum token'i: SECRET_KEY ile imzali kullanici adi (SECRET_KEY ayarlanmazsa
 # her sunucu baslangicinda degisir ve eski token'lar gecersiz olur)
 _session_signer = URLSafeTimedSerializer(config.SECRET_KEY, salt='connect4-session')
+
+
+# =============================================================================
+# ISTEK SINIRLAMA
+# =============================================================================
+
+class AttemptLimiter:
+    """Anahtar basina kayan pencerede deneme sayaci (bellek ici, thread-safe)."""
+
+    MAX_KEYS = 10_000
+
+    def __init__(self) -> None:
+        self._attempts: Dict[str, List[float]] = {}   # anahtar -> deneme zamanlari
+        self._lock = threading.Lock()
+
+    def hit(self, key: str, limit: int, window: int) -> int:
+        """
+        Denemeyi sayar ve 0 dondurur; pencere icinde `limit` dolmussa saymaz ve
+        beklenmesi gereken saniyeyi dondurur. limit/window <= 0 ise sinir kapalidir.
+        """
+        if limit <= 0 or window <= 0:
+            return 0
+        now = time.time()
+        with self._lock:
+            recent = [t for t in self._attempts.get(key, ()) if t > now - window]
+            if len(recent) >= limit:
+                self._attempts[key] = recent
+                return max(1, math.ceil(recent[-limit] + window - now))
+            if key not in self._attempts and len(self._attempts) >= self.MAX_KEYS:
+                self._prune(now - window)
+            recent.append(now)
+            self._attempts[key] = recent
+            return 0
+
+    def reset(self, key: str) -> None:
+        with self._lock:
+            self._attempts.pop(key, None)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._attempts.clear()
+
+    def _prune(self, cutoff: float) -> None:
+        """Suresi dolan anahtarlari siler; yine de doluysa en eski yarisini atar."""
+        self._attempts = {k: v for k, v in self._attempts.items() if v[-1] > cutoff}
+        if len(self._attempts) >= self.MAX_KEYS:
+            newest = sorted(self._attempts.items(), key=lambda kv: kv[1][-1])[self.MAX_KEYS // 2:]
+            self._attempts = dict(newest)
+
+
+LOGIN_LIMITER = AttemptLimiter()     # kullanici adi -> hatali girisler
+AUTH_IP_LIMITER = AttemptLimiter()   # istemci IP'si -> /login + /signup istekleri
+
+
+def _too_many_requests(retry_after: int):
+    response = jsonify({'error': 'Too many attempts, try again later', 'retry_after': retry_after})
+    response.status_code = 429
+    response.headers['Retry-After'] = str(retry_after)
+    return response
+
+
+def _auth_ip_limited():
+    """IP siniri dolduysa 429 yaniti, degilse None. X-Forwarded-For'a guvenilmez."""
+    wait = AUTH_IP_LIMITER.hit(request.remote_addr or 'unknown',
+                               config.AUTH_IP_MAX_REQUESTS, config.AUTH_IP_WINDOW_SECONDS)
+    return _too_many_requests(wait) if wait else None
 
 
 # =============================================================================
@@ -120,8 +190,9 @@ def resolve_player(data: Any) -> Tuple[Optional[str], Optional[Dict[str, Any]], 
         user['guest'] = False
         return username, user, True, None
 
-    user_id = _clean_str(data, 'user_id', config.USERNAME_MAX_LENGTH + 20)
-    if not user_id:
+    # Misafir adi rakibe ve lobide gosterilir: kullanici adiyla ayni karakter kumesi
+    user_id = _clean_str(data, 'user_id', config.GUEST_NAME_MAX_LENGTH + 1)
+    if not user_id or len(user_id) > config.GUEST_NAME_MAX_LENGTH or not _USERNAME_RE.match(user_id):
         return None, None, False, 'Gecersiz kullanici'
     if db.get_user_by_username(user_id):
         return None, None, False, 'Bu kullanici adi kayitli, giris yapin'
@@ -324,6 +395,9 @@ def start_cleanup_thread() -> None:
 
 @app.route('/signup', methods=['POST'])
 def signup():
+    limited = _auth_ip_limited()
+    if limited:
+        return limited
     username, password, error = validate_credentials(request.get_json(silent=True))
     if error:
         return jsonify({'error': error}), 400
@@ -348,13 +422,24 @@ def signup():
 
 @app.route('/login', methods=['POST'])
 def login():
+    limited = _auth_ip_limited()
+    if limited:
+        return limited
     username, password, error = validate_credentials(request.get_json(silent=True))
     if error:
         return jsonify({'error': error}), 400
     if not db.is_available():
         return jsonify({'error': 'Database unavailable'}), 503
+    # Deneme, sifre kontrolunden ONCE sayilir (es zamanli tahminler siniri asamasin);
+    # kilitliyken PBKDF2 calistirilmaz, basarili giris sayaci sifirlar.
+    attempt_key = username[:64]
+    wait = LOGIN_LIMITER.hit(attempt_key, config.LOGIN_MAX_FAILURES, config.LOGIN_LOCKOUT_SECONDS)
+    if wait:
+        log.warning("Giris kilitli: %s (%ds)", attempt_key, wait)
+        return _too_many_requests(wait)
     user = db.verify_user(username, password)
     if user:
+        LOGIN_LIMITER.reset(attempt_key)
         log.info("Giris: %s", username)
         return jsonify({'message': 'Success', 'user': user,
                         'token': issue_session_token(user['username'])}), 200
@@ -401,12 +486,6 @@ def active_games():
                 'move_count': len(room['game'].move_history),
             })
     return jsonify(games_list), 200
-
-
-@app.route('/cleanup', methods=['POST'])
-def manual_cleanup():
-    removed = cleanup_old_games()
-    return jsonify({'message': 'Cleanup completed', 'removed': removed, 'active_games': len(GAMES)}), 200
 
 
 @app.route('/health', methods=['GET'])

@@ -92,7 +92,9 @@ def main():
             if 'DATABASE_URL' not in os.environ:
                 sys.exit("DATABASE_URL ayarlayin (ayri bir benchmark veritabani) veya --server verin.")
             url = f"http://127.0.0.1:{args.port}"
-            env = dict(os.environ, CONNECT4_PORT=str(args.port), CONNECT4_HOST='127.0.0.1', LOG_LEVEL='WARNING')
+            # Tum yuk tek IP'den gelir: IP basina giris/kayit siniri kapatilir
+            env = dict(os.environ, CONNECT4_PORT=str(args.port), CONNECT4_HOST='127.0.0.1', LOG_LEVEL='WARNING',
+                       AUTH_IP_MAX_REQUESTS='0')
             log_file = open(os.path.join(bc.RESULTS_DIR, 'server.log'), 'w')
             server_proc = subprocess.Popen([PY, 'server.py'], cwd=bc.SRC_DIR, env=env,
                                            stdout=log_file, stderr=subprocess.STDOUT)

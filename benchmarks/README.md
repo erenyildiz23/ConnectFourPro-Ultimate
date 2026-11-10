@@ -30,7 +30,7 @@ export DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4_bench
 cd benchmarks
 python run_all.py            # tam ölçüm (~30 dk): sunucuyu kendisi başlatır
 python run_all.py --quick    # hızlı kontrol (~3 dk)
-python run_all.py --server http://localhost:5000 --skip-ai   # çalışan sunucuya karşı
+python run_all.py --server http://localhost:5000 --skip-ai   # çalışan sunucuya karşı (sunucuyu AUTH_IP_MAX_REQUESTS=0 ile başlatın; ölçümler tek IP'den yüzlerce giriş yapar)
 ```
 
 Tek tek çalıştırmak da mümkündür, örn. `python ai_performance_suite.py --iterations 45 --seed 7`.

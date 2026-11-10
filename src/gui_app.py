@@ -561,6 +561,8 @@ class ConnectFourGUI:
             self.set_status(f"Hosgeldin {self.username}!")
         elif response.status_code == 401:
             self.set_status("Yanlis kullanici adi veya sifre!")
+        elif response.status_code == 429:
+            self.set_status("Cok fazla deneme! Biraz sonra tekrar deneyin.")
         elif response.status_code == 503:
             self.set_status("Sunucu veritabanina ulasamiyor. Misafir olarak devam edebilirsiniz.")
         else:
@@ -574,7 +576,8 @@ class ConnectFourGUI:
             self.set_status("Kullanici adi ve sifre gerekli!")
             return
         if len(u) < config.USERNAME_MIN_LENGTH or len(p) < config.PASSWORD_MIN_LENGTH:
-            self.set_status(f"En az {config.USERNAME_MIN_LENGTH} karakter gerekli!")
+            self.set_status(f"Kullanici adi en az {config.USERNAME_MIN_LENGTH}, "
+                            f"sifre en az {config.PASSWORD_MIN_LENGTH} karakter olmali!")
             return
         self.auth_pending = True
         self.set_status("Hesap olusturuluyor...")
@@ -592,6 +595,8 @@ class ConnectFourGUI:
             self.set_status("Bu kullanici adi zaten alinmis!")
         elif response.status_code == 400:
             self.set_status("Gecersiz kullanici adi veya sifre (harf, rakam, _ . - kullanin)")
+        elif response.status_code == 429:
+            self.set_status("Cok fazla deneme! Biraz sonra tekrar deneyin.")
         elif response.status_code == 503:
             self.set_status("Sunucu veritabanina ulasamiyor.")
         else:

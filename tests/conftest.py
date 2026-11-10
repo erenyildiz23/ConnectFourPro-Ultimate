@@ -16,6 +16,8 @@ import time
 os.environ.setdefault("RECONNECT_GRACE_SECONDS", "1")
 os.environ.setdefault("PBKDF2_ITERATIONS", "1000")   # Testleri hizlandirir
 os.environ.setdefault("DB_POOL_SIZE", "4")
+os.environ.setdefault("LOGIN_MAX_FAILURES", "1000")     # Sinirlar ayri testlerde dusurulur
+os.environ.setdefault("AUTH_IP_MAX_REQUESTS", "100000")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -79,13 +81,17 @@ def no_database():
 def server():
     """Temiz oda durumuyla server modulu."""
     import server as srv
-    with srv.GAMES_LOCK:
-        srv.GAMES.clear()
-        srv.CONNECTED_USERS.clear()
+
+    def reset():
+        with srv.GAMES_LOCK:
+            srv.GAMES.clear()
+            srv.CONNECTED_USERS.clear()
+        srv.LOGIN_LIMITER.clear()
+        srv.AUTH_IP_LIMITER.clear()
+
+    reset()
     yield srv
-    with srv.GAMES_LOCK:
-        srv.GAMES.clear()
-        srv.CONNECTED_USERS.clear()
+    reset()
 
 
 @pytest.fixture
@@ -145,7 +151,7 @@ def sio(server):
         c.disconnect()
 
 
-def login_token(http, username, password="pw123"):
+def login_token(http, username, password="pw123456"):
     """Kayit olur (gerekirse) ve /login'in verdigi oturum token'ini dondurur."""
     http.post('/signup', json={'username': username, 'password': password})
     r = http.post('/login', json={'username': username, 'password': password})

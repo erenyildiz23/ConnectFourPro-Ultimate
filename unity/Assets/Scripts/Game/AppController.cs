@@ -55,7 +55,7 @@ namespace ConnectFourPro.Game
         public const float LobbyRefreshSeconds = 2f;
         public const int UsernameMinLength = 3;
         public const int UsernameMaxLength = 20;
-        public const int PasswordMinLength = 3;
+        public const int PasswordMinLength = 8;
         public const int ReconnectGraceDefault = 30;
 
         private readonly ApiClient _api;
@@ -219,6 +219,8 @@ namespace ConnectFourPro.Game
                 }
                 else if (r.Status == 401)
                     SetStatus("Yanlış kullanıcı adı veya şifre!", StatusTone.Bad);
+                else if (r.Status == 429)
+                    SetStatus("Çok fazla deneme! Biraz sonra tekrar deneyin.", StatusTone.Bad);
                 else if (r.Status == 503)
                     SetStatus("Sunucu veritabanına ulaşamıyor. Misafir olarak devam edebilirsiniz.", StatusTone.Bad);
                 else
@@ -238,7 +240,7 @@ namespace ConnectFourPro.Game
             }
             if (username.Length < UsernameMinLength || password.Length < PasswordMinLength)
             {
-                SetStatus($"En az {UsernameMinLength} karakter gerekli!", StatusTone.Bad);
+                SetStatus($"Kullanıcı adı en az {UsernameMinLength}, şifre en az {PasswordMinLength} karakter olmalı!", StatusTone.Bad);
                 return;
             }
             AuthPending = true;
@@ -255,6 +257,8 @@ namespace ConnectFourPro.Game
                 }
                 else if (r.Status == 409)
                     SetStatus("Bu kullanıcı adı zaten alınmış!", StatusTone.Bad);
+                else if (r.Status == 429)
+                    SetStatus("Çok fazla deneme! Biraz sonra tekrar deneyin.", StatusTone.Bad);
                 else if (r.Status == 400)
                     SetStatus("Geçersiz kullanıcı adı veya şifre (harf, rakam, _ . - kullanın)", StatusTone.Bad);
                 else if (r.Status == 503)

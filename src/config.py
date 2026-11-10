@@ -13,13 +13,21 @@ Ornek degerler icin `.env.example` dosyasina bakin.
                             o zaman sunucu yeniden baslayinca herkes tekrar giris yapar)
     SESSION_MAX_AGE         Oturum token'inin gecerlilik suresi (saniye)
     CONNECT4_HOST / _PORT   Sunucunun dinledigi adres
+    CORS_ALLOWED_ORIGINS    Socket.IO'ya tarayicidan baglanabilecek origin'ler (virgulle
+                            ayrilmis liste veya `*`). Bos ise sadece sunucunun kendi
+                            origin'i (/play); liste verilirse kendi adresinizi de ekleyin
+    LOGIN_MAX_FAILURES      Bir kullanici adi icin LOGIN_LOCKOUT_SECONDS icinde izin
+    LOGIN_LOCKOUT_SECONDS   verilen hatali giris sayisi; asilirsa /login 429 dondurur
+    AUTH_IP_MAX_REQUESTS    Tek IP'den AUTH_IP_WINDOW_SECONDS icinde kabul edilen
+    AUTH_IP_WINDOW_SECONDS  /login + /signup istegi (ngrok/proxy arkasinda herkes ayni
+                            IP'dir, bu yuzden genis tutulur). 0 = sinir kapali
     CONNECT4_SERVER         Istemcinin baglanacagi sunucu adresi
     LOG_LEVEL               DEBUG, INFO, WARNING, ERROR
 """
 
 import logging
 import os
-from typing import Dict
+from typing import Dict, List, Optional, Union
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_FILE = os.path.join(PROJECT_ROOT, '.env')
@@ -61,10 +69,23 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def parse_cors_origins(value: Optional[str]) -> Union[None, str, List[str]]:
+    """
+    CORS_ALLOWED_ORIGINS degerini flask-socketio'nun bekledigi bicime cevirir:
+    bos -> None (sadece ayni origin), `*` -> '*' (herkes), aksi halde origin listesi.
+    """
+    origins = [o.strip().rstrip('/') for o in (value or '').split(',') if o.strip()]
+    if not origins:
+        return None
+    return '*' if '*' in origins else origins
+
+
 # --- Sunucu ---
 SERVER_HOST = os.environ.get("CONNECT4_HOST", "0.0.0.0")
 SERVER_PORT = _env_int("CONNECT4_PORT", 5000)
 SECRET_KEY = os.environ.get("SECRET_KEY") or os.urandom(24).hex()
+# Origin basligi gondermeyen istemciler (pygame, Unity Editor) bundan etkilenmez
+CORS_ALLOWED_ORIGINS = parse_cors_origins(os.environ.get("CORS_ALLOWED_ORIGINS"))
 
 # Oda temizligi (saniye)
 WAITING_TIMEOUT = _env_int("WAITING_TIMEOUT", 300)      # Rakip bekleyen oda
@@ -83,10 +104,17 @@ DEFAULT_RATING = 1200
 # --- Kimlik dogrulama ---
 USERNAME_MIN_LENGTH = 3
 USERNAME_MAX_LENGTH = 20
-PASSWORD_MIN_LENGTH = 3
+PASSWORD_MIN_LENGTH = 8      # Sadece kayitta uygulanir; eski kisa sifreler giris yapabilir
 PASSWORD_MAX_LENGTH = 128
+GUEST_NAME_MAX_LENGTH = USERNAME_MAX_LENGTH + 20
 PBKDF2_ITERATIONS = _env_int("PBKDF2_ITERATIONS", 200_000)
 SESSION_MAX_AGE = _env_int("SESSION_MAX_AGE", 7 * 24 * 3600)
+
+# Giris/kayit sinirlari (0 = kapali)
+LOGIN_MAX_FAILURES = _env_int("LOGIN_MAX_FAILURES", 5)
+LOGIN_LOCKOUT_SECONDS = _env_int("LOGIN_LOCKOUT_SECONDS", 300)
+AUTH_IP_MAX_REQUESTS = _env_int("AUTH_IP_MAX_REQUESTS", 300)
+AUTH_IP_WINDOW_SECONDS = _env_int("AUTH_IP_WINDOW_SECONDS", 60)
 
 # --- Veritabani ---
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost/connect4")

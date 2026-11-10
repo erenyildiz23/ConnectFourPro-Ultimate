@@ -9,9 +9,9 @@ pytestmark = pytest.mark.db
 
 class TestUsers:
     def test_create_and_verify(self, database):
-        uid = database.create_user("alice", "pw123")
+        uid = database.create_user("alice", "pw123456")
         assert isinstance(uid, int)
-        user = database.verify_user("alice", "pw123")
+        user = database.verify_user("alice", "pw123456")
         assert user == {'user_id': uid, 'username': 'alice', 'rating': 1200, 'wins': 0, 'losses': 0}
         assert 'password_hash' not in user
 
@@ -21,16 +21,16 @@ class TestUsers:
         assert database.get_user_count() == 1
 
     def test_wrong_password_and_unknown_user(self, database):
-        database.create_user("alice", "pw123")
+        database.create_user("alice", "pw123456")
         assert database.verify_user("alice", "nope") is None
-        assert database.verify_user("ghost", "pw123") is None
+        assert database.verify_user("ghost", "pw123456") is None
 
     def test_password_is_not_stored_in_plain_text(self, database):
-        database.create_user("alice", "pw123")
+        database.create_user("alice", "pw123456")
         with database.get_db_cursor() as c:
             c.execute("SELECT password_hash FROM users WHERE username = 'alice'")
             stored = c.fetchone()['password_hash']
-        assert stored.startswith("pbkdf2_sha256$") and "pw123" not in stored
+        assert stored.startswith("pbkdf2_sha256$") and "pw123456" not in stored
 
     def test_legacy_account_logs_in_and_is_upgraded(self, database):
         with database.get_db_cursor() as c:

@@ -181,15 +181,15 @@ class NetworkBenchmark:
             def call():
                 t0 = time.perf_counter()
                 r = self.http.request(method, f'{self.server}{path}', timeout=10, **kw)
-                return (time.perf_counter() - t0) * 1000 if r.status_code < 500 else None
+                return (time.perf_counter() - t0) * 1000 if r.status_code < 500 and r.status_code != 429 else None
             return call
 
         name = f'bench_{uuid.uuid4().hex[:8]}'
-        self.http.post(f'{self.server}/signup', json={'username': name, 'password': 'benchpw'})
+        self.http.post(f'{self.server}/signup', json={'username': name, 'password': 'benchpw-123'})
         results['rest_leaderboard'] = timed_series(rest('GET', '/leaderboard'), self.n, self.warmup)
         results['rest_active_games'] = timed_series(rest('GET', '/active_games'), self.n, self.warmup)
         results['rest_login'] = timed_series(
-            rest('POST', '/login', json={'username': name, 'password': 'benchpw'}), self.n // 2, 3)
+            rest('POST', '/login', json={'username': name, 'password': 'benchpw-123'}), self.n // 2, 3)
         results['rest_signup_validation'] = timed_series(
             rest('POST', '/signup', json={'username': 'x', 'password': 'y'}), self.n // 2, 3)
         for k, s in results.items():

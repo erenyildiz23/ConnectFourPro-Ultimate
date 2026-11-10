@@ -38,7 +38,7 @@ Yeditepe Üniversitesi bitirme projesi. Python/Pygame sürümü: [ConnectFourPro
 - AI v2: negamax + alpha-beta, transpozisyon tablosu, yinelemeli derinleştirme, oyun teorisine dayalı (satır paritesi) tehdit değerlendirmesi, oyun sonunda kesin çözüm, kusursuz çözücüyle doğrulanmış açılış kitabı — ayrıntı ve ölçümler: [docs/AI.md](docs/AI.md)
 - Flask-SocketIO sunucusu: sunucu tarafında hamle doğrulama, kilitle korunan oda durumu, otomatik oda temizliği
 - PostgreSQL: sabit boyutlu bağlantı havuzu, ELO için transaction, tuzlu PBKDF2 şifre özetleri
-- 266 Python testi (birim, entegrasyon, uçtan uca GUI) + 129 C# testi (Unity'siz `dotnet test`), GitHub Actions CI
+- 319 Python testi (birim, entegrasyon, uçtan uca GUI) + 129 C# testi (Unity'siz `dotnet test`), GitHub Actions CI
 
 ## 📁 Proje Yapısı
 
@@ -62,6 +62,7 @@ ConnectFourPro-Ultimate/
 │   ├── gui_app.py            # Pygame istemcisi (Unity istemcisiyle aynı özellikler)
 │   ├── network_client.py     # İstemci ağ katmanı
 │   ├── config.py             # Ortam değişkenlerinden ayarlar, loglama
+│   ├── wsgi.py               # gunicorn giriş noktası (Docker / internete açık kurulum)
 │   └── requirements.txt      # Çalışma zamanı bağımlılıkları
 ├── tests/                    # pytest: unit/, integration/, gui/  +  csharp/ (NUnit, dotnet test)
 ├── benchmarks/               # Performans ölçümleri, grafikler, RESULTS.md
@@ -71,6 +72,7 @@ ConnectFourPro-Ultimate/
 │   ├── KURULUM.md            # Adım adım kurulum ve çalıştırma
 │   └── diagrams/             # UML (PlantUML + PNG)
 ├── scripts/                  # Kurulum yardımcıları, export_ai_vectors.py (C# altın vektörleri)
+├── Dockerfile / docker-compose.yml  # Sunucu + PostgreSQL (docs/KURULUM.md bölüm 12)
 ├── setup.bat / setup.sh      # Tek komutla kurulum
 ├── run.bat / run.sh          # Çalıştırma kısayolları
 ├── requirements-dev.txt      # Test / benchmark bağımlılıkları
@@ -129,6 +131,9 @@ set DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4        # Windows
 | `DATABASE_URL` | `postgresql://postgres@localhost/connect4` | PostgreSQL adresi |
 | `SECRET_KEY` | rastgele | Oturum token'larını imzalar (ayarlanmazsa sunucu yeniden başlayınca herkes tekrar giriş yapar) |
 | `SESSION_MAX_AGE` | `604800` | Oturum token'ının geçerlilik süresi (saniye) |
+| `CORS_ALLOWED_ORIGINS` | boş | Socket.IO'ya tarayıcıdan bağlanabilecek origin'ler (virgüllü liste veya `*`). Boşsa yalnızca sunucunun kendi adresi; liste verirseniz kendi adresinizi de ekleyin |
+| `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_SECONDS` | `5` / `300` | Bir kullanıcı adı için bu sürede izin verilen hatalı giriş sayısı; aşılırsa `/login` `429` döner (`0` = kapalı) |
+| `AUTH_IP_MAX_REQUESTS` / `AUTH_IP_WINDOW_SECONDS` | `300` / `60` | Tek IP'den bu sürede kabul edilen `/login` + `/signup` isteği (`0` = kapalı) |
 | `CONNECT4_HOST` / `CONNECT4_PORT` | `0.0.0.0` / `5000` | Sunucunun dinlediği adres |
 | `CONNECT4_SERVER` | `http://localhost:5000` | İstemcinin bağlanacağı sunucu (Pygame istemcisi ve Unity Editor) |
 | `CONNECT4_WEB_BUILD` | `unity/Build/WebGL` | `/play` adresinden sunulan Unity WebGL build klasörü |
@@ -150,7 +155,7 @@ python gui_app.py                                 # Pygame istemcisi (localhost:
 python gui_app.py https://abc123.ngrok-free.app   # uzak sunucuya bağlan
 ```
 
-Tarayıcı istemcisi oyunu sunan sunucuya bağlanır; başka bir sunucu için `http://localhost:5000/play/?server=http://192.168.1.20:5000`.
+Tarayıcı istemcisi oyunu sunan sunucuya bağlanır; başka bir sunucuda oynamak için o sunucunun adresini açın (`http://192.168.1.20:5000/play/`). `?server=` parametresi yalnızca sayfa `localhost`'tan sunulurken (yerel geliştirme) dikkate alınır ve hedef sunucuda `CORS_ALLOWED_ORIGINS` ayarı gerektirir.
 AI'ya karşı oynamak için hesap gerekmez: "Misafir Olarak Devam" → "Yapay Zekâya Karşı" (AI tarayıcıda çalışır).
 
 ## 🧪 Testler
@@ -215,15 +220,14 @@ CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket
 
 | Endpoint | Method | Açıklama |
 |---|---|---|
-| `/signup` | POST | Kayıt (`201` + `token`, `400` doğrulama, `409` alınmış, `503` veritabanı yok) |
-| `/login` | POST | Giriş (`200` + `token`, `401`, `503`) |
+| `/signup` | POST | Kayıt (`201` + `token`, `400` doğrulama — şifre en az 8 karakter, `409` alınmış, `429` çok fazla istek, `503` veritabanı yok) |
+| `/login` | POST | Giriş (`200` + `token`, `401`, `429` çok fazla hatalı deneme + `Retry-After`, `503`) |
 | `/user/<username>` | GET | Profil |
 | `/user/<username>/games` | GET | Maç geçmişi (`?limit=`) |
 | `/leaderboard` | GET | Liderlik tablosu (`?limit=` 1–100) |
 | `/active_games` | GET | Lobi |
 | `/health` | GET | Sunucu ve veritabanı durumu |
 | `/play/` | GET | Unity WebGL istemcisi (`/` buraya yönlenir) |
-| `/cleanup` | POST | Eski odaları hemen temizle |
 
 ### Socket.IO
 

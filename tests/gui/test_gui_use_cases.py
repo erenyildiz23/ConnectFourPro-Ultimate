@@ -49,7 +49,7 @@ def type_credentials(gui, username, password):
     gui.input_fields['password']['value'] = password
 
 
-def register(gui, username, password="pw123"):
+def register(gui, username, password="pw123456"):
     type_credentials(gui, username, password)
     gui.handle_button_click('DO_REGISTER')
     pump(gui, lambda: gui.state == "MENU")
@@ -79,28 +79,45 @@ class TestAccountUseCases:
         assert g.state == "LOGIN" and g.username == ""
 
     def test_uc01_duplicate_username(self, make_gui, database):
-        database.create_user("alice", "pw123")
+        database.create_user("alice", "pw123456")
         g = make_gui()
-        type_credentials(g, "alice", "other")
+        type_credentials(g, "alice", "otherpw99")
         g.handle_button_click('DO_REGISTER')
         pump(g, lambda: not g.auth_pending)
         assert g.state == "LOGIN" and "zaten alinmis" in g.status_text
 
     def test_uc02_login(self, make_gui, database):
-        database.create_user("alice", "pw123")
+        database.create_user("alice", "pw123456")
         g = make_gui()
-        type_credentials(g, "alice", "pw123")
+        type_credentials(g, "alice", "pw123456")
         g.handle_button_click('DO_LOGIN')
         pump(g, lambda: g.state == "MENU")
         assert g.username == "alice" and "Hosgeldin" in g.status_text
 
     def test_uc02_wrong_password(self, make_gui, database):
-        database.create_user("alice", "pw123")
+        database.create_user("alice", "pw123456")
         g = make_gui()
         type_credentials(g, "alice", "nope")
         g.handle_button_click('DO_LOGIN')
         pump(g, lambda: not g.auth_pending)
         assert g.state == "LOGIN" and "Yanlis" in g.status_text
+
+    def test_uc01_short_password_rejected_locally(self, make_gui):
+        g = make_gui()
+        type_credentials(g, "alice", "pw12345")
+        g.handle_button_click('DO_REGISTER')
+        assert g.state == "LOGIN" and not g.auth_pending
+        assert g.status_text == "Kullanici adi en az 3, sifre en az 8 karakter olmali!"
+
+    def test_uc02_too_many_failed_logins(self, make_gui, database, server, monkeypatch):
+        monkeypatch.setattr(server.config, 'LOGIN_MAX_FAILURES', 1)
+        database.create_user("alice", "pw123456")
+        g = make_gui()
+        for expected in ("Yanlis", "Cok fazla deneme"):
+            type_credentials(g, "alice", "nope")
+            g.handle_button_click('DO_LOGIN')
+            pump(g, lambda: not g.auth_pending)
+            assert g.state == "LOGIN" and expected in g.status_text
 
     def test_uc02_empty_fields_rejected_locally(self, make_gui):
         g = make_gui()
@@ -110,7 +127,7 @@ class TestAccountUseCases:
 
 def test_uc02_server_unreachable(make_gui):
     g = make_gui(url="http://127.0.0.1:1")
-    type_credentials(g, "alice", "pw123")
+    type_credentials(g, "alice", "pw123456")
     g.handle_button_click('DO_LOGIN')
     pump(g, lambda: not g.auth_pending)
     assert g.state == "LOGIN" and g.status_text == "Sunucuya baglanilamadi!"
@@ -267,7 +284,7 @@ class TestOnlineUseCases:
 class TestInformationUseCases:
     def test_uc14_leaderboard(self, make_gui, database):
         for name in ("alice", "bob", "carol"):
-            database.create_user(name, "pw123")
+            database.create_user(name, "pw123456")
         database.update_elo_by_username("carol", "alice")
         g = make_gui()
         g.handle_button_click('GUEST')
@@ -276,7 +293,7 @@ class TestInformationUseCases:
         assert [p['username'] for p in g.leaderboard_data] == ["carol", "bob", "alice"]
 
     def test_uc15_match_history(self, make_gui, database):
-        database.create_user("bob", "pw123")
+        database.create_user("bob", "pw123456")
         g = make_gui()
         register(g, "alice")
         database.record_game("alice", "bob", "alice", "[0, 1, 0, 1, 0, 1, 0]")

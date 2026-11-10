@@ -222,7 +222,7 @@ class TestDisconnectAndReconnect:
 
 
 class TestCleanup:
-    def test_stale_rooms_are_removed(self, sio, server, http):
+    def test_stale_rooms_are_removed(self, sio, server):
         waiting = sio()
         waiting.emit('create_game', {'user_id': 'w'})
         waiting_id = waiting.wait_for('game_created')['room_id']
@@ -233,9 +233,12 @@ class TestCleanup:
             server.GAMES[waiting_id]['created_at'] -= server.config.WAITING_TIMEOUT + 1
             server.GAMES[idle_id]['last_move_at'] -= server.config.INACTIVE_TIMEOUT + 1
 
-        assert http.post('/cleanup').get_json()['removed'] == 2
+        assert server.cleanup_old_games() == 2
         assert list(server.GAMES) == [fresh_id]
         assert a.wait_for('game_ended')['reason'] == 'timeout'
+
+    def test_cleanup_is_not_exposed_over_http(self, http):
+        assert http.post('/cleanup').status_code in (404, 405)
 
     def test_finished_rooms_are_removed_after_timeout(self, sio, server):
         room_id, a, b = start_match(sio)
@@ -278,13 +281,27 @@ class TestRegisteredPlayers:
         assert http.get('/user/alice').get_json()['user']['rating'] == 1200
 
 
+class TestCors:
+    """Varsayilan: tarayicidan sadece sunucunun kendi origin'i baglanabilir."""
+
+    @pytest.mark.parametrize("origin, status", [
+        (None, 200),                        # tarayici olmayan istemci (pygame, Unity Editor)
+        ("http://localhost", 200),          # ayni origin (/play)
+        ("http://evil.example", 400),
+    ])
+    def test_handshake_origin_check(self, http, origin, status):
+        headers = {'Origin': origin} if origin else {}
+        r = http.get('/socket.io/?EIO=4&transport=polling', headers=headers)
+        assert r.status_code == status
+
+
 class TestIdentity:
     """Kimlik istemcinin yazdigi ada degil, sunucunun verdigi token/anahtara dayanir."""
 
     def test_login_and_signup_return_verifiable_token(self, http, server, database):
-        r = http.post('/signup', json={'username': 'alice', 'password': 'pw123'})
+        r = http.post('/signup', json={'username': 'alice', 'password': 'pw123456'})
         assert server.verify_session_token(r.get_json()['token']) == 'alice'
-        r = http.post('/login', json={'username': 'alice', 'password': 'pw123'})
+        r = http.post('/login', json={'username': 'alice', 'password': 'pw123456'})
         assert server.verify_session_token(r.get_json()['token']) == 'alice'
 
     @pytest.mark.parametrize("token", ["", "garbage", "alice", 123, "x" * 600])
@@ -294,9 +311,28 @@ class TestIdentity:
         assert a.wait_for('error')['msg'] == 'Oturum gecersiz, tekrar giris yapin'
         assert not server.GAMES
 
+    @pytest.mark.parametrize("name", [
+        "bad name", "a\tb", "x\x00y", "<script>", "a/b", "\u202eevil", "a" * 41,
+    ])
+    def test_invalid_guest_name_is_rejected(self, sio, server, name):
+        a = sio()
+        a.emit('create_game', {'user_id': name})
+        assert a.wait_for('error')['msg'] == 'Gecersiz kullanici'
+        assert not server.GAMES
+        room_id, _, _ = start_match(sio, 'p1', 'p2')
+        b = sio()
+        b.emit('join_game', {'room_id': room_id, 'user_id': name})
+        assert b.wait_for('error')['msg'] == 'Gecersiz istek'
+
+    @pytest.mark.parametrize("name", ["Misafir_123456", "w", "bench_a_1f2e3d", "ömer.çelik-2", "a" * 40, 42])
+    def test_valid_guest_name_is_accepted(self, sio, name):
+        a = sio()
+        a.emit('create_game', {'user_id': name})
+        assert a.wait_for('game_created')['your_info']['username'] == str(name)
+
     def test_token_signed_with_other_key_is_rejected(self, sio, server, database):
         from itsdangerous import URLSafeTimedSerializer
-        database.create_user('alice', 'pw123')
+        database.create_user('alice', 'pw123456')
         forged = URLSafeTimedSerializer('not-the-key', salt='connect4-session').dumps('alice')
         a = sio()
         a.emit('create_game', {'token': forged})

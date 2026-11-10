@@ -49,8 +49,8 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 - **Ön koşul:** Giriş ekranı açık; sunucu ve veritabanı erişilebilir.
 - **Ana akış:**
   1. Kullanıcı adı ve şifreyi girer, "Kayıt Ol"a basar.
-  2. İstemci alanların dolu ve en az 3 karakter olduğunu kontrol eder.
-  3. Sunucu kullanıcı adını (3–20 karakter; harf, rakam, `_ . -`) ve şifreyi (3–128) doğrular.
+  2. İstemci alanların dolu olduğunu, kullanıcı adının en az 3, şifrenin en az 8 karakter olduğunu kontrol eder.
+  3. Sunucu kullanıcı adını (3–20 karakter; harf, rakam, `_ . -`) ve şifreyi (8–128) doğrular.
   4. Şifre tuzlu PBKDF2-SHA256 ile özetlenip hesap oluşturulur (ELO 1200).
   5. Kullanıcı ana menüye alınır, "Kayıt başarılı" mesajı gösterilir.
 - **Alternatif akışlar:**

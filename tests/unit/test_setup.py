@@ -32,6 +32,26 @@ class TestEnvFile:
         monkeypatch.delenv("C4_TEST_ONLY_FILE")
 
 
+class TestCorsOrigins:
+    def test_empty_means_same_origin_only(self):
+        assert config.parse_cors_origins(None) is None
+        assert config.parse_cors_origins("") is None
+        assert config.parse_cors_origins(" , ") is None
+
+    def test_wildcard(self):
+        assert config.parse_cors_origins("*") == "*"
+        assert config.parse_cors_origins("https://a.example, *") == "*"
+
+    def test_list_is_split_and_normalized(self):
+        assert config.parse_cors_origins(" https://a.example/ ,http://localhost:5000") == [
+            "https://a.example", "http://localhost:5000"]
+
+    def test_server_defaults_to_same_origin(self):
+        import server
+        assert config.CORS_ALLOWED_ORIGINS is None
+        assert server.socketio.server.eio.cors_allowed_origins is None
+
+
 class TestSetupHelpers:
     def test_password_special_characters_are_url_encoded(self):
         url = setup_env.build_url("postgres", "p@ss:w/rd#1", "localhost", "5432", "connect4")
