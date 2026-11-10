@@ -38,7 +38,7 @@ Yeditepe Üniversitesi bitirme projesi. Python/Pygame sürümü: [ConnectFourPro
 - AI v2: negamax + alpha-beta, transpozisyon tablosu, yinelemeli derinleştirme, oyun teorisine dayalı (satır paritesi) tehdit değerlendirmesi, oyun sonunda kesin çözüm, kusursuz çözücüyle doğrulanmış açılış kitabı — ayrıntı ve ölçümler: [docs/AI.md](docs/AI.md)
 - Flask-SocketIO sunucusu: sunucu tarafında hamle doğrulama, kilitle korunan oda durumu, otomatik oda temizliği
 - PostgreSQL: sabit boyutlu bağlantı havuzu, ELO için transaction, tuzlu PBKDF2 şifre özetleri
-- 319 Python testi (birim, entegrasyon, uçtan uca GUI) + 129 C# testi (Unity'siz `dotnet test`), GitHub Actions CI
+- 321 Python testi (birim, entegrasyon, uçtan uca GUI) + 129 C# testi (Unity'siz `dotnet test`), GitHub Actions CI
 
 ## 📁 Proje Yapısı
 
@@ -73,6 +73,7 @@ ConnectFourPro-Ultimate/
 │   └── diagrams/             # UML (PlantUML + PNG)
 ├── scripts/                  # Kurulum yardımcıları, export_ai_vectors.py (C# altın vektörleri)
 ├── Dockerfile / docker-compose.yml  # Sunucu + PostgreSQL (docs/KURULUM.md bölüm 12)
+├── render.yaml               # İnternette ücretsiz yayın: Render + Supabase (docs/KURULUM.md bölüm 13)
 ├── setup.bat / setup.sh      # Tek komutla kurulum
 ├── run.bat / run.sh          # Çalıştırma kısayolları
 ├── requirements-dev.txt      # Test / benchmark bağımlılıkları
@@ -139,6 +140,7 @@ set DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4        # Windows
 | `CONNECT4_WEB_BUILD` | `unity/Build/WebGL` | `/play` adresinden sunulan Unity WebGL build klasörü |
 | `RECONNECT_GRACE_SECONDS` | `30` | Kopan oyuncunun geri dönme süresi |
 | `DB_POOL_SIZE` | `20` | Veritabanı bağlantı havuzu boyutu |
+| `DB_PING_AFTER_SECONDS` | `30` | Bu süredir kullanılmayan veritabanı bağlantısı kullanılmadan önce yoklanır; kopmuşsa yenilenir |
 | `LOG_LEVEL` | `INFO` | `DEBUG` istemcide ayrıntılı log açar |
 
 Veritabanı yoksa sunucu yine açılır; kayıt ve giriş 503 döner, misafir modu çalışır.

@@ -376,6 +376,23 @@ gunicorn --chdir src -k gthread -w 1 --threads 100 -b 0.0.0.0:5000 wsgi:app
 
 ---
 
+## 13. İnternette ücretsiz yayın (Render + Supabase)
+
+Herkesin tarayıcıdan oynayabilmesi için sunucunun internette, HTTPS arkasında çalışması gerekir. En düşük maliyetli yol: sunucu [Render](https://render.com)'ın ücretsiz planında, veritabanı [Supabase](https://supabase.com)'in ücretsiz planında. Alan adı gerekmez; Render `https://...onrender.com` adresi verir.
+
+**Ücretsiz planın sınırları:** Sunucu 15 dakika kimse bağlanmazsa uyur; sonraki ilk ziyaretçi yaklaşık bir dakika bekler (uyurken açık oda kalmaz, kayıtlı veriler veritabanında durur). Supabase bir hafta hiç kullanılmayan ücretsiz projeyi duraklatır; panelden tek tıkla geri açılır. Oyuncu sayısı artınca aynı imaj bölüm 12'deki gibi küçük bir VPS'e taşınabilir.
+
+1. **İmaj:** Bu depoyu `main`'e birleştirin. `Docker image` iş akışı, `Unity WebGL` iş akışının son başarılı derlemesini içine koyarak `ghcr.io/KULLANICI/connectfourpro-ultimate:latest` imajını yayınlar (Unity secret'ları tanımlı olmalı, bkz. 11.5).
+2. **İmajı herkese açın:** GitHub'da profil → **Packages** → `connectfourpro-ultimate` → **Package settings** → **Change visibility** → **Public**. (Özel bırakırsanız Render'a kayıt defteri kimlik bilgisi eklemeniz gerekir.)
+3. **Veritabanı:** Supabase'te yeni bir proje oluşturun ve veritabanı şifresini not edin. **Connect** → **Session pooler** altındaki adresi kopyalayın (`postgresql://postgres.PROJE:SIFRE@...pooler.supabase.com:5432/postgres`). "Direct connection" adresi yalnızca IPv6 üzerinden erişilebildiği için Render'da çalışmaz. Tabloları sunucu ilk açılışta kendisi oluşturur.
+4. **Sunucu:** Render'da **New** → **Blueprint** ile bu depoyu seçin; `render.yaml` servisi tanımlar. Sorulduğunda `DATABASE_URL` alanına 3. adımdaki adresi yapıştırın. `SECRET_KEY`'i Render kendisi üretir. `render.yaml` içindeki imaj adresinde kullanıcı adı farklıysa düzeltin.
+5. **Kontrol:** `https://ADRESINIZ.onrender.com/health` → `"database": true`. Oyun: `https://ADRESINIZ.onrender.com/play/`.
+6. **Otomatik güncelleme (isteğe bağlı):** Render'da servis → **Settings** → **Deploy Hook** adresini kopyalayıp GitHub'da `RENDER_DEPLOY_HOOK_URL` adlı repository secret'ı olarak ekleyin. Böylece her yeni imajdan sonra Render kendiliğinden güncellenir; yoksa Render panelinden **Manual Deploy** gerekir.
+
+Ayarlar `render.yaml` içindedir: `DB_POOL_SIZE=5` (ücretsiz veritabanının bağlantı sınırı için) ve `GUNICORN_THREADS=60`. Sunucu, yönetilen veritabanlarının boşta kapattığı bağlantıları kendisi yeniler (`DB_PING_AFTER_SECONDS`).
+
+**itch.io:** itch.io yalnızca statik dosya barındırır; odalar, giriş ve sıralama için yine bu sunucu gerekir. En basit yol, itch.io sayfasından `https://ADRESINIZ.onrender.com/play/` adresine bağlantı vermektir.
+
 ## Sorun giderme
 
 | Belirti | Çözüm |

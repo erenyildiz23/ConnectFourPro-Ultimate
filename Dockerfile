@@ -3,9 +3,11 @@
 # =============================================================================
 #   docker compose up --build        (PostgreSQL ile birlikte; bkz. docs/KURULUM.md bolum 12)
 #
-# Unity WebGL build'i (unity/Build/WebGL) git'te olmadigi icin imaja konmaz;
-# /app/unity/Build/WebGL altina volume olarak baglanir (docker-compose.yml).
-# Baglanmazsa sunucu yine calisir, yalnizca /play/ 404 dondurur.
+# Unity WebGL build'i git'te tutulmaz. webgl-build/ klasorunde ne varsa imaja
+# /app/unity/Build/WebGL olarak girer: CI oraya derlemeyi indirir
+# (.github/workflows/docker-image.yml); docker-compose.yml ise yerel
+# unity/Build/WebGL klasorunu ayni yere volume olarak baglar.
+# Klasor bossa sunucu yine calisir, yalnizca /play/ 404 dondurur.
 
 FROM python:3.12-slim
 
@@ -29,13 +31,15 @@ RUN grep -q '^# Istemci' /tmp/requirements.txt \
 
 RUN useradd --system --create-home --uid 10001 connect4
 COPY --chown=connect4:connect4 src/ /app/src/
+COPY --chown=connect4:connect4 webgl-build/ /app/unity/Build/WebGL/
 USER connect4
 
 EXPOSE 5000
 
+# PORT: Render gibi platformlar dinlenecek portu bu degiskenle verir (varsayilan 5000)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+    CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/health' % os.environ.get('PORT', '5000'), timeout=3)"]
 
 # Oda durumu surec belleginde tutuldugu icin TEK worker zorunludur (-w 1).
 # Eszamanlilik thread'lerle saglanir; her WebSocket baglantisi bir thread tutar.
-CMD ["sh", "-c", "exec gunicorn --chdir src -k gthread -w 1 --threads ${GUNICORN_THREADS} -b 0.0.0.0:5000 wsgi:app"]
+CMD ["sh", "-c", "exec gunicorn --chdir src -k gthread -w 1 --threads ${GUNICORN_THREADS} -b 0.0.0.0:${PORT:-5000} wsgi:app"]

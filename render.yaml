@@ -1,0 +1,22 @@
+# Render Blueprint: sunucuyu ucretsiz planda, CI'in yayinladigi imajdan calistirir.
+# Kurulum adimlari: docs/KURULUM.md -> 13.
+services:
+  - type: web
+    name: connect-four-pro
+    runtime: image
+    image:
+      url: ghcr.io/erenyildiz23/connectfourpro-ultimate:latest
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    envVars:
+      - key: SECRET_KEY          # oturum token'larini imzalar; Render uretir ve saklar
+        generateValue: true
+      - key: DATABASE_URL        # Supabase "Session pooler" adresi; Dashboard'da girilir
+        sync: false
+      - key: DB_POOL_SIZE        # ucretsiz veritabani planlarinin baglanti sinirina uyar
+        value: "5"
+      - key: GUNICORN_THREADS    # her WebSocket baglantisi bir thread; 0.1 CPU / 512 MB icin
+        value: "60"
+      - key: LOG_LEVEL
+        value: INFO

@@ -1,0 +1,118 @@
+name: Docker image
+
+# Sunucu imajini (gunicorn + Unity WebGL istemcisi) derler, calistirip dener ve
+# main dalinda ghcr.io'ya gonderir. Yayin: docs/KURULUM.md -> 13.
+#
+# WebGL derlemesi git'te tutulmaz; "Unity WebGL" is akisinin main'deki son basarili
+# calismasindan (webgl-build artifact'i) indirilir. Bu yuzden imaj, tarayici testini
+# (e2e) gecmis bir istemci icerir.
+#
+# Istege bagli repository secret'i:
+#   RENDER_DEPLOY_HOOK_URL  Render'in "Deploy Hook" adresi; varsa yeni imajdan sonra cagrilir
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".github/workflows/docker-image.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".github/workflows/docker-image.yml"
+  workflow_run:
+    workflows: ["Unity WebGL"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    # Unity WebGL basarisiz bittiyse eski istemciyle imaj yayinlama
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read      # baska is akisinin artifact'ini indirmek icin
+      packages: write    # ghcr.io'ya gondermek icin
+    env:
+      PUBLISH: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"   # ghcr kucuk harf ister
+
+      # PR'da yalnizca Dockerfile ve sunucunun acilisi denenir; istemci indirilmez
+      - name: Download the latest WebGL build from main
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --workflow unity-webgl.yml --branch main --status success \
+                   --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+            echo "::error::main dalinda basarili bir 'Unity WebGL' calismasi yok. Once o is akisini calistirin."
+            exit 1
+          fi
+          echo "WebGL build: Unity WebGL run $run_id"
+          if ! gh run download "$run_id" --name webgl-build --dir webgl-build; then
+            echo "::error::webgl-build artifact'i indirilemedi (suresi dolmus veya Unity secret'lari eksik oldugu icin build atlanmis olabilir). 'Unity WebGL' is akisini main'de yeniden calistirin."
+            exit 1
+          fi
+          test -f webgl-build/index.html
+
+      - name: Build
+        run: docker build -t "$IMAGE:latest" -t "$IMAGE:$GITHUB_SHA" .
+
+      # Veritabani olmadan (misafir modu) ayaga kalkip cevap veriyor mu?
+      - name: Smoke test
+        run: |
+          docker run -d --name c4 -p 5000:5000 \
+            -e SECRET_KEY=ci-smoke-test \
+            -e DATABASE_URL=postgresql://nobody@127.0.0.1:1/none \
+            "$IMAGE:latest"
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:5000/health; then ok=1; break; fi
+            sleep 1
+          done
+          if [ -z "$ok" ]; then docker logs c4; exit 1; fi
+          echo
+          if [ "$PUBLISH" = "true" ]; then
+            curl -fsS -o /dev/null http://localhost:5000/play/ || { echo "::error::/play/ cevap vermiyor"; docker logs c4; exit 1; }
+          fi
+          docker logs c4
+          docker rm -f c4
+
+      - name: Push to ghcr.io
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:$GITHUB_SHA"
+          echo "::notice::Yayinlandi: $IMAGE:latest"
+
+      - name: Trigger Render deploy
+        if: env.PUBLISH == 'true'
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL tanimli degil; yayin tetiklenmedi."
+          else
+            curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" -o /dev/null && echo "Render yayini tetiklendi."
+          fi
