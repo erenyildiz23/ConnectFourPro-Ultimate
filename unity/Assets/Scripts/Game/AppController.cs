@@ -120,11 +120,17 @@ namespace ConnectFourPro.Game
         public string ServerUrl => _api.BaseUrl;
 
         public AppController(MonoBehaviour host, string serverUrl, ISocketTransport transport)
+            : this(new ApiClient(host, serverUrl), transport)
         {
-            _api = new ApiClient(host, serverUrl);
+            Debug.Log("[App] Hazir (sunucu: " + serverUrl + ")");
+        }
+
+        /// <summary>ApiClient disaridan verilir (tests/csharp sahte istemciyle kurar).</summary>
+        public AppController(ApiClient api, ISocketTransport transport)
+        {
+            _api = api;
             _transport = transport;
             _socket = NewSocket();
-            Debug.Log("[App] Hazir (sunucu: " + serverUrl + ")");
         }
 
         private GameSocket NewSocket()

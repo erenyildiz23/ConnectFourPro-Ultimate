@@ -12,7 +12,7 @@ Unity 6 LTS ile yazılmış, **WebGL** (tarayıcı) için derlenen istemci. Pyth
 | `Assets/Scripts/Net`, `Game`, `UI` | `ConnectFourPro.Runtime` | Evet | `network_client.py`, `gui_app.py` |
 | `Assets/Editor` | `ConnectFourPro.Editor` | Evet (yalnızca Editor) | `build_exe.bat` |
 
-Unity'ye bağımlı olmayan üç assembly, `tests/csharp` altındaki .NET test projesine doğrudan bağlanır. Böylece Unity olmadan `dotnet test` ile test edilir.
+Unity'ye bağımlı olmayan üç assembly, `tests/csharp` altındaki .NET test projesine doğrudan bağlanır. Böylece Unity olmadan `dotnet test` ile test edilir. Uygulama mantığı (`AppController`, `GameSocket`, `AIRunner`, `ServerConfig`) da aynı testlerde, `tests/csharp/stubs` altındaki küçük bir UnityEngine taklidine karşı derlenip sınanır; `ApiClient`, taşıma katmanları ve `UI/` yalnızca Unity derlemesiyle doğrulanır.
 
 ## Önemli tasarım kararları
 

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- unity/Assets/Scripts/ConnectFourPro.Runtime asmdef'inin Unity'siz derlenebilen kismi:
+       uygulama durum makinesi, oda baglantisi, AI zamanlayici ve sunucu adresi. Gercek
+       dosyalar baglanir (kopya degil); UnityEngine yerine ../stubs kullanilir.
+       Disarida kalanlar: Net/ApiClient.cs (UnityWebRequest; yerine stubs/FakeApiClient.cs),
+       platform tasiyicilari, GameBootstrap.cs ve UI/*.cs (uGUI). -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>ConnectFourPro.Runtime</AssemblyName>
+    <LangVersion>9.0</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../unity/Assets/Scripts/Game/AppController.cs" Link="Game/AppController.cs" />
+    <Compile Include="../../../unity/Assets/Scripts/Game/AIRunner.cs" Link="Game/AIRunner.cs" />
+    <Compile Include="../../../unity/Assets/Scripts/Net/GameSocket.cs" Link="Net/GameSocket.cs" />
+    <Compile Include="../../../unity/Assets/Scripts/Net/ISocketTransport.cs" Link="Net/ISocketTransport.cs" />
+    <Compile Include="../../../unity/Assets/Scripts/Net/ServerConfig.cs" Link="Net/ServerConfig.cs" />
+    <Compile Include="../stubs/FakeApiClient.cs" Link="Net/FakeApiClient.cs" />
+    <ProjectReference Include="ConnectFourPro.Core.csproj" />
+    <ProjectReference Include="ConnectFourPro.AI.csproj" />
+    <ProjectReference Include="ConnectFourPro.Protocol.csproj" />
+    <ProjectReference Include="../stubs/UnityEngine.Stubs.csproj" />
+  </ItemGroup>
+</Project>
