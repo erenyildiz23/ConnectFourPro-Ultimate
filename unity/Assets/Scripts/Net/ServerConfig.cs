@@ -4,7 +4,10 @@
 // =============================================================================
 //
 // WebGL: oyun Flask'in /play rotasindan sunuldugu icin sayfanin kendi adresi
-//        kullanilir (ayni origin: CORS gerekmez). ?server=http://... ile degistirilebilir.
+//        kullanilir (ayni origin: CORS gerekmez). ?server=http://... yalnizca sayfa
+//        localhost'tan sunuluyorsa (yerel gelistirme) veya development build'de gecerlidir.
+//        Aksi halde https://site/play/?server=https://saldirgan gibi bir baglanti, sayfa
+//        gercek adresi gosterirken kullanici adi ve sifreyi baska sunucuya gonderirdi.
 // Editor/masaustu: CONNECT4_SERVER ortam degiskeni, yoksa http://localhost:5000
 // (Python istemcisiyle ayni kural, bkz. src/config.py).
 
@@ -41,16 +44,44 @@ namespace ConnectFourPro.Net
             return url.TrimEnd('/');
         }
 
+        /// <summary>Adres bu bilgisayari mi gosteriyor (localhost, 127.x.x.x, [::1])?</summary>
+        public static bool IsLoopback(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return false;
+            // Uri, http://localhost@saldirgan.com gibi adreslerde gercek host'u verir
+            if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out Uri uri))
+                return false;
+            if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+                return false;
+            return uri.IsLoopback;
+        }
+
+        /// <summary>?server= parametresine guvenilebilir mi?</summary>
+        public static bool AllowQueryOverride(string pageOrigin, bool developmentBuild)
+        {
+            return developmentBuild || IsLoopback(pageOrigin);
+        }
+
+        /// <summary>WebGL'de sunucu adresi: izin varsa ?server=, yoksa sayfanin adresi.</summary>
+        public static string ResolveWeb(string query, string pageOrigin, bool developmentBuild)
+        {
+            if (!string.IsNullOrWhiteSpace(query) && AllowQueryOverride(pageOrigin, developmentBuild))
+                return Normalize(query);
+            if (!string.IsNullOrEmpty(pageOrigin) && pageOrigin.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                return Normalize(pageOrigin);
+            return DefaultUrl;
+        }
+
         private static string Resolve()
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
             string query = CF4_QueryParam("server");
-            if (!string.IsNullOrEmpty(query))
-                return Normalize(query);
             string origin = CF4_PageOrigin();
-            if (!string.IsNullOrEmpty(origin) && origin.StartsWith("http"))
-                return Normalize(origin);
-            return DefaultUrl;
+            bool development = UnityEngine.Debug.isDebugBuild;
+            if (!string.IsNullOrWhiteSpace(query) && !AllowQueryOverride(origin, development))
+                UnityEngine.Debug.LogWarning("[CF4] ?server= yok sayildi: yalnizca localhost'tan sunulan sayfada gecerlidir");
+            return ResolveWeb(query, origin, development);
 #else
             return Normalize(Environment.GetEnvironmentVariable("CONNECT4_SERVER"));
 #endif

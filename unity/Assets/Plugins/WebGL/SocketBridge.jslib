@@ -73,7 +73,7 @@ mergeInto(LibraryManager.library, {
     return buffer;
   },
 
-  // ?server=http://... sorgu parametresi (baska sunucuya baglanmak icin)
+  // ?server=http://... sorgu parametresi; kabul edilip edilmeyecegine ServerConfig.cs karar verir
   CF4_QueryParam: function (namePtr) {
     var name = UTF8ToString(namePtr);
     var value = '';

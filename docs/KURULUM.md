@@ -226,7 +226,7 @@ python run_all.py              REM ~30 dk, tam ölçüm
 
 ## 10. EXE oluşturma (Windows)
 
-Repodaki eski `src\dist\ConnectFourPro.exe` **eski kodla** derlenmiştir. Yenisini proje klasöründe, etkin sanal ortamda oluşturun:
+EXE depoda tutulmaz; proje klasöründe, etkin sanal ortamda oluşturun:
 
 ```bat
 venv\Scripts\activate
@@ -347,6 +347,32 @@ Sonra:
 Her değer **ayrı** bir secret olmalıdır (tek bir secret içinde hepsi çalışmaz). Secret'lar yalnızca GitHub'da şifreli saklanır; loglarda `***` olarak görünür. Secret yoksa iş hata vermez, "atlandı" notuyla geçer. Unity hesabında iki adımlı doğrulama açıksa CI'da giriş başarısız olabilir.
 
 İlk başarılı build, Unity'nin ürettiği proje dosyalarını (`ProjectSettings/`, `Packages/`, `.meta`) `unity-project-files` adlı artifact olarak da yükler; bunlar repoya eklenmelidir (bölüm 11.2'deki commit'in CI karşılığı).
+
+## 12. Docker ile sunucu (internete açık kurulum)
+
+`python server.py` Werkzeug'un geliştirme sunucusunu kullanır; ev ağı ve denemeler için yeterlidir. Sunucuyu kalıcı olarak veya internete açık çalıştıracaksanız [Docker](https://docs.docker.com/get-docker/) ile gunicorn üzerinde çalıştırın. `docker-compose.yml` sunucuyu ve PostgreSQL 16'yı birlikte başlatır; Python veya PostgreSQL kurmanız gerekmez.
+
+```bash
+docker compose up --build -d     # sunucu + veritabanı
+docker compose logs -f server    # loglar
+docker compose down              # durdurur (veritabanı "connect4-db" volume'unda kalır)
+```
+
+Sonra http://localhost:5000/health adresi `"database": true` göstermelidir.
+
+- **`SECRET_KEY` zorunludur.** Oturum token'ları bu anahtarla imzalanır. Compose, proje kökündeki `.env` dosyasını okur; `setup` betiğini çalıştırdıysanız anahtar zaten oradadır. Yoksa `.env` dosyasına `SECRET_KEY=uzun-rastgele-bir-deger` satırını ekleyin (üretmek için: `python -c "import secrets; print(secrets.token_hex(32))"`). Anahtar tanımlı değilse `docker compose up` hata verip durur. Anahtarı değiştirirseniz herkesin yeniden giriş yapması gerekir.
+- **Veritabanı şifresi:** `.env` dosyasına `POSTGRES_PASSWORD=...` yazarak belirleyin (varsayılan `connect4`; şifre veritabanı ilk oluşturulurken belirlenir). Veritabanı portu dışarıya açılmaz, yalnızca sunucu konteyneri erişir. `.env` içindeki `DATABASE_URL` Docker'da kullanılmaz.
+- **Tek worker:** Açık odalar sunucu sürecinin belleğinde tutulur. Birden fazla worker çalışırsa oyuncular farklı süreçlere düşer ve birbirlerinin odasını göremez. Bu yüzden gunicorn tek worker ve çok thread ile çalışır (`-k gthread -w 1 --threads 100`); `-w` değerini artırmayın. Her WebSocket bağlantısı bir thread kullanır; aynı anda 100'den fazla oyuncu bekliyorsanız `.env` dosyasına `GUNICORN_THREADS=200` yazın.
+- **Tarayıcı istemcisi:** `unity/Build/WebGL` klasörü konteynere bağlanır. Build'i aldıysanız veya Actions'tan indirip bu klasöre açtıysanız (bölüm 11.3) oyun `http://localhost:5000/play/` adresinde açılır. Klasör yoksa Docker boş bir klasör oluşturur ve `/play/` "WebGL build bulunamadi" yanıtını verir; sunucunun geri kalanı çalışır.
+- **Farklı port:** `.env` dosyasına `CONNECT4_PORT=8080` yazın.
+- **İnternete açarken HTTPS kullanın.** Sunucu düz HTTP konuşur; kullanıcı adı, şifre ve oturum token'ı şifrelenmeden gider. Sunucuyu doğrudan internete açmayın. Önüne TLS sonlandıran bir ters vekil (Caddy, nginx, Traefik) veya bir tünel (Cloudflare Tunnel, ngrok) koyun. Vekil, WebSocket yükseltmesini (`Upgrade` başlığı) ve özgün `Host` ile `X-Forwarded-Proto` başlıklarını iletmelidir; sunucu tarayıcıdan gelen Socket.IO bağlantısının kendi adresinden geldiğini bu başlıklarla doğrular. Caddy (`reverse_proxy localhost:5000`) ve ngrok bunu kendiliğinden yapar. nginx'te `proxy_set_header Host $host;` ve `proxy_set_header X-Forwarded-Proto $scheme;` satırlarını ekleyin. Vekili değiştiremiyorsanız `.env` dosyasına `CORS_ALLOWED_ORIGINS=https://oyun.example.com` yazın.
+
+Docker olmadan aynı komut (Linux/macOS; gunicorn Windows'ta çalışmaz):
+
+```bash
+pip install gunicorn
+gunicorn --chdir src -k gthread -w 1 --threads 100 -b 0.0.0.0:5000 wsgi:app
+```
 
 ---
 
