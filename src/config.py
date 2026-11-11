@@ -21,6 +21,9 @@ Ornek degerler icin `.env.example` dosyasina bakin.
     AUTH_IP_MAX_REQUESTS    Tek IP'den AUTH_IP_WINDOW_SECONDS icinde kabul edilen
     AUTH_IP_WINDOW_SECONDS  /login + /signup istegi (ngrok/proxy arkasinda herkes ayni
                             IP'dir, bu yuzden genis tutulur). 0 = sinir kapali
+    MOVE_TIME_SECONDS       Hamle basina sunucu tarafli sure (saniye); dolarsa sira
+                            sendeki oyuncu hukmen kaybeder. 0 = sure siniri yok
+    MOVE_TIME_GRACE_SECONDS Gecikme/animasyon payi: sure bu kadar saniye ek tolerans gorur
     CONNECT4_SERVER         Istemcinin baglanacagi sunucu adresi
     LOG_LEVEL               DEBUG, INFO, WARNING, ERROR
 """
@@ -95,6 +98,12 @@ CLEANUP_INTERVAL = _env_int("CLEANUP_INTERVAL", 60)
 
 # Baglantisi kopan oyuncunun geri donmesi icin taninan sure (NFR-08)
 RECONNECT_GRACE_SECONDS = _env_int("RECONNECT_GRACE_SECONDS", 30)
+
+# Hamle suresi (0 = kapali); sunucu hamleyi son tarihten sonra MOVE_TIME_GRACE_SECONDS
+# kadar tolere eder (ag gecikmesi + istemci animasyonu)
+# Varsayilan kapali: istemciler geri sayimi gostermeden acilmamali
+MOVE_TIME_SECONDS = _env_int("MOVE_TIME_SECONDS", 0)
+MOVE_TIME_GRACE_SECONDS = _env_int("MOVE_TIME_GRACE_SECONDS", 2)
 
 # --- ELO ---
 ELO_K_FACTOR = _env_int("ELO_K_FACTOR", 30)

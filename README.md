@@ -38,7 +38,7 @@ Yeditepe Üniversitesi bitirme projesi. Python/Pygame sürümü: [ConnectFourPro
 - AI v2: negamax + alpha-beta, transpozisyon tablosu, yinelemeli derinleştirme, oyun teorisine dayalı (satır paritesi) tehdit değerlendirmesi, oyun sonunda kesin çözüm, kusursuz çözücüyle doğrulanmış açılış kitabı — ayrıntı ve ölçümler: [docs/AI.md](docs/AI.md)
 - Flask-SocketIO sunucusu: sunucu tarafında hamle doğrulama, kilitle korunan oda durumu, otomatik oda temizliği
 - PostgreSQL: sabit boyutlu bağlantı havuzu, ELO için transaction, tuzlu PBKDF2 şifre özetleri
-- 321 Python testi (birim, entegrasyon, uçtan uca GUI) + 129 C# testi (Unity'siz `dotnet test`), GitHub Actions CI
+- 467 Python testi (birim, entegrasyon, uçtan uca GUI) + 272 C# testi (Unity'siz `dotnet test`), GitHub Actions CI
 
 ## 📁 Proje Yapısı
 
@@ -132,6 +132,7 @@ set DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4        # Windows
 | `DATABASE_URL` | `postgresql://postgres@localhost/connect4` | PostgreSQL adresi |
 | `SECRET_KEY` | rastgele | Oturum token'larını imzalar (ayarlanmazsa sunucu yeniden başlayınca herkes tekrar giriş yapar) |
 | `SESSION_MAX_AGE` | `604800` | Oturum token'ının geçerlilik süresi (saniye) |
+| `MOVE_TIME_SECONDS` / `MOVE_TIME_GRACE_SECONDS` | `0` / `2` | Hamle başına süre; dolarsa sırası gelen hükmen kaybeder (`detail: timeout`). `0` = kapalı. İstemciler geri sayım gösterene kadar kapalı bırakın. Rakibin bağlantısı kopukken süre işlemez |
 | `CORS_ALLOWED_ORIGINS` | boş | Socket.IO'ya tarayıcıdan bağlanabilecek origin'ler (virgüllü liste veya `*`). Boşsa yalnızca sunucunun kendi adresi; liste verirseniz kendi adresinizi de ekleyin |
 | `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_SECONDS` | `5` / `300` | Bir kullanıcı adı için bu sürede izin verilen hatalı giriş sayısı; aşılırsa `/login` `429` döner (`0` = kapalı) |
 | `AUTH_IP_MAX_REQUESTS` / `AUTH_IP_WINDOW_SECONDS` | `300` / `60` | Tek IP'den bu sürede kabul edilen `/login` + `/signup` isteği (`0` = kapalı) |
@@ -242,6 +243,8 @@ CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket
 | `move_made` | Sunucu → Oda | Hamle sonrası tam oyun durumu |
 | `game_over` | Sunucu → Oda | Kazanan, neden (`normal`/`forfeit`), ELO değişimleri ve yeni puanlar |
 | `elo_update` | Sunucu → Oyuncu | Oyuncunun yeni ELO'su |
+| `rematch_request` | İstemci → Sunucu | Biten oyundan sonra aynı odada rövanş ister; iki oyuncu da isterse ilk hamle sırası değişerek yeni oyun başlar |
+| `rematch_offered` / `rematch_unavailable` / `rematch_started` | Sunucu → Oda | Rövanş teklifi, rakibin ayrılmış olması, yeni oyunun başlaması (`game_no`, boş tahta) |
 | `opponent_disconnected` / `opponent_reconnected` | Sunucu → Oda | Bağlantı durumu |
 | `game_ended` | Sunucu → Oda | Oda zaman aşımıyla kapatıldı |
 | `error` | Sunucu → İstemci | Reddedilen istek (`msg`) |

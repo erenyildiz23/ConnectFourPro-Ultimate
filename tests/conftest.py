@@ -14,6 +14,7 @@ import time
 
 # Ayarlar config import edilmeden once yapilmali
 os.environ.setdefault("RECONNECT_GRACE_SECONDS", "1")
+os.environ.setdefault("MOVE_TIME_SECONDS", "0")        # Hamle suresi ilgili testlerde acilir
 os.environ.setdefault("PBKDF2_ITERATIONS", "1000")   # Testleri hizlandirir
 os.environ.setdefault("DB_POOL_SIZE", "4")
 os.environ.setdefault("LOGIN_MAX_FAILURES", "1000")     # Sinirlar ayri testlerde dusurulur

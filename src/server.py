@@ -237,8 +237,12 @@ def _new_room(p1_sid: str, p1_uid: str, p1_info: dict, p1_auth: bool = False) ->
         'p2_auth': False, 'p2_rejoin': None,
         'created_at': now,
         'last_move_at': now,
-        'disconnected': {},      # piece -> kopma zamani
+        'disconnected': {},      # piece -> kopma zamani (bitmis odada: ayrilma zamani)
         'end_reason': None,
+        'result': None,          # Bitmis oyunun game_over yuku (sonradan donenlere gosterilir)
+        'turn_deadline': None,   # Sirasi gelen oyuncunun son hamle zamani; None = sure yok
+        'rematch': set(),        # Oyun bittikten sonra rovans isteyen koltuklar (piece)
+        'game_no': 1,            # Odadaki kacinci oyun
     }
 
 
@@ -262,6 +266,38 @@ def _seat_key(piece: int) -> str:
     return 'p1' if piece == PLAYER1_PIECE else 'p2'
 
 
+def _clock_paused(room: dict) -> bool:
+    """Sirasi gelen oyuncu hazir ama rakibi kopuk: bekleyen oyuncu rakibin yokluguyla
+    cezalandirilmaz; kopuk oyuncuyu RECONNECT_GRACE_SECONDS sonunda hukmen yenilgi bitirir."""
+    game = room['game']
+    return (not game.game_over and room['p2_uid'] is not None
+            and other_player(game.current_player) in room['disconnected'])
+
+
+def _clock_fields(room: dict) -> Dict[str, Any]:
+    """Istemci geri sayimi icin: kalan sure TAM saniye (saat farki onemsiz); sure yoksa None."""
+    deadline = room.get('turn_deadline')
+    if _clock_paused(room):
+        deadline = None
+    return {
+        'move_time': config.MOVE_TIME_SECONDS,
+        'turn_seconds_left': None if deadline is None else max(0, math.ceil(deadline - time.time())),
+    }
+
+
+def _start_turn_clock(room: dict) -> None:
+    """Sirasi gelen oyuncu icin hamle suresini baslatir (sure kapaliysa/oyun bittiyse None)."""
+    if config.MOVE_TIME_SECONDS > 0 and room['p2_uid'] and not room['game'].game_over:
+        room['turn_deadline'] = time.time() + config.MOVE_TIME_SECONDS
+    else:
+        room['turn_deadline'] = None
+
+
+def _deadline_passed(room: dict) -> bool:
+    deadline = room.get('turn_deadline')
+    return deadline is not None and time.time() > deadline + config.MOVE_TIME_GRACE_SECONDS
+
+
 def get_user_waiting_game(user_id: str, authenticated: Optional[bool] = None) -> Optional[str]:
     with GAMES_LOCK:
         for room_id, room in GAMES.items():
@@ -276,7 +312,7 @@ def get_user_waiting_game(user_id: str, authenticated: Optional[bool] = None) ->
 # =============================================================================
 
 def _finish_game(room_id: str, room: dict, reason: str = 'normal',
-                 forfeit_loser: Optional[int] = None) -> None:
+                 forfeit_loser: Optional[int] = None, detail: Optional[str] = None) -> None:
     """
     Oyunu sonlandirir: ELO gunceller, oyunu kaydeder, odaya game_over yayinlar.
     GAMES_LOCK tutulurken cagrilmalidir.
@@ -286,6 +322,7 @@ def _finish_game(room_id: str, room: dict, reason: str = 'normal',
         game.game_over = True
         game.winner = other_player(forfeit_loser)
     room['end_reason'] = reason
+    room['turn_deadline'] = None
     room['last_move_at'] = time.time()
 
     p1_uid, p2_uid = room['p1_uid'], room['p2_uid']
@@ -321,14 +358,18 @@ def _finish_game(room_id: str, room: dict, reason: str = 'normal',
     elif rated and game.winner is None and p2_uid:
         db.record_game(str(p1_uid), str(p2_uid), None, moves, reason)  # Beraberlik (FR-10)
 
-    socketio.emit('game_over', {
+    result = {
         'winner': game.winner,
         'winner_uid': winner_uid,
         'elo_changes': elo_changes,
         'new_ratings': new_ratings,     # Istemci olay sirasina bagli kalmadan ELO'yu gosterebilsin
         'move_count': len(game.move_history),
         'reason': reason,
-    }, to=room_id)
+        # Eski istemciler `reason`a bakar; ayrinti ('timeout', 'disconnect', 'leave') ek bilgidir
+        'detail': detail,
+    }
+    room['result'] = result   # Oyuncu yokken biten oyuna sonradan donenlere game_joined'da verilir
+    socketio.emit('game_over', result, to=room_id)
 
 
 def _forfeit_after_grace(room_id: str, piece: int, disconnected_at: float) -> None:
@@ -340,7 +381,23 @@ def _forfeit_after_grace(room_id: str, piece: int, disconnected_at: float) -> No
                 or room['disconnected'].get(piece) != disconnected_at):
             return  # Oyun bitti veya oyuncu geri dondu
         log.info("Oda %s: oyuncu %s geri donmedi, hukmen yenilgi", room_id, piece)
-        _finish_game(room_id, room, reason='forfeit', forfeit_loser=piece)
+        _finish_game(room_id, room, reason='forfeit', forfeit_loser=piece, detail='disconnect')
+
+
+def enforce_move_deadlines() -> int:
+    """Hamle suresi dolan oyuncuyu hukmen yenik sayar. Bitirilen oyun sayisi."""
+    finished = 0
+    with GAMES_LOCK:
+        for room_id, room in list(GAMES.items()):
+            game = room['game']
+            if (room['p2_uid'] is None or game.game_over or not _deadline_passed(room)
+                    or _clock_paused(room)):
+                continue
+            log.info("Oda %s: oyuncu %s hamle suresini asti", room_id, game.current_player)
+            _finish_game(room_id, room, reason='forfeit', forfeit_loser=game.current_player,
+                         detail='timeout')
+            finished += 1
+    return finished
 
 
 # =============================================================================
@@ -385,8 +442,20 @@ def start_cleanup_thread() -> None:
             except Exception:
                 log.exception("Temizlik hatasi")
 
+    def move_clock_loop():
+        # Tek gorev tum odalara bakar; hamle basina gorev acilmaz
+        while True:
+            socketio.sleep(1)
+            try:
+                enforce_move_deadlines()
+            except Exception:
+                log.exception("Hamle suresi denetimi hatasi")
+
     socketio.start_background_task(cleanup_loop)
     log.info("Arka plan temizlik gorevi basladi")
+    if config.MOVE_TIME_SECONDS > 0:
+        socketio.start_background_task(move_clock_loop)
+        log.info("Hamle suresi: %ds", config.MOVE_TIME_SECONDS)
 
 
 # =============================================================================
@@ -575,6 +644,13 @@ def on_latency_ping(data=None):
     emit('latency_pong', data)
 
 
+def _seat_left_finished(room_id: str, room: dict, piece: int) -> None:
+    """Bitmis odada bir oyuncu ayrildi: rovans teklifi gecersiz. GAMES_LOCK tutulurken cagrilir."""
+    room['disconnected'][piece] = time.time()
+    room['rematch'].discard(piece)
+    socketio.emit('rematch_unavailable', {'room_id': room_id, 'reason': 'opponent_left'}, to=room_id)
+
+
 @socketio.on('disconnect')
 def on_disconnect():
     sid = request.sid
@@ -589,7 +665,10 @@ def on_disconnect():
             if room['p2_uid'] is None:
                 log.info("Oda %s silindi (kurucu beklerken ayrildi)", room_id)
                 GAMES.pop(room_id, None)
-            elif not room['game'].game_over:
+            elif room['game'].game_over:
+                # Bitmis oyun: forfeit yok, sadece rovans artik mumkun degil
+                _seat_left_finished(room_id, room, piece)
+            else:
                 now = time.time()
                 room['disconnected'][piece] = now
                 socketio.emit('opponent_disconnected', {
@@ -663,26 +742,49 @@ def on_join_game(data):
             if room['p2_uid'] is None:
                 emit('error', {'msg': 'Kendi oyununuza katilamazsiniz'})
                 return
-            if own_piece not in room['disconnected'] and _sid_of(room, own_piece) != request.sid:
+            old_sid = _sid_of(room, own_piece)
+            # Bir baglanti iki koltugu birden tutamaz
+            if _sid_of(room, other_player(own_piece)) == request.sid:
                 emit('error', {'msg': 'Bu oyuna zaten bagli durumdasiniz'})
                 return
-            # Misafirin adi kanit degildir; koltugu sadece anahtarin sahibi geri alir
+            # Misafirin adi kanit degildir; koltugu sadece anahtarin sahibi geri alir.
             given = data.get('rejoin_token') if isinstance(data, dict) else None
-            if not authenticated and not (isinstance(given, str)
-                                          and hmac.compare_digest(given, room[f'{key}_rejoin'])):
+            token_ok = (isinstance(given, str) and given.isascii() and bool(room[f'{key}_rejoin'])
+                        and hmac.compare_digest(given, room[f'{key}_rejoin']))
+            seat_alive = own_piece not in room['disconnected'] and old_sid != request.sid
+            # Sunucunun hala bagli saydigi koltuk icin kayitli oyuncu da anahtari gostermeli
+            # (sizan bir oturum token'i canli oyuncuyu atamasin); kopuk koltuk icin token yeter
+            proof = token_ok if seat_alive else (authenticated or token_ok)
+            if seat_alive and not proof:
+                emit('error', {'msg': 'Bu oyuna zaten bagli durumdasiniz'})
+                return
+            if not proof:
                 emit('error', {'msg': 'Yeniden baglanma anahtari gecersiz'})
                 return
+            if seat_alive and old_sid:
+                # Sunucu eski soketin oldugunu henuz fark etmedi (ping zaman asimi): kanitli
+                # yeni baglanti koltugu devralir, eski soket odadan cikarilir
+                emit('error', {'msg': 'Baska bir baglantidan oyuna girildi'}, to=old_sid)
+                leave_room(room_id, sid=old_sid)
+            was_disconnected = own_piece in room['disconnected']
             room['disconnected'].pop(own_piece, None)
             room[f'{key}_sid'] = request.sid
             join_room(room_id)
+            if was_disconnected and not game.game_over and own_piece != game.current_player:
+                _start_turn_clock(room)   # Bekleyen oyuncu doneni karsilayinca hemen suresiz kalmasin
             opponent_info = room['p2_info'] if own_piece == PLAYER1_PIECE else room['p1_info']
             log.info("Oda %s: %s yeniden baglandi", room_id, user_id)
-            emit('game_joined', {
+            joined = {
                 'room_id': room_id, 'player_piece': own_piece, 'role': 'player',
                 'rejoined': True, 'current_state': game.to_dict(), 'opponent_info': opponent_info,
-                'rejoin_token': room[f'{key}_rejoin'],
-            })
-            emit('opponent_reconnected', {'msg': 'Rakip geri dondu'}, to=room_id, include_self=False)
+                'rejoin_token': room[f'{key}_rejoin'], 'game_no': room['game_no'],
+                **_clock_fields(room),
+            }
+            if game.game_over:
+                joined['result'] = room['result']   # Oyuncu yokken biten oyunun sonucu
+            emit('game_joined', joined)
+            if was_disconnected:
+                emit('opponent_reconnected', {'msg': 'Rakip geri dondu'}, to=room_id, include_self=False)
             return
 
         join_room(room_id)
@@ -692,6 +794,7 @@ def on_join_game(data):
             room['p2_sid'], room['p2_uid'], room['p2_info'] = request.sid, user_id, user_info
             room['p2_auth'], room['p2_rejoin'] = authenticated, secrets.token_urlsafe(16)
             room['last_move_at'] = time.time()
+            _start_turn_clock(room)
             p1_info = room['p1_info']
             log.info("Oda %s: %s P2 olarak katildi", room_id, user_id)
 
@@ -703,16 +806,21 @@ def on_join_game(data):
                     'msg': 'Oyun Basladi!', 'p1_info': p1_info, 'p2_info': user_info,
                     'opponent_name': opponent.get('username', ''),
                     'opponent_elo': opponent.get('rating', config.DEFAULT_RATING),
+                    **_clock_fields(room),
                 }, to=sid)
             return
 
         # 3) Seyirci
         log.info("Oda %s: seyirci %s", room_id, user_id)
-        emit('game_joined', {
+        spectator_view = {
             'room_id': room_id, 'player_piece': 0, 'role': 'spectator',
             'current_state': game.to_dict(),
             'p1_info': room['p1_info'], 'p2_info': room['p2_info'],
-        })
+            'game_no': room['game_no'], **_clock_fields(room),
+        }
+        if game.game_over:
+            spectator_view['result'] = room['result']
+        emit('game_joined', spectator_view)
 
 
 @socketio.on('make_move')
@@ -744,13 +852,19 @@ def on_make_move(data):
         if game.current_player != player_piece:
             emit('error', {'msg': 'Sira sizde degil!'})
             return
+        if _deadline_passed(room) and not _clock_paused(room):
+            # Izleyici gorevi henuz calismamis olsa bile gec gelen hamle gecersizdir
+            _finish_game(room_id, room, reason='forfeit', forfeit_loser=player_piece, detail='timeout')
+            return
         if not game.make_move(col):
             emit('error', {'msg': 'Gecersiz hamle!'})
             return
 
         room['last_move_at'] = time.time()
+        _start_turn_clock(room)
         response = game.to_dict()
         response['col'] = col
+        response.update(_clock_fields(room))
         emit('move_made', response, to=room_id)
 
         if game.game_over:
@@ -779,7 +893,85 @@ def on_leave_game(data):
                 room['p2_sid'] = None
             room['disconnected'][piece] = time.time()
             log.info("Oda %s: oyuncu %s oyunu terk etti", room_id, piece)
-            _finish_game(room_id, room, reason='forfeit', forfeit_loser=piece)
+            _finish_game(room_id, room, reason='forfeit', forfeit_loser=piece, detail='leave')
+        else:
+            room[f'{_seat_key(piece)}_sid'] = None
+            _seat_left_finished(room_id, room, piece)
+
+
+@socketio.on('rematch_request')
+def on_rematch_request(data=None):
+    """Bitmis odada ayni rakiple yeni oyun: iki koltuk da istemeli; koltuklar yer degistirir."""
+    room_id = (_clean_str(data, 'room_id', 10) or '').upper()
+    with GAMES_LOCK:
+        room = GAMES.get(room_id)
+        if room is None:
+            emit('error', {'msg': 'Oda bulunamadi'})
+            return
+        piece = _piece_of(room, request.sid)
+        if piece is None:
+            emit('error', {'msg': 'Sadece oyuncular rovans isteyebilir'})
+            return
+        if not room['game'].game_over:
+            emit('error', {'msg': 'Oyun devam ediyor'})
+            return
+        other = other_player(piece)
+        if other in room['disconnected'] or _sid_of(room, other) is None:
+            emit('rematch_unavailable', {'room_id': room_id, 'reason': 'opponent_left'})
+            return
+        if piece in room['rematch']:
+            return   # Tekrarlanan istek yeni bir sey baslatmaz
+        room['rematch'].add(piece)
+        if other in room['rematch']:
+            _start_rematch(room_id, room)
+        else:
+            emit('rematch_offered', {'room_id': room_id, 'from_piece': piece,
+                                     'from': _uid_of(room, piece)}, to=room_id)
+
+
+def _start_rematch(room_id: str, room: dict) -> None:
+    """
+    Ayni odada yeni oyun: onceki P2 kirmizi/P1 olur ve ilk hamleyi yapar (istemciler
+    oyunu hep P1 baslatir varsayar). Rejoin anahtari ve kimlik koltukla birlikte tasinir.
+    GAMES_LOCK tutulurken cagrilmalidir.
+    """
+    for field in ('sid', 'uid', 'info', 'auth', 'rejoin'):
+        room[f'p1_{field}'], room[f'p2_{field}'] = room[f'p2_{field}'], room[f'p1_{field}']
+    for key in ('p1', 'p2'):
+        if room[f'{key}_auth']:   # Onceki oyunun ELO'su yeni oyunda gorunsun
+            fresh = get_user_info(room[f'{key}_uid'])
+            if not fresh.get('guest'):
+                room[f'{key}_info'] = fresh
+
+    now = time.time()
+    room['game'] = ConnectFourGame()
+    room['created_at'] = room['last_move_at'] = now
+    room['disconnected'] = {}
+    room['end_reason'] = None
+    room['result'] = None
+    room['rematch'] = set()
+    room['game_no'] += 1
+    _start_turn_clock(room)
+    log.info("Oda %s: rovans basladi (oyun %d)", room_id, room['game_no'])
+
+    p1_info, p2_info = room['p1_info'], room['p2_info']
+    for piece, opponent in ((PLAYER1_PIECE, p2_info), (PLAYER2_PIECE, p1_info)):
+        sid = _sid_of(room, piece)
+        if not sid:
+            continue   # to=None tum istemcilere yayin yapar
+        socketio.emit('game_start', {
+            'msg': 'Rovans basladi!', 'room_id': room_id, 'player_piece': piece,
+            'rematch': True, 'game_no': room['game_no'],
+            'p1_info': p1_info, 'p2_info': p2_info,
+            'opponent_name': opponent.get('username', ''),
+            'opponent_elo': opponent.get('rating', config.DEFAULT_RATING),
+            **_clock_fields(room),
+        }, to=sid)
+    # Seyirciler (ve oyuncular) icin bos tahta + yeni koltuk dagilimi
+    socketio.emit('rematch_started', {
+        'room_id': room_id, 'game_no': room['game_no'], 'p1_info': p1_info, 'p2_info': p2_info,
+        'current_state': room['game'].to_dict(), **_clock_fields(room),
+    }, to=room_id)
 
 
 # =============================================================================
