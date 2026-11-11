@@ -166,6 +166,7 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 - **Aktör:** Oyuncu · **Gereksinim:** NFR-08
 - **Ana akış:** Aktif online oyunda "Lobiye Dön" (veya Esc) → istemci uyarır: "Çıkmak hükmen yenilgi sayılır, onaylamak için tekrar basın" → tekrar basılır → oyun rakip lehine hükmen biter (→ UC-13), oyuncu lobiye döner.
 - **Alternatif akış:** Onay 3 saniye içinde verilmezse işlem iptal olur.
+- **Not:** `leave_game` sunucudan onay (ack) döner (`{ok: true/false}`); Pygame istemcisi, bağlantıyı kapatmadan önce onayı (en çok 2 sn) bekler. Böylece kopma olayı ayrılma isteğinden önce işlenip rakibe "bağlantı koptu" gibi görünmez. Kopma olayı önce işlense bile koltuk kopan bağlantının kimliğini taşımaya devam eder; o bağlantının gecikmiş `leave_game`'i çalışırsa yine hükmen yenilgi (`detail=leave`) sayılır. Başka bir bağlantı veya koltuğu devralınmış eski bağlantı rakibi hükmen yenik sayamaz.
 - **Testler:** `test_uc12_leaving_requires_confirmation_and_forfeits`, `test_leave_game_is_immediate_forfeit`
 
 ### UC-13 Oyunu sonuçlandır, ELO güncelle ve kaydet
@@ -177,8 +178,8 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
   3. Oyunculara `elo_update`, odadaki herkese `game_over` gönderilir; istemci başlıkta "KAZANDIN!" / "KAYBETTİN" / "BERABERE", durum satırında "Kazandın! ELO +15 (1215)" gösterir (kazanç yeşil, kayıp kırmızı).
 - **Alternatif akışlar:** Beraberlikte ELO değişmez ama oyun kaydedilir. Misafir varsa ELO/kayıt atlanır, ELO bildirimi gönderilmez.
 - **Hükmen nedeni (`game_over.detail`):** istemci metni nedene göre seçer: `timeout` → "Süre doldu - hükmen kaybettin." / "Rakibin süresi doldu - Kazandın!"; `disconnect` → "Bağlantı kopması nedeniyle hükmen kaybettin." / "Rakibin bağlantısı koptu - Kazandın!"; `leave` veya alan yoksa (eski sunucu) → "Hükmen kaybettin." / "Rakip oyunu terk etti - Kazandın!".
-- **Hamle süresi:** sunucu `move_time` ve `turn_seconds_left` gönderirse bilgi panelinde sırası gelenin yanında kalan saniye geri sayar; kendi hamle sürenin son 10 saniyesinde sayaç uyarı rengine döner ve bir uyarı sesi çalar. Sayaç kapalıyken, rakip koptuğu için duraklatılmışken ve oyun bitince gösterilmez.
-- **Rovans:** oyun bitince oyuncuya (seyirciye ve AI oyununa değil) "Rovans" düğmesi / R tuşu çıkar; rakip istediğinde "Rakip rovans istiyor", kendin istediğinde "Rovans istendi, rakip bekleniyor" görünür. Rakip odadan ayrıldıysa düğme pasifleşir. İki taraf da isterse koltuklar yer değiştirir (yeni kırmızı ilk hamleyi yapar), tahta ve sonuç sıfırlanır; seyirci yeni oyunu bos tahtayla izlemeye devam eder.
+- **Hamle süresi:** sunucuda `MOVE_TIME_SECONDS` > 0 ise (varsayılan 0 = kapalı) sunucu `move_time` ve `turn_seconds_left` gönderir; istemcide bilgi panelinde sırası gelenin yanında kalan saniye geri sayar; kendi hamle sürenin son 10 saniyesinde sayaç uyarı rengine döner ve bir uyarı sesi çalar. Sayaç kapalıyken, rakip koptuğu için duraklatılmışken ve oyun bitince gösterilmez.
+- **Rovans:** oyun bitince oyuncuya (seyirciye ve AI oyununa değil) "Rovans" düğmesi / R tuşu çıkar; rakip istediğinde "Rakip rovans istiyor", kendin istediğinde "Rovans istendi, rakip bekleniyor" görünür. Rakip odadan ayrıldıysa düğme pasifleşir. İki taraf da isterse koltuklar yer değiştirir (yeni kırmızı ilk hamleyi yapar), tahta ve sonuç sıfırlanır; seyirci yeni oyunu boş tahtayla izlemeye devam eder.
 - **Testler:** `test_uc09_uc13_uc16_full_online_match`, `test_server_socket.py::TestRegisteredPlayers`, `test_database.py::TestEloAndGames`, `tests/unit/test_security_and_elo.py::TestElo`
 
 ### UC-14 Liderlik tablosunu görüntüle

@@ -873,16 +873,25 @@ def on_make_move(data):
 
 @socketio.on('leave_game')
 def on_leave_game(data):
-    """Oyuncu bilerek ayrilir: aktif oyunda hukmen yenilgi, bekleyen odada oda silinir."""
+    """
+    Oyuncu bilerek ayrilir: aktif oyunda hukmen yenilgi, bekleyen odada oda silinir.
+
+    Donus degeri Socket.IO onayi (ack) olarak istemciye gider: `leave_game`den hemen sonra
+    kopan istemci, onay gelmeden baglantiyi kapatirsa kopma olayi once islenebilir ve ayrilma
+    istegi hic calismaz (rakip 'disconnect' ile, sure sonunda hukmen kazanir). Onay bekleyen
+    istemci bu yarisi yasamaz. Koltuk sid ile baglidir: kopma koltugun sid'ini silmez, bu
+    yuzden ayni baglantinin gecikmis `leave_game`i yine kendi koltugunu bulur; koltugu
+    devralan yeni baglantinin eski sid'i veya baska bir baglanti hicbir koltuk bulamaz.
+    """
     room_id = (_clean_str(data, 'room_id', 10) or '').upper()
     with GAMES_LOCK:
         room = GAMES.get(room_id)
         if room is None:
-            return
+            return {'ok': False}
         piece = _piece_of(room, request.sid)
         leave_room(room_id)
         if piece is None:
-            return  # Seyirci
+            return {'ok': False}  # Seyirci veya koltugu olmayan baglanti
         if room['p2_uid'] is None:
             GAMES.pop(room_id, None)
             log.info("Oda %s iptal edildi", room_id)
@@ -897,6 +906,7 @@ def on_leave_game(data):
         else:
             room[f'{_seat_key(piece)}_sid'] = None
             _seat_left_finished(room_id, room, piece)
+        return {'ok': True}
 
 
 @socketio.on('rematch_request')
@@ -915,6 +925,8 @@ def on_rematch_request(data=None):
         if not room['game'].game_over:
             emit('error', {'msg': 'Oyun devam ediyor'})
             return
+        if piece in room['disconnected']:
+            return   # Kopmus baglantinin gecikmis istegi: hayalet koltukla rovans baslamasin
         other = other_player(piece)
         if other in room['disconnected'] or _sid_of(room, other) is None:
             emit('rematch_unavailable', {'room_id': room_id, 'reason': 'opponent_left'})

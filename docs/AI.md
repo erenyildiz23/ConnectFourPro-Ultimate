@@ -60,9 +60,15 @@ v1, tezde ölçülen motordur ve karşılaştırma için `benchmarks/legacy_ai_v
 | Değerlendirme | Simetrik, sıradaki oyuncunun bakış açısından (negamax). Satır paritesine göre ağırlıklı tehditler (lehine parite 8, diğer 4) + hücreden geçen olası 4'lü hat sayısı tablosu |
 | Oyun sonu | Zor seviyede kalan ≤ 12 hamlede arama oyunun sonuna kadar gider (kesin çözüm) |
 | Açılış kitabı | İlk iki yarı-hamlenin 57 pozisyonu; hepsi kusursuz çözücüyle hesaplandı |
-| Zorluk | Kolay D2, Orta D4, **Zor D8** (önceden D6); v2 D8, v1 D6'dan ~4 kat hızlı |
+| Zorluk | Kolay D2, Orta D4, **Zor D8** (önceden D6); v2 D8, v1 D6'dan ~4 kat hızlı. Kolay ayrıca kasıtlı hata yapar (aşağıda) |
+
+**Zorluk seviyeleri.** Arayüzdeki adlar "Kolay - yeni başlayanlar için", "Orta - dengeli rakip", "Zor - en güçlü rakip"tir; arka planda sırasıyla arama derinliği 2, 4 ve 8'dir (`DIFFICULTY_DEPTHS`). D, kökten itibaren bakılan yarı-hamle sayısıdır: D2 yalnızca kendi hamlesine ve rakibin cevabına bakar, D8 dört hamle çiftini görür ve kalan ≤ 12 hamlede oyunun sonuna kadar çözer. Oyuncu her zaman kırmızıdır; pygame istemcisinde ilk hamleyi kimin yapacağı seçilir ve "Yeni Oyun" her seferinde değiştirir.
+
+**Kolay seviyesinin hata politikası.** Yalnızca D2'de, AI aramasını bitirdikten **sonra** istemcide uygulanır (`slip_move`, `gui_app.py`): zamanın %40'ında arama sonucu yerine geçerli sütunlardan biri rastgele oynanır. AI'nın hemen kazandıran bir hamlesi varsa asla hata yapmaz (kendi galibiyetini kaçırmaz; rakibin tehdidini kaçırabilir). Rastgelelik, oyun başına seçilen 32 bitlik bir tohumdan ve hamle sırasından türeyen saf bir fonksiyondur; bu yüzden "Geri Al" ile aynı pozisyona dönüp aynı hamleyi oynamak hatayı yeniden zarlamaz. Orta ve Zor hata yapmaz. Arama (`ai_vs_human.py`) hiç değişmediği için motor eşlik testleri (Python-C# altın vektörleri, aynı düğüm sayısı) bu politikadan etkilenmez; politika motorun dışında, hamle seçildikten sonra çalışır.
 
 **Ağırlıkların seçimi.** Değerlendirme ağırlıkları, kusursuz çözücüyle etiketlenmiş ayrı bir **eğitim** pozisyon kümesinde ızgara aramasıyla seçildi. Sonuçlar ayara hiç girmemiş bir **test** kümesinde raporlandı. Parite ayrımı yapmayan varyantlar eğitim kümesinde ~1 puan daha kötüydü; oyun teorisindeki parite kuralının katkısı küçük ama ölçülebilir.
+
+**Hamle analizi ve isabet oranı.** Online maçlarda her hamleden önceki pozisyon D8 ile analiz edilir; oynanan hamle "isabetli" sayılırsa isabet oranı artar. Bir hamle şu kümeden biriyse isabetlidir: D8 aramasının kök skorlarında **eşit en iyi** çıkan tüm sütunlar, artı varsa o pozisyon için açılış kitabındaki hamle. (Önceden yalnızca motorun döndürdüğü tek sütun doğru sayılıyordu; iki eşit iyi hamleden diğerini oynayan oyuncu haksız yere hatalı görünüyordu.) Oran = isabetli hamle sayısı / analiz edilen hamle sayısı, her oyuncu için ayrı hesaplanır ve maç sonunda "Hamle analizi (isabet)" satırında gösterilir. Arama atlanan taktik pozisyonlarda (tek hamlede kazanç / zorunlu engel) tüm kazandıran sütunlar, yoksa zorunlu hamle isabetli sayılır.
 
 **Doğruluk testleri** (`tests/unit/test_ai.py`):
 - Bit hilesiyle bulunan tehdit hücreleri kaba kuvvetle karşılaştırılır.

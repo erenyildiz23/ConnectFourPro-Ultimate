@@ -7,6 +7,16 @@ import pytest
 from conftest import DRAW_SEQUENCE, P1_VERTICAL_WIN, identity, login_token, play, start_match, wait_until
 
 
+def call_as(server, sid, handler, *args):
+    """Bir olay isleyicisini verilen sid'in baglamiyla dogrudan cagirir (yaris benzetimi:
+    kopan baglantinin gecikmis olayi). Test istemcisi kopmus soketten olay gonderemez."""
+    from flask import request
+    with server.app.test_request_context('/'):
+        request.sid = sid
+        request.namespace = '/'
+        return handler(*args)
+
+
 def errors(client):
     return [e['msg'] for e in client.events('error')]
 
@@ -349,6 +359,45 @@ class TestDisconnectAndReconnect:
         over = b.wait_for('game_over')
         assert over['winner'] == 2 and over['reason'] == 'forfeit' and over['detail'] == 'leave'
 
+    def test_leave_game_acknowledges_the_caller(self, sio):
+        room_id, a, b = start_match(sio)
+        stranger = sio()
+        assert stranger.client.emit('leave_game', {'room_id': room_id}, callback=True) == {'ok': False}
+        assert a.client.emit('leave_game', {'room_id': room_id}, callback=True) == {'ok': True}
+        assert b.wait_for('game_over')['detail'] == 'leave'
+
+    def test_leave_after_racing_disconnect_is_still_a_leave(self, sio, server):
+        """Kopma olayi leave_game'den once islenirse (sid koltukta kalir) ayrilma yine gecerlidir."""
+        room_id, a, b = start_match(sio)
+        a_sid = server.GAMES[room_id]['p1_sid']
+        a.disconnect()
+        b.wait_for('opponent_disconnected')
+        call_as(server, a_sid, server.on_leave_game, {'room_id': room_id})
+        over = b.wait_for('game_over')
+        assert over['winner'] == 2 and over['reason'] == 'forfeit' and over['detail'] == 'leave'
+
+    def test_stranger_cannot_leave_for_someone_else(self, sio, server):
+        room_id, a, b = start_match(sio)
+        c = sio()
+        c.emit('leave_game', {'room_id': room_id})
+        time.sleep(0.2)
+        assert not server.GAMES[room_id]['game'].game_over
+        assert a.events('game_over') == [] and b.events('game_over') == []
+
+    def test_stale_sid_cannot_leave_after_seat_takeover(self, sio, server):
+        room_id, a, b = start_match(sio)
+        old_sid = server.GAMES[room_id]['p1_sid']
+        a.disconnect()
+        b.wait_for('opponent_disconnected')
+        a2 = sio()
+        a2.emit('join_game', {'room_id': room_id, 'user_id': 'alice', 'rejoin_token': a.rejoin_token})
+        a2.wait_for('game_joined')
+        call_as(server, old_sid, server.on_leave_game, {'room_id': room_id})
+        time.sleep(0.2)
+        room = server.GAMES[room_id]
+        assert not room['game'].game_over and room['p1_sid'] != old_sid and 1 not in room['disconnected']
+        assert b.events('game_over') == []
+
     def test_leave_waiting_room_cancels_it(self, sio, server):
         a = sio()
         a.emit('create_game', {'user_id': 'alice'})
@@ -656,6 +705,18 @@ class TestRematch:
         b.emit('rematch_request', {'room_id': room_id})
         assert wait_until(lambda: len(b.events('rematch_unavailable')) == 2)
         assert b.events('game_start') == [] and server.GAMES[room_id]['game'].game_over
+
+    def test_late_rematch_request_from_disconnected_seat_is_ignored(self, sio, server):
+        room_id, a, b = start_match(sio)
+        finish_game(room_id, a, b)
+        a_sid = server.GAMES[room_id]['p1_sid']
+        a.disconnect()
+        b.wait_for('rematch_unavailable')
+        call_as(server, a_sid, server.on_rematch_request, {'room_id': room_id})
+        b.emit('rematch_request', {'room_id': room_id})
+        b.wait_for('rematch_unavailable')
+        assert server.GAMES[room_id]['rematch'] == set() and b.events('rematch_offered') == []
+        assert b.events('game_start') == []
 
     def test_forfeit_winner_cannot_rematch_against_absent_player(self, sio):
         room_id, a, b = start_match(sio)

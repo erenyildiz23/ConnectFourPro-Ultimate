@@ -101,8 +101,10 @@ python gui_app.py
 ```
 
 1. **Misafir Olarak Devam**
-2. **Yapay Zekaya Karşı** → Kolay (D2), Orta (D4) veya Zor (D8)
-3. Sütunun üstüne tıklayarak taşınızı bırakın (siz kırmızısınız ve ilk siz başlarsınız).
+2. **Yapay Zekaya Karşı** → Kolay (D2), Orta (D4) veya Zor (D8). İsterseniz aynı ekrandaki **İlk hamle: Sen / AI** düğmesiyle ilk hamleyi AI'ya verin (varsayılan: ilk siz başlarsınız).
+3. Sütunun üstüne tıklayarak veya `1`–`7` tuşlarıyla taşınızı bırakın (siz her zaman kırmızısınız).
+
+Oyun sırasında **Geri Al** (`U`) son hamlenizi ve AI'nın cevabını geri alır; **Yeni Oyun** aynı zorlukta yeniden başlatır ve ilk hamleyi yapan tarafı değiştirir; `Esc` menüye döner. Kolay seviye kasıtlı olarak ara sıra rastgele bir hamle oynar (ayrıntı: [AI.md](AI.md)). Ses efektleri pygame istemcisinde çalışma anında üretilir; `M` tuşu veya menüdeki **Ses** düğmesi açıp kapatır. Ses kartı olmayan makinede `CONNECT4_MUTE=1` ortam değişkeniyle sessiz başlatın (ses aygıtı hiç açılmaz).
 
 Sunucu çalışmıyorsa giriş/kayıt ekranında "Sunucuya bağlanılamadı" yazar; bu normaldir, misafir modu yine çalışır.
 
@@ -160,11 +162,14 @@ python gui_app.py
 1. İki pencerede farklı kullanıcı adlarıyla **Kayıt Ol** (3–20 karakter; harf, rakam, `_ . -`).
 2. 1. pencere: **Online Lobi → + Yeni Oyun** → oda kodu görünür.
 3. 2. pencere: **Online Lobi** → odanın yanındaki **Katıl**.
-4. Oyun başlar; maç sonunda ELO değişimi ve hamle analizi gösterilir.
+4. Oyun başlar (ilk hamleyi 1. pencere, kırmızı yapar); maç sonunda ekran başlığında sonuç, durum satırında ELO değişimi ve hamle analizi gösterilir.
+   Oyun bitince iki pencerede de **Rovans** düğmesine (veya `R` tuşuna) basarsanız aynı odada yeni oyun başlar; koltuklar yer değiştirir, yani önceki oyunun sarısı bu kez kırmızı olur ve ilk hamleyi yapar. Rakip odadan ayrıldıysa düğme pasifleşir.
 5. İsterseniz 4. bir pencereyle lobiden **İzle** diyerek seyirci olarak bağlanabilirsiniz.
 6. Menüdeki **Maç Geçmişi** ekranında kayıtlı maçlarınızı görebilirsiniz.
 
-Online oyundan "Menü" ile çıkmak hükmen yenilgi sayılır (iki kez basmak gerekir). Bağlantınız koparsa istemci otomatik olarak yeniden bağlanır; 30 saniye içinde dönmezseniz rakibiniz hükmen kazanır.
+Online oyundan "Menü" ile (veya `Esc` ile) çıkmak hükmen yenilgi sayılır (iki kez basmak gerekir). Bağlantınız koparsa istemci otomatik olarak yeniden bağlanır; 30 saniye içinde dönmezseniz rakibiniz hükmen kazanır. Oyun siz yokken bittiyse döndüğünüzde sonucu (nedeniyle birlikte) görürsünüz. Hükmen yenilgi nedeni iki tarafa da yazılır: süre doldu, bağlantı koptu veya oyundan ayrıldı.
+
+**Hamle süresi (isteğe bağlı).** Sunucu varsayılan olarak hamle süresi uygulamaz. Açmak için sunucuyu başlatırken `MOVE_TIME_SECONDS` verin (ör. `set MOVE_TIME_SECONDS=30`; kalıcı olması için `.env` dosyasına `MOVE_TIME_SECONDS=30` yazın, Docker'da `docker-compose.yml` `.env`'deki `MOVE_TIME_SECONDS` değerini konteynere iletir; `MOVE_TIME_GRACE_SECONDS` iletilmez, varsayılan kalır). Süre dolarsa sırası gelen hükmen kaybeder; `MOVE_TIME_GRACE_SECONDS` (varsayılan 2 sn) gecikme payıdır. Her iki istemci de sırası gelenin kalan süresini gösterir; son 10 saniyede sayaç uyarı rengine döner. Rakibin bağlantısı kopukken süre işlemez. Sunucuyu yeniden başlatmak gerekir.
 
 ## 7. Başka bilgisayarlarla oynama
 
@@ -196,7 +201,7 @@ pip install -r requirements-dev.txt
 pytest tests\unit
 ```
 
-**Tüm testler** (266 test, ~40 sn) için **ayrı** bir test veritabanı oluşturun. Testler bu veritabanını her testte boşaltır; gerçek `connect4` veritabanınızı kesinlikle kullanmayın.
+**Tüm testler** (554 test, ~100 sn) için **ayrı** bir test veritabanı oluşturun. Testler bu veritabanını her testte boşaltır; gerçek `connect4` veritabanınızı kesinlikle kullanmayın.
 
 ```bat
 "C:\Program Files\PostgreSQL\16\bin\createdb.exe" -U postgres connect4_test
@@ -205,7 +210,7 @@ pytest
 pytest --cov          REM kapsam raporuyla
 ```
 
-`TEST_DATABASE_URL` erişilemezse veritabanı gerektiren testler "skipped" olarak atlanır. Sonunda `266 passed` görmelisiniz.
+`TEST_DATABASE_URL` erişilemezse veritabanı gerektiren testler "skipped" olarak atlanır. Sonunda `554 passed` görmelisiniz.
 
 **C# testleri** (Unity istemcisinin oyun motoru, AI, protokol; Unity gerekmez): [.NET 8 SDK](https://dotnet.microsoft.com/download) kurun, sonra `dotnet test tests\csharp`. Socket.IO testleri için önce sunucuyu başlatıp `set CONNECT4_TEST_SERVER=http://localhost:5000` ayarlayın.
 
@@ -404,6 +409,7 @@ Ayarlar `render.yaml` içindedir: `DB_POOL_SIZE=5` (ücretsiz veritabanının ba
 | `password authentication failed` | `DATABASE_URL` içindeki şifre yanlış |
 | `database "connect4" does not exist` | 4. bölümdeki gibi veritabanını oluşturun |
 | Girişte "Sunucu veritabanına ulaşamıyor" | Sunucu çalışıyor ama veritabanına bağlanamadı (yukarıdaki iki satıra bakın) |
+| Pygame istemcisi ses aygıtı hatası veriyor / sessiz çalışsın istiyorum | `CONNECT4_MUTE=1` ile başlatın; ses aygıtı hiç açılmaz |
 | Girişte "Sunucuya bağlanılamadı" | Sunucu çalışmıyor veya adres yanlış (`python gui_app.py ADRES`) |
 | `Address already in use` / port 5000 dolu | Başka bir program 5000'i kullanıyor: `set CONNECT4_PORT=5001` ile sunucuyu başlatın, istemciyi `python gui_app.py localhost:5001` ile açın |
 | Diğer bilgisayar bağlanamıyor | Güvenlik duvarında 5000 numaralı TCP portunu açın; iki bilgisayarın aynı ağda olduğunu kontrol edin |
