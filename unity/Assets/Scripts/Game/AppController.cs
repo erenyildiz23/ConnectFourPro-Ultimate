@@ -68,6 +68,30 @@ namespace ConnectFourPro.Game
         public const int ReconnectGraceDefault = 30;
         /// <summary>Yerel oyuncunun kendi sirasinda son bu kadar saniye uyari rengiyle gosterilir.</summary>
         public const int TurnWarningSeconds = 10;
+        /// <summary>AI oyununda bos tahtada ilk ipucu (ilk hamleden sonra siradan mesajlar).</summary>
+        public const string CoachText = "Dört taşı yatay, dikey ya da çapraz diz. Kırmızı sensin - bir sütuna tıkla.";
+        public const string UndoneText = "Hamle geri alındı. Senin sıran!";
+
+        /// <summary>Zorluk secim ekranindaki sade aciklama (dugmelerin derinligi degismez).</summary>
+        public static string DifficultyLabel(string name)
+        {
+            switch (name)
+            {
+                case "Kolay": return "Kolay - yeni başlayanlar için";
+                case "Orta": return "Orta - dengeli rakip";
+                case "Zor": return "Zor - en güçlü rakip";
+                default: return name;
+            }
+        }
+
+        /// <summary>Derinlige karsilik gelen seviye adi (Kolay/Orta/Zor); bilinmiyorsa D&lt;derinlik&gt;.</summary>
+        public static string DifficultyName(int depth)
+        {
+            foreach (var (name, d) in AIEngine.Difficulties)
+                if (d == depth)
+                    return name;
+            return "D" + depth;
+        }
 
         private readonly ApiClient _api;
         private readonly ISocketTransport _transport;
@@ -84,6 +108,20 @@ namespace ConnectFourPro.Game
         public GameState Game { get; private set; } = new GameState();
         public AIEngine Engine { get; private set; }
         public bool AIThinking { get; private set; }
+        /// <summary>Zorluk ekranindaki "Ilk hamle" secimi (varsayilan: insan baslar).</summary>
+        public bool AIStartsNext { get; private set; }
+        /// <summary>Bu AI oyununda ilk hamleyi AI mi yapti.</summary>
+        public bool AIStarts { get; private set; }
+        /// <summary>Kolay seviyesinin hata zarlari icin oyun tohumu (geri almada degismez).</summary>
+        public uint AISeed { get; private set; }
+        /// <summary>Her AI oyunu icin yeni 32 bit tohum (testler sabitleyebilir).</summary>
+        public Func<uint> NewSeed = RandomSeed;
+        private static readonly System.Random SeedRandom = new System.Random();
+        private int _aiDepth;
+        // Her yeni AI oyununda / geri almada artar: eski animasyon geri cagrilari yeni oyuna sizmaz
+        private int _aiGameId;
+        // AI oyununda dusen (henuz tahtaya islenmemis) bir tas var
+        private bool _aiDropPending;
         public bool IsSpectator { get; private set; }
 
         // Kullanici
@@ -320,7 +358,7 @@ namespace ConnectFourPro.Game
         public (string p1, int? p1Elo, string p2, int? p2Elo) PlayerLabels()
         {
             if (Screen == AppScreen.PlayingAI)
-                return (Username, UserElo, $"AI (D{Engine?.Depth.ToString() ?? "?"})", null);
+                return (Username, UserElo, "AI - " + DifficultyName(_aiDepth), null);
             if (IsSpectator)
                 return (SpectateNames.p1, SpectateNames.p1Elo, SpectateNames.p2, SpectateNames.p2Elo);
             if (MyPiece == Board.Player1)
@@ -555,19 +593,81 @@ namespace ConnectFourPro.Game
             Engine = null;
         }
 
-        public void StartAIGame(int depth)
+        private static uint RandomSeed()
         {
-            Debug.Log("[App] AI oyunu basliyor, derinlik=" + depth);
+            lock (SeedRandom)
+                return ((uint)SeedRandom.Next(1 << 16) << 16) | (uint)SeedRandom.Next(1 << 16);
+        }
+
+        /// <summary>Zorluk ekranindaki "Ilk hamle: Sen/AI" dugmesi.</summary>
+        public void ToggleAIStartsNext() => AIStartsNext = !AIStartsNext;
+
+        public string AIStartsLabel => AIStartsNext ? "İlk hamle: AI" : "İlk hamle: Sen";
+
+        /// <summary>Zorluk ekranindaki secimle (AIStartsNext) yeni AI oyunu.</summary>
+        public void StartAIGame(int depth) => StartAIGame(depth, AIStartsNext);
+
+        /// <summary>
+        /// Yeni AI oyunu. Insan hep kirmizi (P1), AI hep sari (P2); yalnizca ilk hamleyi
+        /// kimin yaptigi degisir (AI baslarsa oyun P2 sirasiyla kurulur).
+        /// </summary>
+        public void StartAIGame(int depth, bool aiStarts)
+        {
+            Debug.Log("[App] AI oyunu basliyor, derinlik=" + depth + ", ilk hamle=" + (aiStarts ? "AI" : "insan"));
             InvalidateAISession();
             CancelAnimation();
-            Game = new GameState();
+            _aiGameId++;
+            _aiDropPending = false;
+            Game = new GameState(aiStarts ? Board.Player2 : Board.Player1);
             Engine = new AIEngine(Board.Player2, depth);
+            _aiDepth = depth;
+            AIStarts = aiStarts;
+            AISeed = NewSeed();
             MyPiece = Board.Player1;
             IsSpectator = false;
             RoomId = null;
             Summary = null;
             SetScreen(AppScreen.PlayingAI);
-            SetStatus("Senin sıran!");
+            if (aiStarts)
+                RequestAIMove();
+            else
+                SetStatus(CoachText, StatusTone.Good);
+        }
+
+        /// <summary>"Tekrar Oyna"/"Yeni Oyun": ayni zorluk, ilk hamleyi yapan taraf degisir.</summary>
+        public void NewAIGame()
+        {
+            if (Screen == AppScreen.PlayingAI && Engine != null && _aiDepth > 0)
+                StartAIGame(_aiDepth, !AIStarts);
+        }
+
+        /// <summary>Insanin son hamlesinin hamle gecmisindeki sirasi (0 tabanli); yoksa -1.</summary>
+        private int LastHumanPly()
+        {
+            int humanParity = AIStarts ? 1 : 0;   // AI basladiysa insan tek sirali hamlelerde oynar
+            for (int i = Game.MoveCount - 1; i >= 0; i--)
+                if (i % 2 == humanParity)
+                    return i;
+            return -1;
+        }
+
+        /// <summary>Geri Al: yalnizca AI oyununda; tas duserken, AI dusunurken ya da AI hamlesi beklerken olmaz.</summary>
+        public bool CanUndo =>
+            Screen == AppScreen.PlayingAI && !IsSpectator && Engine != null && _aiDepth > 0
+            && !IsAnimating() && !AIThinking && !_aiDropPending && LastHumanPly() >= 0;
+
+        /// <summary>Insanin son hamlesini ve (varsa) AI'nin cevabini geri alir; sira yine insanda olur.</summary>
+        public void UndoAIMove()
+        {
+            if (!CanUndo)
+                return;
+            var moves = new List<int>(Game.MoveHistory).GetRange(0, LastHumanPly());
+            int depth = _aiDepth;
+            InvalidateAISession();
+            _aiGameId++;
+            Game = GameState.FromMoves(moves, AIStarts ? Board.Player2 : Board.Player1);
+            Engine = new AIEngine(Board.Player2, depth);   // tohum (AISeed) ayni kalir: hata yeniden zarlanmaz
+            SetStatus(UndoneText);
         }
 
         private void RequestAIMove()
@@ -577,14 +677,26 @@ namespace ConnectFourPro.Game
             SetStatus("AI düşünüyor...");
             AIThinking = true;
             var engine = Engine;
-            _ai.RequestMove(engine, Game.Clone(), AIMoveDelaySeconds, col =>
+            var snapshot = Game.Clone();
+            uint seed = AISeed;
+            int gameId = _aiGameId;
+            _ai.RequestMove(engine, snapshot, AIMoveDelaySeconds, col =>
             {
                 AIThinking = false;
-                if (Screen != AppScreen.PlayingAI || Engine != engine || col < 0)
+                if (Screen != AppScreen.PlayingAI || Engine != engine || gameId != _aiGameId || col < 0)
                     return;
+                // Kolay seviyesi: arama sonrasi kasitli hata (arama aynen calisti)
+                col = SlipPolicy.Apply(snapshot, engine.Depth, seed, col);
                 if (Game.GameOver || !Game.IsValidLocation(col))
                     return;
-                AnimateDrop(col, Game.NextRow(col), Board.Player2, () => FinishAIMove(col));
+                _aiDropPending = true;
+                AnimateDrop(col, Game.NextRow(col), Board.Player2, () =>
+                {
+                    if (gameId != _aiGameId)
+                        return;   // bu arada yeni oyun / geri alma
+                    _aiDropPending = false;
+                    FinishAIMove(col);
+                });
             });
         }
 
@@ -609,11 +721,8 @@ namespace ConnectFourPro.Game
             if (!AnalysisEnabled)
                 return;
             int player = before.CurrentPlayer;
-            _ai.EnqueueAnalysis(before, AnalysisDepth, best =>
-            {
-                if (best >= 0)
-                    _analysis.Add((player, best == actualCol));
-            });
+            // Oynanan hamle esit en iyi hamlelerden biriyse (ya da kitap hamlesiyse) isabetli
+            _ai.EnqueueAnalysis(before, AnalysisDepth, best => _analysis.Add((player, best.Contains(actualCol))));
         }
 
         private void CancelAnalysis()
@@ -1192,6 +1301,19 @@ namespace ConnectFourPro.Game
                 SetStatus("Bu sütun dolu!", StatusTone.Bad);
                 return;
             }
+            if (Screen == AppScreen.PlayingAI)
+            {
+                int gameId = _aiGameId;
+                _aiDropPending = true;
+                AnimateDrop(col, Game.NextRow(col), Game.CurrentPlayer, () =>
+                {
+                    if (gameId != _aiGameId)
+                        return;   // tas duserken yeni oyun basladi
+                    _aiDropPending = false;
+                    FinishMove(col);
+                });
+                return;
+            }
             AnimateDrop(col, Game.NextRow(col), Game.CurrentPlayer, () => FinishMove(col));
         }
 
@@ -1268,12 +1390,11 @@ namespace ConnectFourPro.Game
             : Screen == AppScreen.PlayingOnline || Screen == AppScreen.Spectating ? "Lobiye Dön"
             : "Menü";
 
-        /// <summary>Biten AI oyununu ayni zorlukla yeniden baslatir.</summary>
-        public void PlayAgain()
-        {
-            if (Screen == AppScreen.PlayingAI && Engine != null && Game.GameOver)
-                StartAIGame(Engine.Depth);
-        }
+        /// <summary>"Tekrar Oyna" dugmesi: NewAIGame (ayni zorluk, ilk hamle sirasi degisir).</summary>
+        public void PlayAgain() => NewAIGame();
+
+        /// <summary>AI oyunu dugmesinin yazisi: oyun surerken "Yeni Oyun", bitince "Tekrar Oyna".</summary>
+        public string NewGameLabel => Game.GameOver ? "Tekrar Oyna" : "Yeni Oyun";
 
         /// <summary>Biten oyunun buyuk basligi (null: oyun suruyor).</summary>
         public (string text, StatusTone tone)? ResultHeadline
@@ -1298,6 +1419,9 @@ namespace ConnectFourPro.Game
         private void LeaveSession(AppScreen target)
         {
             InvalidateAISession();
+            _aiGameId++;
+            _aiDropPending = false;
+            _aiDepth = 0;
             CancelAnalysis();
             CancelAnimation();
             Summary = null;

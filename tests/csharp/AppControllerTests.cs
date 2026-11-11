@@ -784,7 +784,7 @@ namespace ConnectFourPro.Tests
             _app.GuestLogin();
             _app.StartAIGame(2);
             Assert.That(_app.Screen, Is.EqualTo(AppScreen.PlayingAI));
-            Assert.That(_app.Status, Is.EqualTo("Senin sıran!"));
+            Assert.That(_app.Status, Is.EqualTo(AppController.CoachText), "bos tahtada ilk ipucu");
             Assert.That(_app.CanHumanMove(), Is.True);
 
             _app.HandleColumnClick(3);

@@ -554,17 +554,12 @@ namespace ConnectFourPro.Tests
         }
 
         [Test]
-        public void PlayAgainRestartsFinishedAIGameWithSameDepth()
+        public void PlayAgainRestartsAIGameWithSameDepthAndSwapsStarter()
         {
             _app.GuestLogin();
             _app.StartAIGame(1);
-            _app.PlayAgain();
-            Assert.That(_app.Game.MoveCount, Is.EqualTo(0));
-
-            _app.HandleColumnClick(3);
-            Assert.That(AIRunnerTests.TickUntil(_app.Tick, () => _app.Game.MoveCount == 2), "AI hamle yapmadi");
-            _app.PlayAgain();
-            Assert.That(_app.Game.MoveCount, Is.EqualTo(2), "suren oyun yeniden baslamaz");
+            Assert.That(_app.AIStarts, Is.False);
+            Assert.That(_app.NewGameLabel, Is.EqualTo("Yeni Oyun"));
 
             // Basit strateji: hep ilk gecerli sutun; derinlik 1 AI'ya karsi oyun kisa surer
             while (!_app.Game.GameOver)
@@ -578,13 +573,23 @@ namespace ConnectFourPro.Tests
                 Assert.That(AIRunnerTests.TickUntil(_app.Tick, () => _app.Game.MoveCount == before + 2), "AI hamle yapmadi");
             }
             Assert.That(_app.ResultHeadline, Is.Not.Null);
+            Assert.That(_app.NewGameLabel, Is.EqualTo("Tekrar Oyna"));
 
             _app.PlayAgain();
             Assert.That(_app.Screen, Is.EqualTo(AppScreen.PlayingAI));
             Assert.That(_app.Game.MoveCount, Is.EqualTo(0));
             Assert.That(_app.Engine.Depth, Is.EqualTo(1));
-            Assert.That(_app.Status, Is.EqualTo("Senin sıran!"));
+            Assert.That(_app.AIStarts, Is.True, "ilk hamle sirasi degisir");
+            Assert.That(_app.Status, Is.EqualTo("AI düşünüyor..."));
             Assert.That(_app.ResultHeadline, Is.Null);
+            Assert.That(AIRunnerTests.TickUntil(_app.Tick, _app.CanHumanMove), "AI ilk hamleyi yapmadi");
+            Assert.That(_app.Game.MoveCount, Is.EqualTo(1));
+            Assert.That(_app.Status, Is.EqualTo("Senin sıran!"));
+
+            _app.PlayAgain();   // oyun surerken de: yine insan baslar
+            Assert.That(_app.AIStarts, Is.False);
+            Assert.That(_app.Game.MoveCount, Is.EqualTo(0));
+            Assert.That(_app.Status, Is.EqualTo(AppController.CoachText));
         }
 
         // ---------------------------------------------------------------------

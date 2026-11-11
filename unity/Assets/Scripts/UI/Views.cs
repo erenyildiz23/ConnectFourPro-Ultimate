@@ -174,18 +174,25 @@ namespace ConnectFourPro.UI
     // -------------------------------------------------------------------------
     public sealed class AISelectView : View
     {
+        private readonly Button _firstMove;
+
         public AISelectView(AppController app, Transform parent) : base(app, parent, "AISelect")
         {
             Title("ZORLUK SEVİYESİ SEÇ", 90);
+            // Ilk hamle secimi: baslik (60-120) ile ilk zorluk dugmesi (172-228) arasinda (124-160)
+            _firstMove = UIKit.Button(Root, app.AIStartsLabel, Theme.Panel, app.ToggleAIStartsNext, 0, 142, 260, 36, 18);
+            // Zorluk dugmelerinin merkezleri degismez (tests/e2e/webgl.spec.mjs Kolay'a (0, 200)'den tiklar)
             float y = 200;
             foreach (var (name, depth) in AIEngine.Difficulties)
             {
                 int d = depth;
-                UIKit.Button(Root, $"{name} (D{depth})", Theme.Button, () => app.StartAIGame(d), 0, y, 260, 56, 22);
+                UIKit.Button(Root, AppController.DifficultyLabel(name), Theme.Button, () => app.StartAIGame(d), 0, y, 420, 56, 22);
                 y += 76;
             }
             UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, y + 30, 260, 50);
         }
+
+        public override void Refresh() => UIKit.SetLabel(_firstMove, App.AIStartsLabel);
     }
 
     // -------------------------------------------------------------------------
@@ -399,6 +406,7 @@ namespace ConnectFourPro.UI
         private readonly Button _menu;
         private readonly Text _menuLabel;
         private readonly Button _again;
+        private readonly Button _undo;
         private readonly Button _rematch;
 
         public BoardView Board { get; }
@@ -431,9 +439,13 @@ namespace ConnectFourPro.UI
             _moves = UIKit.Label(Root, "", 19, Theme.Gray, px, 422, 300, 28);
             _accuracyTitle = UIKit.Label(Root, "Hamle analizi (isabet)", 15, Theme.Gray, px, 458, 300, 24);
             _accuracy = UIKit.Label(Root, "", 20, Theme.White, px, 484, 300, 28);
-            // Biten AI oyununda "Tekrar Oyna" (panel y 135-615 icinde)
+            // AI oyununda "Yeni Oyun" / bitince "Tekrar Oyna" (panel y 135-615 icinde)
             _again = UIKit.Button(Root, "Tekrar Oyna", Theme.Green, app.PlayAgain, px, 530, 180, 48);
             _again.gameObject.SetActive(false);
+            // AI oyununda "Geri Al" (452-492): "Tekrar Oyna"nin (506-554) ustunde; isabet
+            // satirlari yalnizca online oyunda dolu, burada bos
+            _undo = UIKit.Button(Root, "Geri Al", Theme.Panel, app.UndoAIMove, px, 472, 180, 40, 18);
+            _undo.gameObject.SetActive(false);
             // Biten online oyunda "Rovans": ayni yerde, "Tekrar Oyna" yalnizca AI oyununda gorunur
             _rematch = UIKit.Button(Root, "Rövanş", Theme.Green, app.RequestRematch, px, 530, 180, 48, 18);
             _rematch.gameObject.SetActive(false);
@@ -479,9 +491,14 @@ namespace ConnectFourPro.UI
             _accuracy.text = s != null ? $"Sen: %{s.MyAccuracy:0}   Rakip: %{s.OpponentAccuracy:0}" : "";
 
             _menuLabel.text = app.BackLabel;
-            bool again = app.Screen == AppScreen.PlayingAI && app.Game.GameOver;
+            bool again = app.Screen == AppScreen.PlayingAI;
+            if (again)
+                UIKit.SetLabel(_again, app.NewGameLabel);
             if (_again.gameObject.activeSelf != again)
                 _again.gameObject.SetActive(again);
+            bool undo = app.CanUndo;
+            if (_undo.gameObject.activeSelf != undo)
+                _undo.gameObject.SetActive(undo);
             bool rematch = app.CanRequestRematch;
             if (rematch)
                 UIKit.SetLabel(_rematch, app.RematchLabel);

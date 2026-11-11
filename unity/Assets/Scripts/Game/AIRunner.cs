@@ -5,7 +5,8 @@
 //
 // Python istemcisindeki AI thread'i ve analiz isci thread'inin karsiligi:
 //   * Hamle aramasi: oncelikli. Her karede en fazla FrameBudgetMs kadar calisir.
-//   * Hamle analizi (Lichess tarzi isabet): hamle aramasi yokken sirayla yapilir.
+//   * Hamle analizi (Lichess tarzi isabet): hamle aramasi yokken sirayla yapilir;
+//     sonuc esit en iyi hamleler kumesidir (AI/PlayPolicies.cs -> MoveAnalysis).
 // Oturum numaralari eski aramalarin sonuclarini eler (oyuncu menuye donduyse vb.).
 
 using System;
@@ -27,6 +28,8 @@ namespace ConnectFourPro.Game
             public double StartAt;
             public int Session;
             public Action<int> Done;
+            // Analiz isi: biten aramadan esit en iyi hamleler kumesini cikarir
+            public Action<AIEngine.Search> Finished;
         }
 
         private Job _move;
@@ -64,16 +67,25 @@ namespace ConnectFourPro.Game
             _move = null;
         }
 
-        /// <summary>Hamle oncesi pozisyonda en iyi hamleyi arka planda hesaplar.</summary>
-        public void EnqueueAnalysis(GameState before, int depth, Action<int> done)
+        /// <summary>
+        /// Hamle oncesi pozisyonda "isabetli" sutunlari arka planda hesaplar (MoveAnalysis:
+        /// esit en iyi hamleler + kitap hamlesi, artan sirada). Iptalde done cagrilmaz.
+        /// </summary>
+        public void EnqueueAnalysis(GameState before, int depth, Action<List<int>> done)
         {
-            var engine = new AIEngine(before.CurrentPlayer, depth);
+            var position = before.Clone();
+            var engine = MoveAnalysis.NewEngine(position, depth);
             _analysisQueue.Enqueue(new Job
             {
-                Search = engine.BeginSearch(before),
+                Search = engine.BeginSearch(position),
                 StartAt = 0,
                 Session = _analysisSession,
-                Done = done,
+                Finished = search =>
+                {
+                    var best = MoveAnalysis.FromSearch(position, engine, search);
+                    if (best != null)
+                        done?.Invoke(best);
+                },
             });
         }
 
@@ -126,7 +138,11 @@ namespace ConnectFourPro.Game
             if (!current.Search.Step())
                 return;
             job = null;     // geri cagri yeni bir is baslatabilir
-            if (!current.Search.Cancelled)
+            if (current.Search.Cancelled)
+                return;
+            if (current.Finished != null)
+                current.Finished(current.Search);
+            else
                 current.Done?.Invoke(current.Search.Result);
         }
     }

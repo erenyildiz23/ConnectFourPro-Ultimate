@@ -71,12 +71,26 @@ namespace ConnectFourPro.Tests
         public void AnalysisQueueReportsBestMoveForSideToMove()
         {
             var runner = new AIRunner();
-            int best = -99;
-            runner.EnqueueAnalysis(GameState.FromMoves(MustBlockColumn0), 3, col => best = col);
+            System.Collections.Generic.List<int> best = null;
+            runner.EnqueueAnalysis(GameState.FromMoves(MustBlockColumn0), 3, cols => best = cols);
             Assert.That(runner.PendingAnalyses, Is.EqualTo(1));
-            Assert.That(TickUntil(runner.Tick, () => best != -99), "analiz bitmedi");
-            Assert.That(best, Is.EqualTo(0));
+            Assert.That(TickUntil(runner.Tick, () => best != null), "analiz bitmedi");
+            Assert.That(best, Is.EqualTo(new[] { 0 }), "zorunlu blok tek isabetli hamle");
             Assert.That(runner.PendingAnalyses, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AnalysisQueueReportsEveryEqualBestAndTheBookMove()
+        {
+            // 1 ve 5 sutunlari kazanir: ikisi de isabetli (motor yalnizca birini dondurur)
+            var runner = new AIRunner();
+            System.Collections.Generic.List<int> wins = null, book = null;
+            runner.EnqueueAnalysis(GameState.FromMoves(new[] { 2, 2, 3, 3, 4, 4 }), 2, cols => wins = cols);
+            // Kitap 2 der, kitapsiz derinlik 8 aramasi 3 der: ikisi de isabetli
+            runner.EnqueueAnalysis(GameState.FromMoves(new[] { 1 }), AppController.AnalysisDepth, cols => book = cols);
+            Assert.That(TickUntil(runner.Tick, () => wins != null && book != null, 60), "analiz bitmedi");
+            Assert.That(wins, Is.EqualTo(new[] { 1, 5 }));
+            Assert.That(book, Does.Contain(2).And.Contain(3));
         }
 
         [Test]
