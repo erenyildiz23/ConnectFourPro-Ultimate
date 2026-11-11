@@ -45,11 +45,35 @@ def wait_until(predicate, timeout=5.0, interval=0.02):
 # VERITABANI
 # =============================================================================
 
+def _switch_db(url):
+    """
+    Havuzu `url` icin yeniden kurar; once kullanimdaki tum baglantilarin iadesini bekler.
+
+    db.configure() eski havuzu kapatir. O anda baglanti kullanan bir thread (or. onceki GUI
+    testinden kalan canli sunucu istegi: ELO guncelleme, /user sorgusu) baglantiyi kapali havuza
+    iade edemez (PoolError) ve get_db_cursor'in semafor slotu geri verilmez. DB_POOL_SIZE kadar
+    slot boyle kaybolunca her veritabani cagrisi DB_POOL_TIMEOUT bekleyip None doner: test kosusu
+    saatlerce "takilir". Bu yuzden degisimden once tum slotlar alinir: kullanimdaki baglantilar
+    iade edilene kadar beklenir, yeni istekler degisim bitene kadar bekler.
+    """
+    slots, held = db._pool_slots, 0
+    try:
+        for _ in range(db.config.DB_POOL_SIZE):
+            if not slots.acquire(timeout=db.config.DB_POOL_TIMEOUT):
+                pytest.fail(f"Veritabani slotlari {db.config.DB_POOL_TIMEOUT} sn icinde bosalmadi "
+                            f"({held}/{db.config.DB_POOL_SIZE}): slot sizintisi veya takilan sorgu")
+            held += 1
+        db.configure(url)
+    finally:
+        for _ in range(held):
+            slots.release()
+
+
 @pytest.fixture(scope="session")
 def _db_reachable():
-    db.configure(TEST_DATABASE_URL)
+    _switch_db(TEST_DATABASE_URL)
     ok = db.init_db()
-    db.configure(TEST_DATABASE_URL)
+    _switch_db(TEST_DATABASE_URL)
     return ok
 
 
@@ -58,20 +82,20 @@ def database(_db_reachable):
     """Bos tablolarla test veritabani."""
     if not _db_reachable:
         pytest.skip(f"Test veritabani yok: {TEST_DATABASE_URL}")
-    db.configure(TEST_DATABASE_URL)
+    _switch_db(TEST_DATABASE_URL)
     db.init_db()
     with db.get_db_cursor() as c:
         c.execute("TRUNCATE games, users RESTART IDENTITY CASCADE")
     yield db
-    db.configure(TEST_DATABASE_URL)
+    _switch_db(TEST_DATABASE_URL)
 
 
 @pytest.fixture
 def no_database():
     """Veritabanina ulasilamayan durum."""
-    db.configure(UNREACHABLE_DB_URL)
+    _switch_db(UNREACHABLE_DB_URL)
     yield db
-    db.configure(TEST_DATABASE_URL)
+    _switch_db(TEST_DATABASE_URL)
 
 
 # =============================================================================

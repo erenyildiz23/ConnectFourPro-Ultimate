@@ -145,8 +145,17 @@ def get_db_cursor(transaction: bool = False):
             _last_used.pop(id(conn), None)
         else:
             _last_used[id(conn)] = time.monotonic()
-        pg_pool.putconn(conn, close=close)
-        _pool_slots.release()
+        try:
+            pg_pool.putconn(conn, close=close)
+        except pool.PoolError:
+            # Havuz bu sirada kapatildiysa (configure) baglantiyi birak; yuva yine de iade edilir
+            _last_used.pop(id(conn), None)
+            try:
+                conn.close()
+            except Exception:
+                pass
+        finally:
+            _pool_slots.release()
 
 
 def init_db() -> bool:

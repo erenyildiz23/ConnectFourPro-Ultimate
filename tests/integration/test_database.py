@@ -137,3 +137,34 @@ class TestStaleConnections:
         assert self._kill_pooled_backends(database) >= 1
         monkeypatch.setattr(database.config, "DB_PING_AFTER_SECONDS", 10 ** 9)   # hic yoklama
         assert database.get_user_by_username("alice") is None
+
+
+
+class TestPoolSwitchDuringQuery:
+    def test_switch_waits_for_a_running_query_and_keeps_every_slot(self, database):
+        """
+        Fixture'larin havuz degisimi (conftest._switch_db), baska thread'in suren sorgusunu
+        (or. onceki testten kalan canli sunucu istegi) bekler. Beklemeden yapilan configure()
+        o sorgunun semafor slotunu sizdirir; DB_POOL_SIZE sizintidan sonra her veritabani cagrisi
+        DB_POOL_TIMEOUT bekler ve test kosusu takilir.
+        """
+        import threading
+
+        from conftest import TEST_DATABASE_URL, _switch_db
+        started, errors = threading.Event(), []
+
+        def work():
+            try:
+                with database.get_db_cursor() as c:
+                    started.set()
+                    c.execute("SELECT pg_sleep(0.5)")
+            except Exception as e:
+                errors.append(e)
+        worker = threading.Thread(target=work, daemon=True)
+        worker.start()
+        assert started.wait(5)
+        _switch_db(TEST_DATABASE_URL)
+        worker.join(5)
+        assert not worker.is_alive() and errors == []
+        assert database._pool_slots._value == database.config.DB_POOL_SIZE
+        assert database.get_user_count() == 0       # yeni havuz calisiyor

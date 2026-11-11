@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask--SocketIO-5.3-green.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-blue.svg)
-![Tests](https://img.shields.io/badge/tests-554%20Python%20%2B%20352%20C%23-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-555%20Python%20%2B%20352%20C%23-brightgreen.svg)
 [![Unity WebGL](https://github.com/erenyildiz23/ConnectFourPro-Ultimate/actions/workflows/unity-webgl.yml/badge.svg)](https://github.com/erenyildiz23/ConnectFourPro-Ultimate/actions/workflows/unity-webgl.yml)
 ![License](https://img.shields.io/badge/License-Academic-yellow.svg)
 
@@ -42,7 +42,7 @@ Yeditepe Üniversitesi bitirme projesi. Python/Pygame sürümü: [ConnectFourPro
 - AI v2: negamax + alpha-beta, transpozisyon tablosu, yinelemeli derinleştirme, oyun teorisine dayalı (satır paritesi) tehdit değerlendirmesi, oyun sonunda kesin çözüm, kusursuz çözücüyle doğrulanmış açılış kitabı — ayrıntı ve ölçümler: [docs/AI.md](docs/AI.md)
 - Flask-SocketIO sunucusu: sunucu tarafında hamle doğrulama, kilitle korunan oda durumu, otomatik oda temizliği
 - PostgreSQL: sabit boyutlu bağlantı havuzu, ELO için transaction, tuzlu PBKDF2 şifre özetleri
-- 554 Python testi (birim, entegrasyon, uçtan uca GUI) + 352 C# testi (Unity'siz `dotnet test`), GitHub Actions CI
+- 555 Python testi (birim, entegrasyon, uçtan uca GUI) + 352 C# testi (Unity'siz `dotnet test`), GitHub Actions CI
 
 ## 📁 Proje Yapısı
 
