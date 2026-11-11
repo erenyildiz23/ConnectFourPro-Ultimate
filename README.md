@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask--SocketIO-5.3-green.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-blue.svg)
-![Tests](https://img.shields.io/badge/tests-554%20Python%20%2B%20129%20C%23-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-554%20Python%20%2B%20352%20C%23-brightgreen.svg)
 [![Unity WebGL](https://github.com/erenyildiz23/ConnectFourPro-Ultimate/actions/workflows/unity-webgl.yml/badge.svg)](https://github.com/erenyildiz23/ConnectFourPro-Ultimate/actions/workflows/unity-webgl.yml)
 ![License](https://img.shields.io/badge/License-Academic-yellow.svg)
 
@@ -189,7 +189,7 @@ pytest tests/unit          # sadece birim testleri (veritabanı gerekmez)
 ruff check src tests benchmarks
 
 # C# (Unity istemcisinin Unity'siz kodu; .NET 8 SDK)
-dotnet test tests/csharp                                         # 129 test (Socket.IO olan 3 test sunucu yoksa atlanir)
+dotnet test tests/csharp                                         # 352 test (Socket.IO olan 3 test sunucu yoksa atlanir)
 CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket.IO'yu çalışan sunucuya karşı dener
 ```
 
