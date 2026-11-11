@@ -215,6 +215,8 @@ try {
   check(countOf(board, 'R') === 2 && countOf(board, 'Y') === 2, 'seyirci mevcut durumu gordu\n' + boardText(board));
 
   for (const [page, col] of [[p1, 3], [p2, 2], [p1, 3]]) await dropIn(page, col, 1500);
+  // Oyun kazanilinca dortlu disindaki taslar soluk cizilir (UI/BoardView.cs DimAlpha):
+  // kaybedenin taslari artik '?' okunur, bu yuzden kazanandan sonra yalnizca kirmizi sayilir.
   board = await waitForBoard(p1, b => countOf(b, 'R') === 4, '12-online-kazanan-p1.png');
   check(board[0][3] === 'R' && board[1][3] === 'R' && board[2][3] === 'R' && board[3][3] === 'R',
         'P1 dikey dortlu yapti\n' + boardText(board));

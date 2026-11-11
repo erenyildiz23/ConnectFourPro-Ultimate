@@ -14,8 +14,11 @@ import time
 
 # Ayarlar config import edilmeden once yapilmali
 os.environ.setdefault("RECONNECT_GRACE_SECONDS", "1")
+os.environ.setdefault("MOVE_TIME_SECONDS", "0")        # Hamle suresi ilgili testlerde acilir
 os.environ.setdefault("PBKDF2_ITERATIONS", "1000")   # Testleri hizlandirir
 os.environ.setdefault("DB_POOL_SIZE", "4")
+os.environ.setdefault("LOGIN_MAX_FAILURES", "1000")     # Sinirlar ayri testlerde dusurulur
+os.environ.setdefault("AUTH_IP_MAX_REQUESTS", "100000")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -42,11 +45,35 @@ def wait_until(predicate, timeout=5.0, interval=0.02):
 # VERITABANI
 # =============================================================================
 
+def _switch_db(url):
+    """
+    Havuzu `url` icin yeniden kurar; once kullanimdaki tum baglantilarin iadesini bekler.
+
+    db.configure() eski havuzu kapatir. O anda baglanti kullanan bir thread (or. onceki GUI
+    testinden kalan canli sunucu istegi: ELO guncelleme, /user sorgusu) baglantiyi kapali havuza
+    iade edemez (PoolError) ve get_db_cursor'in semafor slotu geri verilmez. DB_POOL_SIZE kadar
+    slot boyle kaybolunca her veritabani cagrisi DB_POOL_TIMEOUT bekleyip None doner: test kosusu
+    saatlerce "takilir". Bu yuzden degisimden once tum slotlar alinir: kullanimdaki baglantilar
+    iade edilene kadar beklenir, yeni istekler degisim bitene kadar bekler.
+    """
+    slots, held = db._pool_slots, 0
+    try:
+        for _ in range(db.config.DB_POOL_SIZE):
+            if not slots.acquire(timeout=db.config.DB_POOL_TIMEOUT):
+                pytest.fail(f"Veritabani slotlari {db.config.DB_POOL_TIMEOUT} sn icinde bosalmadi "
+                            f"({held}/{db.config.DB_POOL_SIZE}): slot sizintisi veya takilan sorgu")
+            held += 1
+        db.configure(url)
+    finally:
+        for _ in range(held):
+            slots.release()
+
+
 @pytest.fixture(scope="session")
 def _db_reachable():
-    db.configure(TEST_DATABASE_URL)
+    _switch_db(TEST_DATABASE_URL)
     ok = db.init_db()
-    db.configure(TEST_DATABASE_URL)
+    _switch_db(TEST_DATABASE_URL)
     return ok
 
 
@@ -55,20 +82,20 @@ def database(_db_reachable):
     """Bos tablolarla test veritabani."""
     if not _db_reachable:
         pytest.skip(f"Test veritabani yok: {TEST_DATABASE_URL}")
-    db.configure(TEST_DATABASE_URL)
+    _switch_db(TEST_DATABASE_URL)
     db.init_db()
     with db.get_db_cursor() as c:
         c.execute("TRUNCATE games, users RESTART IDENTITY CASCADE")
     yield db
-    db.configure(TEST_DATABASE_URL)
+    _switch_db(TEST_DATABASE_URL)
 
 
 @pytest.fixture
 def no_database():
     """Veritabanina ulasilamayan durum."""
-    db.configure(UNREACHABLE_DB_URL)
+    _switch_db(UNREACHABLE_DB_URL)
     yield db
-    db.configure(TEST_DATABASE_URL)
+    _switch_db(TEST_DATABASE_URL)
 
 
 # =============================================================================
@@ -79,13 +106,17 @@ def no_database():
 def server():
     """Temiz oda durumuyla server modulu."""
     import server as srv
-    with srv.GAMES_LOCK:
-        srv.GAMES.clear()
-        srv.CONNECTED_USERS.clear()
+
+    def reset():
+        with srv.GAMES_LOCK:
+            srv.GAMES.clear()
+            srv.CONNECTED_USERS.clear()
+        srv.LOGIN_LIMITER.clear()
+        srv.AUTH_IP_LIMITER.clear()
+
+    reset()
     yield srv
-    with srv.GAMES_LOCK:
-        srv.GAMES.clear()
-        srv.CONNECTED_USERS.clear()
+    reset()
 
 
 @pytest.fixture
@@ -145,12 +176,31 @@ def sio(server):
         c.disconnect()
 
 
-def start_match(sio, p1="alice", p2="bob"):
-    """Iki oyunculu bir odayi baslatir: (oda_id, p1_istemci, p2_istemci)."""
+def login_token(http, username, password="pw123456"):
+    """Kayit olur (gerekirse) ve /login'in verdigi oturum token'ini dondurur."""
+    http.post('/signup', json={'username': username, 'password': password})
+    r = http.post('/login', json={'username': username, 'password': password})
+    assert r.status_code == 200, r.get_json()
+    return r.get_json()['token']
+
+
+def identity(user, token=None):
+    """Socket kimlik alanlari; token verilirse kayitli kullanici olarak."""
+    return {'user_id': user, 'token': token} if token else {'user_id': user}
+
+
+def start_match(sio, p1="alice", p2="bob", tokens=(None, None)):
+    """
+    Iki oyunculu bir odayi baslatir: (oda_id, p1_istemci, p2_istemci).
+    Her istemcinin `rejoin_token` niteligi sunucunun verdigi koltuk anahtaridir.
+    """
     a, b = sio(), sio()
-    a.emit('create_game', {'user_id': p1})
-    room_id = a.wait_for('game_created')['room_id']
-    b.emit('join_game', {'room_id': room_id, 'user_id': p2})
+    a.emit('create_game', identity(p1, tokens[0]))
+    created = a.wait_for('game_created')
+    room_id = created['room_id']
+    b.emit('join_game', {'room_id': room_id, **identity(p2, tokens[1])})
+    a.rejoin_token = created['rejoin_token']
+    b.rejoin_token = b.wait_for('game_joined')['rejoin_token']
     b.wait_for('game_start')
     a.wait_for('game_start')
     a.clear()

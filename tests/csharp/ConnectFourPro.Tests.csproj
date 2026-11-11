@@ -3,6 +3,8 @@
     Unity'den bagimsiz testler: unity/Assets/Scripts altindaki saf C# kodu
     (Core, AI, Net/Protocol) asm/ altinda Unity asmdef'leriyle ayni sinirlarla
     ayri assembly'ler olarak derlenir ve Unity olmadan derlenip test edilir.
+    Runtime: uygulama mantigi (AppController, GameSocket, AIRunner, ServerConfig)
+    stubs/ altindaki kucuk UnityEngine sahtesine karsi derlenir.
     LangVersion 9: Unity 6'nin destekledigi C# surumu; daha yeni soz dizimi derlenmez.
   -->
   <PropertyGroup>
@@ -15,9 +17,12 @@
 
   <ItemGroup>
     <Compile Remove="asm/**" />
+    <Compile Remove="stubs/**" />
     <ProjectReference Include="asm/ConnectFourPro.Core.csproj" />
     <ProjectReference Include="asm/ConnectFourPro.AI.csproj" />
     <ProjectReference Include="asm/ConnectFourPro.Protocol.csproj" />
+    <ProjectReference Include="asm/ConnectFourPro.Runtime.csproj" />
+    <ProjectReference Include="stubs/UnityEngine.Stubs.csproj" />
     <None Include="vectors/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

@@ -1,6 +1,7 @@
 // =============================================================================
 // BoardView.cs - Connect Four Pro Ultimate
-// Tahta gorunumu: hucreler, taslar, dusme animasyonu, kazanan dortlu vurgusu
+// Tahta gorunumu: hucreler, taslar, dusme animasyonu, kazanan dortlu vurgusu,
+// son hamle halkasi ve imlecteki sutunun inis yeri halkasi
 // =============================================================================
 
 using System;
@@ -17,10 +18,13 @@ namespace ConnectFourPro.UI
         private const float Height = Cell * Board.Rows;
         private const float Gravity = 5200f;         // px/s^2
         private const float StartSpeed = 300f;       // px/s
+        private const float DimAlpha = 0.45f;        // kazanan dortlu disindaki taslar
 
         private readonly Image[,] _pieces = new Image[Board.Cols, Board.Rows];
         private readonly Image[,] _glows = new Image[Board.Cols, Board.Rows];
         private Image _hover;
+        private Image _ghost;      // inis yeri (halka)
+        private Image _lastMark;   // son hamle (halka)
         private Image _falling;
         private RectTransform _area;
 
@@ -88,6 +92,12 @@ namespace ConnectFourPro.UI
                     _pieces[c, r] = piece;
                 }
 
+            // Halkalar: merkezleri bos, hucre merkezindeki tas rengi gorunur kalir
+            _ghost = MakeDisc(root, "Ghost", Theme.Red, Cell - 16, UIKit.Ring);
+            _ghost.enabled = false;
+            _lastMark = MakeDisc(root, "LastMove", Theme.White, Cell - 16, UIKit.Ring);
+            _lastMark.enabled = false;
+
             _falling = MakeDisc(root, "Falling", Theme.Red, Cell - 16);
             _falling.enabled = false;
 
@@ -111,9 +121,9 @@ namespace ConnectFourPro.UI
             }
         }
 
-        private static Image MakeDisc(Transform parent, string name, Color color, float size)
+        private static Image MakeDisc(Transform parent, string name, Color color, float size, Sprite sprite = null)
         {
-            var img = UIKit.Image(parent, name, color, UIKit.Circle);
+            var img = UIKit.Image(parent, name, color, sprite != null ? sprite : UIKit.Circle);
             img.raycastTarget = false;
             var rt = img.rectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -187,12 +197,18 @@ namespace ConnectFourPro.UI
                 for (int r = 0; r < Board.Rows; r++)
                 {
                     int cell = game.GetCell(c, r);
+                    bool winning = ((winMask >> Board.BitIndex(c, r)) & 1) != 0;
                     var piece = _pieces[c, r];
                     piece.enabled = cell != Board.Empty;
                     if (piece.enabled)
-                        piece.color = Theme.PieceColor(cell);
+                    {
+                        // Oyun kazanilinca dortlu disindaki taslar soluklasir
+                        var color = Theme.PieceColor(cell);
+                        if (winMask != 0 && !winning)
+                            color.a = DimAlpha;
+                        piece.color = color;
+                    }
 
-                    bool winning = ((winMask >> Board.BitIndex(c, r)) & 1) != 0;
                     var glow = _glows[c, r];
                     glow.enabled = winning;
                     if (winning)
@@ -202,14 +218,29 @@ namespace ConnectFourPro.UI
                     }
                 }
 
-            bool showHover = _hoverCol >= 0 && !IsAnimating && _canMove != null && _canMove();
+            // Son hamle: sutundaki en ustteki tas. Kazanc vurgusu varken gizli.
+            bool showLast = game.MoveCount > 0 && winMask == 0 && !IsAnimating;
+            _lastMark.enabled = showLast;
+            if (showLast)
+            {
+                int lc = game.MoveHistory[game.MoveCount - 1];
+                _lastMark.rectTransform.anchoredPosition = CellCenter(lc, game.NextRow(lc) - 1);
+            }
+
+            // Dolu sutunda onizleme yok (tiklama da hamle yapmaz)
+            bool showHover = _hoverCol >= 0 && !IsAnimating && _canMove != null && _canMove()
+                             && game.IsValidLocation(_hoverCol);
             _hover.enabled = showHover;
+            _ghost.enabled = showHover;
             if (showHover)
             {
                 var color = Theme.PieceColor(_hoverPiece?.Invoke() ?? Board.Player1);
                 color.a = 0.75f;
                 _hover.color = color;
                 _hover.rectTransform.anchoredPosition = new Vector2(CellCenter(_hoverCol, 0).x, TopY);
+                color.a = 0.8f;
+                _ghost.color = color;
+                _ghost.rectTransform.anchoredPosition = CellCenter(_hoverCol, game.NextRow(_hoverCol));
             }
         }
 

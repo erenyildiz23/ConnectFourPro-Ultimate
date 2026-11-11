@@ -14,6 +14,7 @@ import hashlib
 import hmac
 import secrets
 import threading
+import time
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
@@ -32,6 +33,9 @@ _pool_lock = threading.Lock()
 # psycopg2 havuzu doluyken beklemek yerine hata firlatir; semafor bekletir
 _pool_slots = threading.BoundedSemaphore(config.DB_POOL_SIZE)
 
+# id(baglanti) -> son kullanim zamani (bkz. _checkout)
+_last_used: Dict[int, float] = {}
+
 # Yuk testlerinde olusturulan hesaplarin on ekleri (delete_test_users temizler)
 TEST_USER_PREFIXES = ('locust_', 'test_user_', 'bench_')
 
@@ -46,6 +50,7 @@ def configure(url: Optional[str] = None) -> None:
     with _pool_lock:
         if _pool is not None:
             _pool.closeall()
+        _last_used.clear()
         _pool = None
         _pool_failed = False
         _pool_url = url
@@ -72,6 +77,33 @@ def is_available() -> bool:
     return _get_pool() is not None
 
 
+def _checkout(pg_pool: pool.ThreadedConnectionPool):
+    """
+    Havuzdan kullanilabilir bir baglanti alir. Yonetilen PostgreSQL servisleri
+    (Supabase, Neon...) bosta kalan baglantilari kapatir; uzun suredir
+    kullanilmamis baglanti once yoklanir, kopmussa yenisiyle degistirilir.
+    Boylece kopuk baglanti ilk istegi (or. girisi) basarisiz kilmaz.
+    """
+    # Havuzdaki baglantilarin hepsi kopmus olabilir: saglam olani bulana kadar dene
+    for _ in range(config.DB_POOL_SIZE + 1):
+        conn = pg_pool.getconn()
+        idle = time.monotonic() - _last_used.get(id(conn), 0.0)
+        if not conn.closed and idle <= config.DB_PING_AFTER_SECONDS:
+            return conn
+        try:
+            if conn.closed:
+                raise psycopg2.InterfaceError("connection already closed")
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute('SELECT 1')
+            return conn
+        except (psycopg2.OperationalError, psycopg2.InterfaceError):
+            log.info("Kopmus veritabani baglantisi yenileniyor")
+            _last_used.pop(id(conn), None)
+            pg_pool.putconn(conn, close=True)
+    return pg_pool.getconn()
+
+
 @contextmanager
 def get_db_cursor(transaction: bool = False):
     """
@@ -87,7 +119,7 @@ def get_db_cursor(transaction: bool = False):
         yield None
         return
     try:
-        conn = pg_pool.getconn()
+        conn = _checkout(pg_pool)
     except Exception as e:
         _pool_slots.release()
         log.error("Havuzdan baglanti alinamadi: %s", e)
@@ -108,8 +140,22 @@ def get_db_cursor(transaction: bool = False):
             conn.rollback()
         raise
     finally:
-        pg_pool.putconn(conn, close=broken or conn.closed)
-        _pool_slots.release()
+        close = broken or bool(conn.closed)
+        if close:
+            _last_used.pop(id(conn), None)
+        else:
+            _last_used[id(conn)] = time.monotonic()
+        try:
+            pg_pool.putconn(conn, close=close)
+        except pool.PoolError:
+            # Havuz bu sirada kapatildiysa (configure) baglantiyi birak; yuva yine de iade edilir
+            _last_used.pop(id(conn), None)
+            try:
+                conn.close()
+            except Exception:
+                pass
+        finally:
+            _pool_slots.release()
 
 
 def init_db() -> bool:

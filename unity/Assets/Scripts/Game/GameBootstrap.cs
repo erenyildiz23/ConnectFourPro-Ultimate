@@ -38,9 +38,14 @@ namespace ConnectFourPro.Game
 
         private void Awake()
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
             // Tarayicida kare hizini tarayici belirler (requestAnimationFrame)
             Application.targetFrameRate = -1;
             QualitySettings.vSyncCount = 0;
+#else
+            // Editor / masaustu: ekran yenilemesine kilitle (sinirsiz kare cizme)
+            QualitySettings.vSyncCount = 1;
+#endif
             Application.runInBackground = true;   // sekme arka plandayken de sunucu olaylari islensin
 
             if (!string.IsNullOrWhiteSpace(serverUrlOverride))
@@ -135,11 +140,15 @@ namespace ConnectFourPro.Game
             _app.Tick();
             _active?.Refresh();
 
+            // Esc: ekrandaki Geri/Iptal/Menu butonu gibi (canli online oyunda ilk basis onay ister)
+            if (Keys.BackPressed() && _app.Screen != AppScreen.Login && _app.Screen != AppScreen.Menu)
+                _app.RequestBack();
+
             bool inGame = _app.Screen == AppScreen.PlayingAI || _app.Screen == AppScreen.PlayingOnline
                           || _app.Screen == AppScreen.Spectating;
             _status.text = _app.Status;
             _status.color = _app.Tone == StatusTone.Good ? Theme.Green
-                          : _app.Tone == StatusTone.Bad ? Theme.Red
+                          : _app.Tone == StatusTone.Bad ? Theme.Error
                           : inGame ? Theme.White : Theme.Gray;
             _statusBar.enabled = inGame;
         }

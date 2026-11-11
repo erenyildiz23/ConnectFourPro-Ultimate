@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Yalnizca testler icin: Runtime kodunun (AppController, GameSocket) kullandigi
+       birkac UnityEngine uyesinin sahtesi. Unity'ye girmez; yeni bir Unity API'si
+       kullanilirsa derleme burada kirilir ve sahte bilerek genisletilir. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>UnityEngine.Stubs</AssemblyName>
+    <LangVersion>9.0</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="UnityEngineStubs.cs" />
+  </ItemGroup>
+</Project>

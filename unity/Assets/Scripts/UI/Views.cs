@@ -174,18 +174,25 @@ namespace ConnectFourPro.UI
     // -------------------------------------------------------------------------
     public sealed class AISelectView : View
     {
+        private readonly Button _firstMove;
+
         public AISelectView(AppController app, Transform parent) : base(app, parent, "AISelect")
         {
             Title("ZORLUK SEVİYESİ SEÇ", 90);
+            // Ilk hamle secimi: baslik (60-120) ile ilk zorluk dugmesi (172-228) arasinda (124-160)
+            _firstMove = UIKit.Button(Root, app.AIStartsLabel, Theme.Panel, app.ToggleAIStartsNext, 0, 142, 260, 36, 18);
+            // Zorluk dugmelerinin merkezleri degismez (tests/e2e/webgl.spec.mjs Kolay'a (0, 200)'den tiklar)
             float y = 200;
             foreach (var (name, depth) in AIEngine.Difficulties)
             {
                 int d = depth;
-                UIKit.Button(Root, $"{name} (D{depth})", Theme.Button, () => app.StartAIGame(d), 0, y, 260, 56, 22);
+                UIKit.Button(Root, AppController.DifficultyLabel(name), Theme.Button, () => app.StartAIGame(d), 0, y, 420, 56, 22);
                 y += 76;
             }
             UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, y + 30, 260, 50);
         }
+
+        public override void Refresh() => UIKit.SetLabel(_firstMove, App.AIStartsLabel);
     }
 
     // -------------------------------------------------------------------------
@@ -262,6 +269,7 @@ namespace ConnectFourPro.UI
     // -------------------------------------------------------------------------
     public sealed class WaitingView : View
     {
+        private static readonly string[] Dots = { "Bekleniyor", "Bekleniyor.", "Bekleniyor..", "Bekleniyor..." };
         private readonly Text _room;
         private readonly Text _hint;
         private readonly Text _dots;
@@ -287,7 +295,7 @@ namespace ConnectFourPro.UI
                 _room.text = "";
                 _hint.text = "Oda oluşturuluyor...";
             }
-            _dots.text = "Bekleniyor" + new string('.', (int)(Time.unscaledTime * 2) % 4);
+            _dots.text = Dots[(int)(Time.unscaledTime * 2) % 4];
         }
     }
 
@@ -390,11 +398,16 @@ namespace ConnectFourPro.UI
         private readonly Text[] _names = new Text[2];
         private readonly Text[] _elos = new Text[2];
         private readonly Text[] _turns = new Text[2];
+        private readonly Text[] _clocks = new Text[2];
         private readonly Text _room;
         private readonly Text _moves;
         private readonly Text _accuracyTitle;
         private readonly Text _accuracy;
         private readonly Button _menu;
+        private readonly Text _menuLabel;
+        private readonly Button _again;
+        private readonly Button _undo;
+        private readonly Button _rematch;
 
         public BoardView Board { get; }
 
@@ -418,19 +431,51 @@ namespace ConnectFourPro.UI
                 _names[i] = UIKit.Label(Root, "", 21, Theme.White, px - 10, y - 10, 180, 28, TextAnchor.MiddleLeft);
                 _elos[i] = UIKit.Label(Root, "", 16, Theme.Gray, px - 10, y + 14, 180, 22, TextAnchor.MiddleLeft);
                 _turns[i] = UIKit.Label(Root, "< SIRA", 18, Theme.Green, px + 110, y, 90, 30, TextAnchor.MiddleCenter, FontStyle.Bold);
+                // Hamle suresi: "< SIRA"nin hemen altinda (y+13..y+35; sonraki satir y+46'da baslar)
+                _clocks[i] = UIKit.Label(Root, "", 16, Theme.Gray, px + 110, y + 24, 80, 22, TextAnchor.MiddleCenter, FontStyle.Bold);
             }
 
             _room = UIKit.Label(Root, "", 24, Theme.Hover, px, 385, 300, 34, TextAnchor.MiddleCenter, FontStyle.Bold);
             _moves = UIKit.Label(Root, "", 19, Theme.Gray, px, 422, 300, 28);
             _accuracyTitle = UIKit.Label(Root, "Hamle analizi (isabet)", 15, Theme.Gray, px, 458, 300, 24);
             _accuracy = UIKit.Label(Root, "", 20, Theme.White, px, 484, 300, 28);
-            _menu = UIKit.Button(Root, "Menü", Theme.Button, app.RequestBack, px, 560, 180, 48);
+            // AI oyununda "Yeni Oyun" / bitince "Tekrar Oyna" (panel y 135-615 icinde)
+            _again = UIKit.Button(Root, "Tekrar Oyna", Theme.Green, app.PlayAgain, px, 530, 180, 48);
+            _again.gameObject.SetActive(false);
+            // AI oyununda "Geri Al" (452-492): "Tekrar Oyna"nin (506-554) ustunde; isabet
+            // satirlari yalnizca online oyunda dolu, burada bos
+            _undo = UIKit.Button(Root, "Geri Al", Theme.Panel, app.UndoAIMove, px, 472, 180, 40, 18);
+            _undo.gameObject.SetActive(false);
+            // Biten online oyunda "Rovans": ayni yerde, "Tekrar Oyna" yalnizca AI oyununda gorunur
+            _rematch = UIKit.Button(Root, "Rövanş", Theme.Green, app.RequestRematch, px, 530, 180, 48, 18);
+            _rematch.gameObject.SetActive(false);
+            _menu = UIKit.Button(Root, "Menü", Theme.Button, app.RequestBack, px, 590, 180, 48);
+            _menuLabel = _menu.GetComponentInChildren<Text>();
         }
+
+        public override void OnShow() => UIKit.ClearSelection();
 
         public override void Refresh()
         {
             var app = App;
-            _title.text = app.IsSpectator ? "CANLI YAYIN" : app.Screen == AppScreen.PlayingAI ? "Yapay Zekâya Karşı" : "Online Maç";
+
+            // Klavye: 1-7 tasi o sutuna birakir (siranin kimde oldugunu HandleColumnClick denetler)
+            int key = Keys.ColumnPressed();
+            if (key >= 0)
+                app.HandleColumnClick(key);
+
+            // Oyun bitince baslik sonucu gosterir (son tas dusmeden once degil)
+            var headline = app.ResultHeadline;
+            if (headline.HasValue && !Board.IsAnimating)
+            {
+                _title.text = headline.Value.text;
+                _title.color = HeadlineColor(headline.Value.tone);
+            }
+            else
+            {
+                _title.text = app.IsSpectator ? "CANLI YAYIN" : app.Screen == AppScreen.PlayingAI ? "Yapay Zekâya Karşı" : "Online Maç";
+                _title.color = Theme.Red;
+            }
             _panelTitle.text = app.IsSpectator ? "İZLİYORSUNUZ" : "OYUN BİLGİSİ";
             _panelTitle.color = app.IsSpectator ? Theme.Waiting : Theme.White;
 
@@ -445,14 +490,46 @@ namespace ConnectFourPro.UI
             _accuracyTitle.enabled = s != null;
             _accuracy.text = s != null ? $"Sen: %{s.MyAccuracy:0}   Rakip: %{s.OpponentAccuracy:0}" : "";
 
-            UIKit.SetLabel(_menu, app.LeaveConfirmPending ? "Çıkışı Onayla" : "Menü");
+            _menuLabel.text = app.BackLabel;
+            bool again = app.Screen == AppScreen.PlayingAI;
+            if (again)
+                UIKit.SetLabel(_again, app.NewGameLabel);
+            if (_again.gameObject.activeSelf != again)
+                _again.gameObject.SetActive(again);
+            bool undo = app.CanUndo;
+            if (_undo.gameObject.activeSelf != undo)
+                _undo.gameObject.SetActive(undo);
+            bool rematch = app.CanRequestRematch;
+            if (rematch)
+                UIKit.SetLabel(_rematch, app.RematchLabel);
+            if (_rematch.gameObject.activeSelf != rematch)
+                _rematch.gameObject.SetActive(rematch);
+        }
+
+        private Color HeadlineColor(StatusTone tone)
+        {
+            int w = App.Game.Winner;
+            if (App.IsSpectator && w != 0)
+                return Theme.PieceColor(w);
+            return tone == StatusTone.Good ? Theme.Green : tone == StatusTone.Bad ? Theme.Red : Theme.Yellow;
         }
 
         private void SetPlayer(int i, string name, int? elo, int piece)
         {
-            _names[i].text = name != null && name.Length > 14 ? name.Substring(0, 14) : name;
+            if (App.IsLocalPiece(piece))
+                _names[i].text = (name != null && name.Length > 9 ? name.Substring(0, 9) : name) + " (Sen)";
+            else
+                _names[i].text = name != null && name.Length > 14 ? name.Substring(0, 14) : name;
             _elos[i].text = elo.HasValue ? "ELO: " + elo.Value : "";
             _turns[i].enabled = App.Game.CurrentPlayer == piece && !App.Game.GameOver;
+            int? secs = App.TurnSecondsLeft;
+            if (_turns[i].enabled && secs.HasValue)
+            {
+                _clocks[i].text = secs.Value + " sn";
+                _clocks[i].color = App.TurnClockWarning ? Theme.Error : Theme.Gray;
+            }
+            else
+                _clocks[i].text = "";
         }
     }
 }

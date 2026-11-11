@@ -12,6 +12,9 @@ Uc kullanici profili (agirliklar %30 / %50 / %20):
 Test hesaplari `locust_` on ekiyle olusturulur; temizlemek icin:
     python -c "import database; database.delete_test_users()"   (src/ icinde)
 
+Tum sanal kullanicilar tek IP'den baglanir; sunucuyu AUTH_IP_MAX_REQUESTS=0 ile
+baslatin (run_all.py bunu kendisi yapar), yoksa /login ve /signup 429 dondurur.
+
 Kullanim (benchmarks/ icinde):
     locust -f locustfile.py --host http://localhost:5000 -u 100 -r 10 -t 2m --headless \
            --csv results/locust_100 --html results/locust_100.html

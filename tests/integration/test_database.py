@@ -9,9 +9,9 @@ pytestmark = pytest.mark.db
 
 class TestUsers:
     def test_create_and_verify(self, database):
-        uid = database.create_user("alice", "pw123")
+        uid = database.create_user("alice", "pw123456")
         assert isinstance(uid, int)
-        user = database.verify_user("alice", "pw123")
+        user = database.verify_user("alice", "pw123456")
         assert user == {'user_id': uid, 'username': 'alice', 'rating': 1200, 'wins': 0, 'losses': 0}
         assert 'password_hash' not in user
 
@@ -21,16 +21,16 @@ class TestUsers:
         assert database.get_user_count() == 1
 
     def test_wrong_password_and_unknown_user(self, database):
-        database.create_user("alice", "pw123")
+        database.create_user("alice", "pw123456")
         assert database.verify_user("alice", "nope") is None
-        assert database.verify_user("ghost", "pw123") is None
+        assert database.verify_user("ghost", "pw123456") is None
 
     def test_password_is_not_stored_in_plain_text(self, database):
-        database.create_user("alice", "pw123")
+        database.create_user("alice", "pw123456")
         with database.get_db_cursor() as c:
             c.execute("SELECT password_hash FROM users WHERE username = 'alice'")
             stored = c.fetchone()['password_hash']
-        assert stored.startswith("pbkdf2_sha256$") and "pw123" not in stored
+        assert stored.startswith("pbkdf2_sha256$") and "pw123456" not in stored
 
     def test_legacy_account_logs_in_and_is_upgraded(self, database):
         with database.get_db_cursor() as c:
@@ -106,3 +106,65 @@ class TestUnavailableDatabase:
         assert db.get_user_games("a") == []
         assert db.update_elo_by_username("a", "b") == {'winner_change': 0, 'loser_change': 0}
         assert db.record_game("a", "b", "a", "[]") is False
+
+
+class TestStaleConnections:
+    """Sunucu tarafinda kapatilan bosta baglanti ilk sorguyu basarisiz kilmamali."""
+
+    def _kill_pooled_backends(self, database):
+        import psycopg2
+        from conftest import TEST_DATABASE_URL
+        admin = psycopg2.connect(TEST_DATABASE_URL)
+        admin.autocommit = True
+        with admin.cursor() as c:
+            c.execute("SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity "
+                      "WHERE datname = current_database() AND pid <> pg_backend_pid()")
+            killed = c.fetchone()[0]
+        admin.close()
+        return killed
+
+    def test_dead_idle_connection_is_replaced(self, database, monkeypatch):
+        uid = database.create_user("alice", "pw123456")
+        assert self._kill_pooled_backends(database) >= 1
+        monkeypatch.setattr(database.config, "DB_PING_AFTER_SECONDS", -1)   # her zaman yokla
+        for _ in range(database.config.DB_POOL_SIZE + 1):                  # havuzdaki her baglanti
+            assert database.get_user_by_username("alice")['user_id'] == uid
+        assert database.verify_user("alice", "pw123456")
+
+    def test_without_ping_the_first_query_fails(self, database, monkeypatch):
+        """Yoklamanin gercekten gerekli oldugunu gosterir (regresyon kaniti)."""
+        database.create_user("alice", "pw123456")
+        assert self._kill_pooled_backends(database) >= 1
+        monkeypatch.setattr(database.config, "DB_PING_AFTER_SECONDS", 10 ** 9)   # hic yoklama
+        assert database.get_user_by_username("alice") is None
+
+
+
+class TestPoolSwitchDuringQuery:
+    def test_switch_waits_for_a_running_query_and_keeps_every_slot(self, database):
+        """
+        Fixture'larin havuz degisimi (conftest._switch_db), baska thread'in suren sorgusunu
+        (or. onceki testten kalan canli sunucu istegi) bekler. Beklemeden yapilan configure()
+        o sorgunun semafor slotunu sizdirir; DB_POOL_SIZE sizintidan sonra her veritabani cagrisi
+        DB_POOL_TIMEOUT bekler ve test kosusu takilir.
+        """
+        import threading
+
+        from conftest import TEST_DATABASE_URL, _switch_db
+        started, errors = threading.Event(), []
+
+        def work():
+            try:
+                with database.get_db_cursor() as c:
+                    started.set()
+                    c.execute("SELECT pg_sleep(0.5)")
+            except Exception as e:
+                errors.append(e)
+        worker = threading.Thread(target=work, daemon=True)
+        worker.start()
+        assert started.wait(5)
+        _switch_db(TEST_DATABASE_URL)
+        worker.join(5)
+        assert not worker.is_alive() and errors == []
+        assert database._pool_slots._value == database.config.DB_POOL_SIZE
+        assert database.get_user_count() == 0       # yeni havuz calisiyor

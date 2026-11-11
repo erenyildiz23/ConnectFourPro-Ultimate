@@ -393,6 +393,12 @@ namespace ConnectFourPro.AI
             public int Result { get; private set; } = -1;
             public bool Cancelled { get; private set; }
 
+            /// <summary>
+            /// Yalnizca analiz icin (salt okunur): son tamamlanan derinligin (sutun, skor) kok sonuclari.
+            /// Arama bitince (Done, iptal degil, LastDepthReached &gt; 0) gecerlidir; aramayi etkilemez.
+            /// </summary>
+            public IReadOnlyList<(int col, int value)> RootResults => _results;
+
             internal Search(AIEngine engine, GameState game, Func<bool> cancel)
             {
                 _engine = engine;

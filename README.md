@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask--SocketIO-5.3-green.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-blue.svg)
-![Tests](https://img.shields.io/badge/tests-266%20Python%20%2B%20129%20C%23-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-555%20Python%20%2B%20352%20C%23-brightgreen.svg)
 [![Unity WebGL](https://github.com/erenyildiz23/ConnectFourPro-Ultimate/actions/workflows/unity-webgl.yml/badge.svg)](https://github.com/erenyildiz23/ConnectFourPro-Ultimate/actions/workflows/unity-webgl.yml)
 ![License](https://img.shields.io/badge/License-Academic-yellow.svg)
 
@@ -24,12 +24,16 @@ Yeditepe Üniversitesi bitirme projesi. Python/Pygame sürümü: [ConnectFourPro
 
 **Oyun**
 - **Unity 6 / C# WebGL istemcisi:** kurulum gerektirmez, tarayıcıdan `http://SUNUCU:5000/play/` ile açılır; aynı ağdaki telefon/tablet de bağlanabilir
-- Animasyonlu taş düşüşü, kazanan dörtlü vurgusu (Unity ve Pygame istemcilerinde)
-- Yapay zekaya karşı 3 zorluk: Kolay (D2), Orta (D4), Zor (D8)
+- Animasyonlu taş düşüşü, kazanan dörtlü vurgusu, son oynanan taşın halkası, fare üstündeki sütunda taşın ineceği yerin önizlemesi, ekran başlığında sonuç (KAZANDIN! / KAYBETTİN / BERABERE) (Unity ve Pygame istemcilerinde)
+- Yapay zekaya karşı 3 zorluk: Kolay (D2), Orta (D4), Zor (D8). Kolay, arama bittikten sonra zamanın yaklaşık %40'ında rastgele bir hamle oynar (kendi kazanan hamlesini kaçırmaz; ayrıntı: [docs/AI.md](docs/AI.md)). Pygame istemcisinde ilk hamleyi kimin yapacağı seçilir, "Yeni Oyun" ilk hamleyi değiştirir, "Geri Al" son hamleni ve AI'nın cevabını geri alır
 - Online çok oyunculu: oda oluştur / katıl, lobi, seyirci modu
+- Rövanş: oyun bitince aynı rakiple aynı odada yeni oyun; iki oyuncu da isterse koltuklar (renkler) yer değiştirir
+- Hamle süresi (isteğe bağlı, sunucuda `MOVE_TIME_SECONDS`): sırası gelenin kalan süresi geri sayar; süre dolarsa hükmen yenilgi
 - ELO sıralaması, liderlik tablosu, maç geçmişi
-- Bağlantı koparsa 30 sn içinde otomatik geri dönüş; dönülmezse rakip hükmen kazanır
-- Maç sonu hamle analizi (her iki oyuncunun hamlelerinin D8 AI ile isabet oranı)
+- Bağlantı koparsa 30 sn içinde otomatik geri dönüş; dönülmezse rakip hükmen kazanır. Hükmen yenilgi nedeni (süre doldu / bağlantı koptu / oyundan ayrıldı) iki tarafa da ayrı yazılır; oyun sen yokken bittiyse döndüğünde sonucu görürsün. Kendi bağlantın koptuğunda istemci bunu belirtir ve hamleni engeller
+- Klavye: `1`–`7` hamle, `Esc` geri/lobi; Pygame'de ayrıca `M` ses aç/kapat, `R` rövanş, `U` geri al
+- Pygame istemcisinde dosyasız, çalışma anında üretilen ses efektleri (`CONNECT4_MUTE=1` ile kapalı başlar)
+- Maç sonu hamle analizi (her iki oyuncunun hamlelerinin D8 AI ile isabet oranı; D8'de eşit iyi çıkan her hamle ve açılış kitabı hamlesi isabetli sayılır)
 - Misafir modu (hesapsız oynama)
 
 **Teknik**
@@ -38,7 +42,7 @@ Yeditepe Üniversitesi bitirme projesi. Python/Pygame sürümü: [ConnectFourPro
 - AI v2: negamax + alpha-beta, transpozisyon tablosu, yinelemeli derinleştirme, oyun teorisine dayalı (satır paritesi) tehdit değerlendirmesi, oyun sonunda kesin çözüm, kusursuz çözücüyle doğrulanmış açılış kitabı — ayrıntı ve ölçümler: [docs/AI.md](docs/AI.md)
 - Flask-SocketIO sunucusu: sunucu tarafında hamle doğrulama, kilitle korunan oda durumu, otomatik oda temizliği
 - PostgreSQL: sabit boyutlu bağlantı havuzu, ELO için transaction, tuzlu PBKDF2 şifre özetleri
-- 266 Python testi (birim, entegrasyon, uçtan uca GUI) + 129 C# testi (Unity'siz `dotnet test`), GitHub Actions CI
+- 555 Python testi (birim, entegrasyon, uçtan uca GUI) + 352 C# testi (Unity'siz `dotnet test`), GitHub Actions CI
 
 ## 📁 Proje Yapısı
 
@@ -62,6 +66,7 @@ ConnectFourPro-Ultimate/
 │   ├── gui_app.py            # Pygame istemcisi (Unity istemcisiyle aynı özellikler)
 │   ├── network_client.py     # İstemci ağ katmanı
 │   ├── config.py             # Ortam değişkenlerinden ayarlar, loglama
+│   ├── wsgi.py               # gunicorn giriş noktası (Docker / internete açık kurulum)
 │   └── requirements.txt      # Çalışma zamanı bağımlılıkları
 ├── tests/                    # pytest: unit/, integration/, gui/  +  csharp/ (NUnit, dotnet test)
 ├── benchmarks/               # Performans ölçümleri, grafikler, RESULTS.md
@@ -71,6 +76,8 @@ ConnectFourPro-Ultimate/
 │   ├── KURULUM.md            # Adım adım kurulum ve çalıştırma
 │   └── diagrams/             # UML (PlantUML + PNG)
 ├── scripts/                  # Kurulum yardımcıları, export_ai_vectors.py (C# altın vektörleri)
+├── Dockerfile / docker-compose.yml  # Sunucu + PostgreSQL (docs/KURULUM.md bölüm 12)
+├── render.yaml               # İnternette ücretsiz yayın: Render + Supabase (docs/KURULUM.md bölüm 13)
 ├── setup.bat / setup.sh      # Tek komutla kurulum
 ├── run.bat / run.sh          # Çalıştırma kısayolları
 ├── requirements-dev.txt      # Test / benchmark bağımlılıkları
@@ -127,13 +134,20 @@ set DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4        # Windows
 | Değişken | Varsayılan | Açıklama |
 |---|---|---|
 | `DATABASE_URL` | `postgresql://postgres@localhost/connect4` | PostgreSQL adresi |
-| `SECRET_KEY` | rastgele | Flask oturum anahtarı |
+| `SECRET_KEY` | rastgele | Oturum token'larını imzalar (ayarlanmazsa sunucu yeniden başlayınca herkes tekrar giriş yapar) |
+| `SESSION_MAX_AGE` | `604800` | Oturum token'ının geçerlilik süresi (saniye) |
+| `MOVE_TIME_SECONDS` / `MOVE_TIME_GRACE_SECONDS` | `0` / `2` | Hamle başına süre; dolarsa sırası gelen hükmen kaybeder (`detail: timeout`). `0` = kapalı. Her iki istemci de kalan süreyi gösterir (son 10 sn uyarı rengi). Rakibin bağlantısı kopukken süre işlemez |
+| `CORS_ALLOWED_ORIGINS` | boş | Socket.IO'ya tarayıcıdan bağlanabilecek origin'ler (virgüllü liste veya `*`). Boşsa yalnızca sunucunun kendi adresi; liste verirseniz kendi adresinizi de ekleyin |
+| `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_SECONDS` | `5` / `300` | Bir kullanıcı adı için bu sürede izin verilen hatalı giriş sayısı; aşılırsa `/login` `429` döner (`0` = kapalı) |
+| `AUTH_IP_MAX_REQUESTS` / `AUTH_IP_WINDOW_SECONDS` | `300` / `60` | Tek IP'den bu sürede kabul edilen `/login` + `/signup` isteği (`0` = kapalı) |
 | `CONNECT4_HOST` / `CONNECT4_PORT` | `0.0.0.0` / `5000` | Sunucunun dinlediği adres |
 | `CONNECT4_SERVER` | `http://localhost:5000` | İstemcinin bağlanacağı sunucu (Pygame istemcisi ve Unity Editor) |
 | `CONNECT4_WEB_BUILD` | `unity/Build/WebGL` | `/play` adresinden sunulan Unity WebGL build klasörü |
 | `RECONNECT_GRACE_SECONDS` | `30` | Kopan oyuncunun geri dönme süresi |
 | `DB_POOL_SIZE` | `20` | Veritabanı bağlantı havuzu boyutu |
+| `DB_PING_AFTER_SECONDS` | `30` | Bu süredir kullanılmayan veritabanı bağlantısı kullanılmadan önce yoklanır; kopmuşsa yenilenir |
 | `LOG_LEVEL` | `INFO` | `DEBUG` istemcide ayrıntılı log açar |
+| `CONNECT4_MUTE` | boş | `1` ise Pygame istemcisi sessiz başlar ve ses aygıtı hiç açılmaz (ses kartı olmayan makineler için); oyunda `M` tuşu veya menü ile açılıp kapatılır |
 
 Veritabanı yoksa sunucu yine açılır; kayıt ve giriş 503 döner, misafir modu çalışır.
 Eski SHA-256 ile kayıtlı hesaplar giriş yapabilir; şifreleri ilk girişte otomatik olarak PBKDF2'ye yükseltilir.
@@ -149,21 +163,33 @@ python gui_app.py                                 # Pygame istemcisi (localhost:
 python gui_app.py https://abc123.ngrok-free.app   # uzak sunucuya bağlan
 ```
 
-Tarayıcı istemcisi oyunu sunan sunucuya bağlanır; başka bir sunucu için `http://localhost:5000/play/?server=http://192.168.1.20:5000`.
+Tarayıcı istemcisi oyunu sunan sunucuya bağlanır; başka bir sunucuda oynamak için o sunucunun adresini açın (`http://192.168.1.20:5000/play/`). `?server=` parametresi yalnızca sayfa `localhost`'tan sunulurken (yerel geliştirme) dikkate alınır ve hedef sunucuda `CORS_ALLOWED_ORIGINS` ayarı gerektirir.
 AI'ya karşı oynamak için hesap gerekmez: "Misafir Olarak Devam" → "Yapay Zekâya Karşı" (AI tarayıcıda çalışır).
+
+**Kontroller**
+
+| Tuş | İşlev | İstemci |
+|---|---|---|
+| `1`–`7` (üst sıra veya sayısal tuş takımı) | Sütuna taş bırak (fareyle tıklamayla aynı kurallar) | Pygame, Unity |
+| `Esc` | Geri / lobiye dön (aktif online oyunda hükmen yenilgi için ikinci basış gerekir; ana menüde oyunu kapatmaz) | Pygame, Unity |
+| `M` | Sesi aç/kapat | Pygame |
+| `R` | Rövanş iste (biten online oyunda) | Pygame |
+| `U` | Son hamleni geri al (yalnızca AI oyununda) | Pygame |
+
+Pygame'de AI oyunu için zorluk ekranında "İlk hamle: Sen / AI" seçilir; insan her zaman kırmızıdır. Oyun sırasında "Yeni Oyun" aynı zorlukta yeniden başlatır ve ilk hamleyi yapan tarafı değiştirir; "Geri Al" insanın son hamlesini ve AI'nın cevabını geri alır. Bu AI seçenekleri (ilk hamle seçimi, "Yeni Oyun", "Geri Al") Pygame istemcisini anlatır; Unity istemcisinde biten AI oyununda "Tekrar Oyna" düğmesi bulunur.
 
 ## 🧪 Testler
 
 ```bash
 pip install -r requirements-dev.txt
 export TEST_DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4_test   # AYRI veritabanı
-pytest                     # 266 test, ~40 sn
+pytest                     # 554 test, ~100 sn
 pytest --cov               # kapsam raporu (%88)
 pytest tests/unit          # sadece birim testleri (veritabanı gerekmez)
 ruff check src tests benchmarks
 
 # C# (Unity istemcisinin Unity'siz kodu; .NET 8 SDK)
-dotnet test tests/csharp                                         # 129 test (Socket.IO olan 3 test sunucu yoksa atlanir)
+dotnet test tests/csharp                                         # 352 test (Socket.IO olan 3 test sunucu yoksa atlanir)
 CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket.IO'yu çalışan sunucuya karşı dener
 ```
 
@@ -206,6 +232,7 @@ CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket
 - **İstemci thread modeli:** Oyun durumunu yalnızca Pygame ana thread'i değiştirir. Socket.IO olayları ve HTTP cevapları bir kuyruğa alınır, AI ve analiz aramaları ayrı thread'lerde çalışır ve iptal edilebilir.
 - **Sıra güvenliği:** python-socketio istemcisi her mesajı ayrı thread'de işler, olaylar sırasız gelebilir. İstemci gelen hamleleri hamle geçmişinin uzunluğuna göre uygular, yeni ELO'yu da `game_over` mesajından okur.
 - **Sunucu:** Oda durumu tek bir kilitle korunur. Hamleyi yalnızca o taşın sahibi olan bağlantı yapabilir.
+- **Kimlik:** Kayıtlı kullanıcı, `/login` (veya `/signup`) cevabındaki imzalı `token` ile tanınır; socket olaylarındaki `user_id` sadece misafir adıdır ve kayıtlı bir kullanıcının adı misafir olarak kullanılamaz. ELO yalnızca iki oyuncu da token ile doğrulanmışsa değişir. Misafir, kopmadan sonra koltuğunu sunucunun verdiği `rejoin_token` ile geri alır.
 
 ## 📡 API
 
@@ -213,26 +240,28 @@ CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket
 
 | Endpoint | Method | Açıklama |
 |---|---|---|
-| `/signup` | POST | Kayıt (`201`, `400` doğrulama, `409` alınmış, `503` veritabanı yok) |
-| `/login` | POST | Giriş (`200`, `401`, `503`) |
+| `/signup` | POST | Kayıt (`201` + `token`, `400` doğrulama — şifre en az 8 karakter, `409` alınmış, `429` çok fazla istek, `503` veritabanı yok) |
+| `/login` | POST | Giriş (`200` + `token`, `401`, `429` çok fazla hatalı deneme + `Retry-After`, `503`) |
 | `/user/<username>` | GET | Profil |
 | `/user/<username>/games` | GET | Maç geçmişi (`?limit=`) |
 | `/leaderboard` | GET | Liderlik tablosu (`?limit=` 1–100) |
 | `/active_games` | GET | Lobi |
 | `/health` | GET | Sunucu ve veritabanı durumu |
 | `/play/` | GET | Unity WebGL istemcisi (`/` buraya yönlenir) |
-| `/cleanup` | POST | Eski odaları hemen temizle |
 
 ### Socket.IO
 
 | Olay | Yön | Açıklama |
 |---|---|---|
-| `create_game` / `join_game` / `make_move` / `leave_game` | İstemci → Sunucu | Oda ve oyun işlemleri (`join_game` aynı zamanda yeniden bağlanma) |
+| `create_game` / `join_game` / `make_move` / `leave_game` | İstemci → Sunucu | Oda ve oyun işlemleri (`join_game` aynı zamanda yeniden bağlanma). Kimlik: kayıtlı kullanıcı `token`, misafir `user_id` (+ yeniden bağlanırken `rejoin_token`) gönderir. `leave_game` onay (ack) döner: `{ok: true}` ayrılma kabul edildi, `{ok: false}` oda yok veya gönderen o odada oyuncu değil. Hemen ardından bağlantıyı kapatacak istemci onayı beklemelidir; aksi halde kopma olayı önce işlenirse ayrılma `disconnect` olarak görünebilir |
+| `game_created` / `game_joined` → `rejoin_token` | Sunucu → Oyuncu | Koltuk anahtarı; misafir yeniden bağlanırken gönderir |
 | `latency_ping` | İstemci → Sunucu | Gecikme ölçümü (`latency_pong` döner) |
-| `game_created` / `game_joined` / `game_start` | Sunucu → İstemci | Oda durumu |
+| `game_created` / `game_joined` / `game_start` | Sunucu → İstemci | Oda durumu. `game_start`, geri katılan oyuncunun `game_joined`'ı ve seyirciye giden `game_joined` `move_time` ile `turn_seconds_left` (hamle süresi kapalıysa `null`) taşır; oyuncu veya seyirci bitmiş bir odaya katılırsa `game_joined` ayrıca `result` (game_over yükü) içerir |
 | `move_made` | Sunucu → Oda | Hamle sonrası tam oyun durumu |
-| `game_over` | Sunucu → Oda | Kazanan, neden (`normal`/`forfeit`), ELO değişimleri ve yeni puanlar |
+| `game_over` | Sunucu → Oda | Kazanan, neden (`normal`/`forfeit`), hükmen ayrıntısı `detail` (`timeout`/`disconnect`/`leave`), ELO değişimleri ve yeni puanlar |
 | `elo_update` | Sunucu → Oyuncu | Oyuncunun yeni ELO'su |
+| `rematch_request` | İstemci → Sunucu | Biten oyundan sonra aynı odada rövanş ister; iki oyuncu da isterse ilk hamle sırası değişerek yeni oyun başlar |
+| `rematch_offered` / `rematch_unavailable` / `rematch_started` | Sunucu → Oda | Rövanş teklifi, rakibin ayrılmış olması, yeni oyunun başlaması (`game_no`, boş tahta) |
 | `opponent_disconnected` / `opponent_reconnected` | Sunucu → Oda | Bağlantı durumu |
 | `game_ended` | Sunucu → Oda | Oda zaman aşımıyla kapatıldı |
 | `error` | Sunucu → İstemci | Reddedilen istek (`msg`) |

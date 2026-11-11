@@ -9,15 +9,28 @@ degerler de yuklenir; terminalde ayarlanmis degiskenler her zaman onceliklidir.
 Ornek degerler icin `.env.example` dosyasina bakin.
 
     DATABASE_URL            PostgreSQL baglanti adresi
-    SECRET_KEY              Flask oturum anahtari (bos ise rastgele uretilir)
+    SECRET_KEY              Oturum token'larini imzalar (bos ise rastgele uretilir;
+                            o zaman sunucu yeniden baslayinca herkes tekrar giris yapar)
+    SESSION_MAX_AGE         Oturum token'inin gecerlilik suresi (saniye)
     CONNECT4_HOST / _PORT   Sunucunun dinledigi adres
+    CORS_ALLOWED_ORIGINS    Socket.IO'ya tarayicidan baglanabilecek origin'ler (virgulle
+                            ayrilmis liste veya `*`). Bos ise sadece sunucunun kendi
+                            origin'i (/play); liste verilirse kendi adresinizi de ekleyin
+    LOGIN_MAX_FAILURES      Bir kullanici adi icin LOGIN_LOCKOUT_SECONDS icinde izin
+    LOGIN_LOCKOUT_SECONDS   verilen hatali giris sayisi; asilirsa /login 429 dondurur
+    AUTH_IP_MAX_REQUESTS    Tek IP'den AUTH_IP_WINDOW_SECONDS icinde kabul edilen
+    AUTH_IP_WINDOW_SECONDS  /login + /signup istegi (ngrok/proxy arkasinda herkes ayni
+                            IP'dir, bu yuzden genis tutulur). 0 = sinir kapali
+    MOVE_TIME_SECONDS       Hamle basina sunucu tarafli sure (saniye); dolarsa sira
+                            sendeki oyuncu hukmen kaybeder. 0 = sure siniri yok
+    MOVE_TIME_GRACE_SECONDS Gecikme/animasyon payi: sure bu kadar saniye ek tolerans gorur
     CONNECT4_SERVER         Istemcinin baglanacagi sunucu adresi
     LOG_LEVEL               DEBUG, INFO, WARNING, ERROR
 """
 
 import logging
 import os
-from typing import Dict
+from typing import Dict, List, Optional, Union
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_FILE = os.path.join(PROJECT_ROOT, '.env')
@@ -59,10 +72,23 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def parse_cors_origins(value: Optional[str]) -> Union[None, str, List[str]]:
+    """
+    CORS_ALLOWED_ORIGINS degerini flask-socketio'nun bekledigi bicime cevirir:
+    bos -> None (sadece ayni origin), `*` -> '*' (herkes), aksi halde origin listesi.
+    """
+    origins = [o.strip().rstrip('/') for o in (value or '').split(',') if o.strip()]
+    if not origins:
+        return None
+    return '*' if '*' in origins else origins
+
+
 # --- Sunucu ---
 SERVER_HOST = os.environ.get("CONNECT4_HOST", "0.0.0.0")
 SERVER_PORT = _env_int("CONNECT4_PORT", 5000)
 SECRET_KEY = os.environ.get("SECRET_KEY") or os.urandom(24).hex()
+# Origin basligi gondermeyen istemciler (pygame, Unity Editor) bundan etkilenmez
+CORS_ALLOWED_ORIGINS = parse_cors_origins(os.environ.get("CORS_ALLOWED_ORIGINS"))
 
 # Oda temizligi (saniye)
 WAITING_TIMEOUT = _env_int("WAITING_TIMEOUT", 300)      # Rakip bekleyen oda
@@ -73,6 +99,12 @@ CLEANUP_INTERVAL = _env_int("CLEANUP_INTERVAL", 60)
 # Baglantisi kopan oyuncunun geri donmesi icin taninan sure (NFR-08)
 RECONNECT_GRACE_SECONDS = _env_int("RECONNECT_GRACE_SECONDS", 30)
 
+# Hamle suresi (0 = kapali); sunucu hamleyi son tarihten sonra MOVE_TIME_GRACE_SECONDS
+# kadar tolere eder (ag gecikmesi + istemci animasyonu)
+# Varsayilan kapali: istemciler geri sayimi gostermeden acilmamali
+MOVE_TIME_SECONDS = _env_int("MOVE_TIME_SECONDS", 0)
+MOVE_TIME_GRACE_SECONDS = _env_int("MOVE_TIME_GRACE_SECONDS", 2)
+
 # --- ELO ---
 ELO_K_FACTOR = _env_int("ELO_K_FACTOR", 30)
 ELO_MIN_CHANGE = _env_int("ELO_MIN_CHANGE", 10)
@@ -81,9 +113,17 @@ DEFAULT_RATING = 1200
 # --- Kimlik dogrulama ---
 USERNAME_MIN_LENGTH = 3
 USERNAME_MAX_LENGTH = 20
-PASSWORD_MIN_LENGTH = 3
+PASSWORD_MIN_LENGTH = 8      # Sadece kayitta uygulanir; eski kisa sifreler giris yapabilir
 PASSWORD_MAX_LENGTH = 128
+GUEST_NAME_MAX_LENGTH = USERNAME_MAX_LENGTH + 20
 PBKDF2_ITERATIONS = _env_int("PBKDF2_ITERATIONS", 200_000)
+SESSION_MAX_AGE = _env_int("SESSION_MAX_AGE", 7 * 24 * 3600)
+
+# Giris/kayit sinirlari (0 = kapali)
+LOGIN_MAX_FAILURES = _env_int("LOGIN_MAX_FAILURES", 5)
+LOGIN_LOCKOUT_SECONDS = _env_int("LOGIN_LOCKOUT_SECONDS", 300)
+AUTH_IP_MAX_REQUESTS = _env_int("AUTH_IP_MAX_REQUESTS", 300)
+AUTH_IP_WINDOW_SECONDS = _env_int("AUTH_IP_WINDOW_SECONDS", 60)
 
 # --- Veritabani ---
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost/connect4")
@@ -91,6 +131,8 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost/c
 # havuz sabit boyutludur (min = max). Havuz doluysa istek bos baglanti bekler.
 DB_POOL_SIZE = _env_int("DB_POOL_SIZE", 20)
 DB_POOL_TIMEOUT = _env_int("DB_POOL_TIMEOUT", 10)
+# Bu kadar saniyedir kullanilmayan baglanti, kullanilmadan once yoklanir
+DB_PING_AFTER_SECONDS = _env_int("DB_PING_AFTER_SECONDS", 30)
 
 # --- Unity WebGL istemcisi (sunucu /play adresinden sunar) ---
 WEB_BUILD_DIR = os.environ.get("CONNECT4_WEB_BUILD", os.path.join(PROJECT_ROOT, 'unity', 'Build', 'WebGL'))

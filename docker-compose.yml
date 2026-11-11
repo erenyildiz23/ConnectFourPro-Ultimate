@@ -1,0 +1,50 @@
+# =============================================================================
+# Connect Four Pro - sunucu + PostgreSQL
+# =============================================================================
+#   docker compose up --build -d       http://localhost:5000/health
+#
+# SECRET_KEY zorunludur (oturum token'lari bununla imzalanir). Proje kokundeki
+# .env dosyasindan veya ortamdan okunur; yoksa compose hata verip durur.
+# Ayrintilar: docs/KURULUM.md bolum 12.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-connect4}
+      POSTGRES_DB: connect4
+    volumes:
+      - connect4-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d connect4"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Port disariya acilmaz; veritabanina yalnizca server servisi ulasir.
+
+  server:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Sifrede @ : / # varsa URL kodlamasiyla yazilmalidir (bkz. KURULUM.md bolum 5)
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-connect4}@db:5432/connect4
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY ayarlanmali (.env dosyasina SECRET_KEY=uzun-rastgele-bir-deger yazin)}
+      # Bos: yalnizca sunucunun kendi origin'i (/play). Ters vekil arkasinda bkz. KURULUM.md bolum 12
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      RECONNECT_GRACE_SECONDS: ${RECONNECT_GRACE_SECONDS:-30}
+      MOVE_TIME_SECONDS: ${MOVE_TIME_SECONDS:-0}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-100}
+    ports:
+      - "${CONNECT4_PORT:-5000}:5000"
+    volumes:
+      # Unity WebGL build'i (istege bagli). Klasor yoksa Docker bos olusturur ve /play/ 404 doner.
+      - ./unity/Build/WebGL:/app/unity/Build/WebGL:ro
+
+volumes:
+  connect4-db:

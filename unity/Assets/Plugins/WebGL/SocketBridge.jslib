@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
       window.cf4Socket.offAny();
       window.cf4Socket.disconnect();
     }
-    var socket = url ? io(url, { reconnectionAttempts: 5 }) : io({ reconnectionAttempts: 5 });
+    var socket = url ? io(url, { reconnectionAttempts: 12 }) : io({ reconnectionAttempts: 12 });
     window.cf4Socket = socket;
     var current = function () { return window.cf4Socket === socket; };
 
@@ -73,7 +73,7 @@ mergeInto(LibraryManager.library, {
     return buffer;
   },
 
-  // ?server=http://... sorgu parametresi (baska sunucuya baglanmak icin)
+  // ?server=http://... sorgu parametresi; kabul edilip edilmeyecegine ServerConfig.cs karar verir
   CF4_QueryParam: function (namePtr) {
     var name = UTF8ToString(namePtr);
     var value = '';
