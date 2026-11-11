@@ -248,6 +248,28 @@ class TestPlayVsAI:
         assert g.game.move_history == [] and g.pending_ai_move is None
 
 
+def start_online_match(make_gui):
+    """alice (kirmizi) odayi kurar, bob katilir; iki istemci de oyunda."""
+    g1, g2 = make_gui(), make_gui()
+    register(g1, "alice")
+    register(g2, "bob")
+
+    # UC-06: oda olustur
+    g1.handle_button_click('LOBBY')
+    g1.handle_button_click('CREATE')
+    pump([g1], lambda: g1.state == "WAITING" and g1.room_id)
+    room = g1.room_id
+
+    # UC-07: lobide odayi gor, UC-08: katil
+    g2.handle_button_click('LOBBY')
+    pump([g1, g2], lambda: any(x['room_id'] == room for x in g2.active_games))
+    g2.handle_button_click(f'JOIN_{room}')
+    pump([g1, g2], lambda: g1.state == g2.state == "PLAYING_ONLINE")
+    assert g1.opponent_name == "bob" and g2.opponent_name == "alice"
+    assert g1.my_piece == 1 and g2.my_piece == 2
+    return g1, g2, room
+
+
 # =============================================================================
 # UC-06..UC-10, UC-12, UC-13, UC-16: Online oyun (iki istemci + seyirci)
 # =============================================================================
@@ -255,24 +277,7 @@ class TestPlayVsAI:
 @pytest.mark.db
 class TestOnlineUseCases:
     def _start_online_match(self, make_gui):
-        g1, g2 = make_gui(), make_gui()
-        register(g1, "alice")
-        register(g2, "bob")
-
-        # UC-06: oda olustur
-        g1.handle_button_click('LOBBY')
-        g1.handle_button_click('CREATE')
-        pump([g1], lambda: g1.state == "WAITING" and g1.room_id)
-        room = g1.room_id
-
-        # UC-07: lobide odayi gor, UC-08: katil
-        g2.handle_button_click('LOBBY')
-        pump([g1, g2], lambda: any(x['room_id'] == room for x in g2.active_games))
-        g2.handle_button_click(f'JOIN_{room}')
-        pump([g1, g2], lambda: g1.state == g2.state == "PLAYING_ONLINE")
-        assert g1.opponent_name == "bob" and g2.opponent_name == "alice"
-        assert g1.my_piece == 1 and g2.my_piece == 2
-        return g1, g2, room
+        return start_online_match(make_gui)
 
     def test_uc09_uc13_uc16_full_online_match(self, make_gui, database, monkeypatch):
         import gui_app
@@ -350,7 +355,9 @@ class TestOnlineUseCases:
         # Rakip kalan sureyi geri sayimla gorur
         pump([g1, g2], lambda: "baglantisi koptu! 2 sn" in g2.status_text)
         pump([g1, g2], lambda: "baglantisi koptu! 1 sn" in g2.status_text)
-        pump([g1, g2], lambda: "terk etti" in g2.status_text)
+        pump([g1, g2], lambda: "Kazandin" in g2.status_text)
+        # Sunucu 'detail': 'disconnect' gonderir: kopma, bilerek ayrilmaktan ayri anlatilir
+        assert g2.status_text.startswith("Rakibin baglantisi koptu - Kazandin!")
         assert g2.opponent_deadline is None and g2.result_headline()[0] == "KAZANDIN!"
 
         g1.handle_button_click('BACK')
@@ -513,3 +520,112 @@ def test_live_server_uses_real_websocket(live_server_url):
         assert client.transport() == 'websocket'
     finally:
         client.disconnect()
+
+
+# =============================================================================
+# Rovans, hamle suresi, bitmis oyuna donus (canli sunucu)
+# =============================================================================
+
+P1_VERTICAL_WIN = [0, 1, 0, 1, 0, 1, 0]
+
+
+def play_to_end(g1, g2, others=()):
+    """alice (P1) dikeyde kazanir; iki oyuncu da sonucu (ELO dahil) gorur."""
+    for i, col in enumerate(P1_VERTICAL_WIN):
+        mover, other = (g1, g2) if i % 2 == 0 else (g2, g1)
+        play_turn(mover, [other, *others], col)
+    pump([g1, g2, *others], lambda: "ELO" in g1.status_text and "ELO" in g2.status_text)
+
+
+@pytest.mark.db
+class TestRematchLive:
+    def test_rematch_swaps_seats_and_resets_all_clients(self, make_gui, database, monkeypatch):
+        import gui_app
+        monkeypatch.setattr(gui_app, "ANALYSIS_DEPTH", 2)
+        g1, g2, room = start_online_match(make_gui)
+        s = make_gui()
+        s.handle_button_click('GUEST')
+        s.handle_button_click('LOBBY')
+        pump([g1, g2, s], lambda: any(x['room_id'] == room and x['status'] == 'PLAYING' for x in s.active_games))
+        s.handle_button_click(f'SPECTATE_{room}')
+        pump([g1, g2, s], lambda: s.state == "SPECTATING" and s.spectate_names[0] == "alice")
+        play_to_end(g1, g2, [s])
+        assert g1.rematch_button_visible() and not s.rematch_button_visible()
+
+        press(g2, pygame.K_r, 'r')                                        # klavyeyle
+        pump([g1, g2], lambda: g1.rematch_state == 'offered' and g2.rematch_state == 'requested')
+        assert g1.status_text == "Rakip rovans istiyor"
+        assert g2.status_text == "Rovans istendi, rakip bekleniyor"
+        g1.handle_button_click('REMATCH')                                 # karsilik: oyun baslar
+        pump([g1, g2, s], lambda: g1.game_no == g2.game_no == s.game_no == 2
+             and not g1.game.game_over and not g2.game.game_over and not s.game.game_over)
+
+        assert (g1.my_piece, g2.my_piece) == (2, 1)                      # koltuklar yer degistirdi
+        assert (g1.network.my_piece, g2.network.my_piece) == (2, 1)
+        assert g1.network.in_game and g2.network.in_game
+        for g in (g1, g2, s):
+            assert g.game.move_history == [] and g.result_headline() is None and g.last_move_cell() is None
+        assert g1.last_elo_change is None and g2.last_elo_change is None and not g1.animating
+        assert g1.rematch_state == g2.rematch_state == 'idle'
+        assert g1.sfx.played['start'] == g2.sfx.played['start'] == 2
+        assert s.spectate_names[0] == "bob" and s.spectate_names[2] == "alice"
+        assert g2.can_human_move() and not g1.can_human_move()           # bob artik kirmizi ve ilk hamleyi yapar
+
+        play_turn(g2, [g1, s], 3)                                         # yeni oyun gercekten oynanir
+        play_turn(g1, [g2, s], 4)                                         # sunucu yeni tasi kabul eder
+        assert g1.game.move_history == g2.game.move_history == s.game.move_history == [3, 4]
+
+    def test_rematch_unavailable_when_opponent_leaves_the_finished_game(self, make_gui, database):
+        g1, g2, room = start_online_match(make_gui)
+        play_to_end(g1, g2)
+        g1.handle_button_click('BACK')                                    # biten oyundan cikis onay istemez
+        assert g1.state == "LOBBY"
+        pump([g2], lambda: g2.rematch_state == 'unavailable')
+        assert not g2.can_request_rematch() and "rovans yapilamaz" in g2.status_text
+        g2.tick()
+        assert 'REMATCH' in [bid for bid, _ in g2.buttons]               # pasif ama gorunur
+        press(g2, pygame.K_r, 'r')
+        assert g2.rematch_state == 'unavailable'
+        assert g2.game.game_over and g2.result_headline()[0] == "KAYBETTIN"
+
+    def test_move_clock_follows_the_server(self, make_gui, server, database, monkeypatch):
+        monkeypatch.setattr(server.config, 'MOVE_TIME_SECONDS', 30)
+        monkeypatch.setattr(server.config, 'MOVE_TIME_GRACE_SECONDS', 2)
+        g1, g2, room = start_online_match(make_gui)
+        pump([g1, g2], lambda: g1.turn_seconds_left() is not None and g2.turn_seconds_left() is not None)
+        for g in (g1, g2):
+            assert g.move_time == 30 and 27 <= g.turn_seconds_left() <= 30
+        server.GAMES[room]['turn_deadline'] -= 10                         # sunucuda 20 sn kaldi
+        play_turn(g1, [g2], 3)                                            # hamle saati sifirlar
+        pump([g1, g2], lambda: g2.turn_seconds_left() is not None and g2.turn_seconds_left() >= 27)
+        assert g1.turn_seconds_left() >= 27 and g1.game.current_player != g1.my_piece
+
+        server.GAMES[room]['turn_deadline'] -= 100                        # bob (sirasi gelen) suresini asti
+        assert server.enforce_move_deadlines() == 1
+        pump([g1, g2], lambda: g1.game.game_over and g2.game.game_over and "ELO" in g1.status_text
+             and "ELO" in g2.status_text)
+        assert g2.status_text.startswith("Sure doldu - hukmen kaybettin.") and g2.status_tone == 'bad'
+        assert g1.status_text.startswith("Rakibin suresi doldu - Kazandin!") and g1.status_tone == 'good'
+        assert g1.turn_seconds_left() is None and g2.turn_seconds_left() is None
+        assert g1.can_request_rematch() and g2.can_request_rematch()      # zaman asimi sonrasi rovans serbest
+
+    def test_rejoin_into_a_finished_game_shows_the_servers_result_with_elo(self, make_gui, server, database,
+                                                                           monkeypatch):
+        monkeypatch.setattr(server.config, 'RECONNECT_GRACE_SECONDS', 1)
+        g1, g2, room = start_online_match(make_gui)
+        play_turn(g1, [g2], 3)
+        g2.network.sio.reconnection = False                               # gecikmeli, elle geri donecegiz
+        g2.network.sio.eio.ws.close(timeout=0.1)
+        pump([g1, g2], lambda: g2.connection_down)
+        pump([g1, g2], lambda: g1.game.game_over, timeout=15)            # bob donmedi: hukmen (baglanti kopmasi)
+        assert g1.status_text.startswith("Rakibin baglantisi koptu - Kazandin!")
+        assert not g2.game.game_over                                      # bob bunu henuz bilmiyor
+
+        assert g2.network.connect_to_server()                             # in_game: oyuna otomatik geri katilir
+        pump([g1, g2], lambda: g2.game.game_over, timeout=15)
+        assert g2.status_text == "Baglanti kopmasi nedeniyle hukmen kaybettin.  ELO -15 (1185)"
+        assert g2.user_elo == 1185 and g2.last_elo_change == -15 and not g2.connection_down
+        assert g2.result_headline()[0] == "KAYBETTIN" and g2.status_tone == 'bad'
+        assert not g2.network.in_game and g2.can_request_rematch()
+        g2.handle_button_click('REMATCH')                                 # donen oyuncu da rovans isteyebilir
+        pump([g1, g2], lambda: g1.rematch_state == 'offered')

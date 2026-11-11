@@ -29,6 +29,9 @@ _EVENT_HANDLERS = {
     'opponent_disconnected': 'on_opponent_disconnected',
     'opponent_reconnected': 'on_opponent_reconnected',
     'game_ended': 'on_game_ended',
+    'rematch_offered': 'on_rematch_offered',
+    'rematch_unavailable': 'on_rematch_unavailable',
+    'rematch_started': 'on_rematch_started',
     'error': 'on_server_error',
 }
 
@@ -92,6 +95,10 @@ class NetworkManager:
                 self.rejoin_token = data.get('rejoin_token', self.rejoin_token)
             elif event == 'game_over':
                 self.in_game = False
+            elif event == 'game_start' and isinstance(data, dict) and data.get('rematch'):
+                # Rovans: koltuklar yer degistirdi; yeni tasimiz ve oyun yeniden "icinde"
+                self.my_piece = data.get('player_piece', self.my_piece)
+                self.in_game = True
             self._post(getattr(self._handler, method), data or {})
         return forward
 
@@ -138,11 +145,26 @@ class NetworkManager:
         if self.connected and self.room_id:
             self.sio.emit('make_move', {'room_id': self.room_id, 'col': col, 'player_piece': self.my_piece})
 
-    def leave_game(self) -> None:
-        """Oyundan bilerek ayril (aktif oyunda hukmen yenilgi)."""
+    def request_rematch(self) -> bool:
+        """Biten oyunun ardindan ayni rakiple rovans ister; istek gonderildiyse True."""
+        if not (self.connected and self.room_id):
+            return False
+        self.sio.emit('rematch_request', {'room_id': self.room_id})
+        return True
+
+    def leave_game(self, wait: float = 0.0) -> None:
+        """Oyundan bilerek ayril (aktif oyunda hukmen yenilgi).
+
+        wait > 0: sunucunun onayi beklenir. Hemen ardindan baglanti kapatilacaksa gerekli: sunucu
+        olaylari ayri thread'lerde isler, 'leave_game' ile 'disconnect' yarisirsa ayrilma
+        "baglanti koptu" gibi gorunur (rakip yanlis metin gorur).
+        """
         if self.connected and self.room_id:
             try:
-                self.sio.emit('leave_game', {'room_id': self.room_id})
+                if wait > 0:
+                    self.sio.call('leave_game', {'room_id': self.room_id}, timeout=wait)
+                else:
+                    self.sio.emit('leave_game', {'room_id': self.room_id})
             except Exception:
                 pass
         self.in_game = False

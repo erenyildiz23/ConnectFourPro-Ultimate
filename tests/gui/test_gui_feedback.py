@@ -4,6 +4,9 @@ son hamle / inis isaretleri, sonuc basligi, sira vurgusu, klavye.
 Cizimi suren durum ve geometri dogrulanir; piksel okunmaz.
 """
 
+import copy
+import time
+
 import pytest
 
 pygame = pytest.importorskip("pygame")
@@ -666,3 +669,717 @@ class TestSfxHooks:
             out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, timeout=60)
             assert out.returncode == 0, out.stderr
             assert out.stdout.strip().splitlines()[-1] == expected
+
+
+# =============================================================================
+# Yardimcilar: arka plan AI'sini bekleyen dongu
+# =============================================================================
+
+def settle(g, condition, timeout=15.0):
+    """Kosul saglanana kadar kareleri isletir (AI thread'i duvar saatiyle calisir)."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        g.tick()
+        if condition():
+            return
+        time.sleep(0.005)
+    raise AssertionError(f"zaman asimi: {g.state} {g.status_text!r} {g.game.move_history}")
+
+
+def human_move(g, col):
+    """Insan hamlesi + AI cevabi tamamlanana kadar bekler."""
+    before = len(g.game.move_history)
+    g.handle_click(col)
+    settle(g, lambda: len(g.game.move_history) >= before + 2 and not g.animating and not g.ai_thinking)
+
+
+# =============================================================================
+# B1: Kolay seviyesinin hata politikasi (arama sonrasi, deterministik)
+# =============================================================================
+
+CYCLE = [c % 7 for c in range(20)]        # Kazanani olmayan 20 hamlelik gecerli dizi
+
+
+class TestKolaySlip:
+    def test_fmix32_matches_murmur3_finalizer(self):
+        assert gui_app.fmix32(0) == 0 and gui_app.fmix32(1) == 0x514E28B7
+        assert gui_app.fmix32(2 ** 32 + 1) == 0x514E28B7        # 32 bite kirpilir
+
+    def test_only_kolay_slips_and_rate_is_forty_percent(self):
+        game = ConnectFourGame.from_moves(CYCLE[:3])
+        assert gui_app.SLIP_PERMILLE == {2: 400}
+        for depth in (1, 3, 4, 8):
+            assert all(gui_app.slip_move(game, depth, seed) is None for seed in range(300))
+        slips = sum(gui_app.slip_move(game, 2, seed) is not None for seed in range(2000))
+        assert 0.36 * 2000 <= slips <= 0.44 * 2000
+
+    def test_slips_are_valid_spread_and_a_pure_function_of_seed_and_ply(self):
+        game = ConnectFourGame.from_moves([0] * 6 + [1] * 6)               # sutun 0 ve 1 dolu
+        cols = set()
+        for seed in range(400):
+            col = gui_app.slip_move(game, 2, seed)
+            assert col == gui_app.slip_move(game.clone(), 2, seed)         # ayni (tohum, hamle sirasi) -> ayni karar
+            if col is not None:
+                assert game.is_valid_location(col)
+                cols.add(col)
+        assert cols == {2, 3, 4, 5, 6}
+
+    def test_slips_do_not_come_in_long_streaks(self):
+        """Dogrusal tohumlu uretecler 9 hamle ust uste hata sonra 13 hamle hatasiz verirdi."""
+        for seed in (1, 2, 3, 12345, 2 ** 31):
+            pattern = [gui_app.slip_move(ConnectFourGame.from_moves(CYCLE[:ply]), 2, seed) is not None
+                       for ply in range(20)]
+            longest = run = 0
+            for slipped in pattern:
+                run = run + 1 if slipped else 0
+                longest = max(longest, run)
+            assert 2 <= sum(pattern) <= 14 and longest <= 5, (seed, pattern)
+
+    def test_never_skips_its_own_immediate_win(self):
+        game = ConnectFourGame.from_moves([0, 6, 1, 6, 2, 6, 5])           # sari (AI) sira onda, 6. sutunda kazanir
+        assert game.current_player == PLAYER2_PIECE
+        assert all(gui_app.slip_move(game, 2, seed) is None for seed in range(500))
+        # Kontrol: ayni tohumlar kazanc yokken hata yapar
+        quiet = ConnectFourGame.from_moves([0, 6, 1, 6, 2, 3, 5])
+        assert any(gui_app.slip_move(quiet, 2, seed) is not None for seed in range(50))
+
+    def test_finished_game_has_no_slip(self):
+        assert gui_app.slip_move(ConnectFourGame.from_moves(P1_WIN), 2, 0) is None
+
+    def test_ai_reply_applies_the_slip_after_the_search(self, gui):
+        """Gercek AI thread'i: Kolay'da cevap slip_move'un sutunudur, kitap hamlesi (3) degil."""
+        slip_seed = next(s for s in range(500) if gui_app.slip_move(ConnectFourGame.from_moves([0]), 2, s) not in (None, 3))
+        calm_seed = next(s for s in range(500) if gui_app.slip_move(ConnectFourGame.from_moves([0]), 2, s) is None)
+        gui.start_ai_game(2, ai_starts=False)
+        gui.ai_seed = slip_seed
+        human_move(gui, 0)
+        assert gui.game.move_history == [0, gui_app.slip_move(ConnectFourGame.from_moves([0]), 2, slip_seed)]
+        gui.start_ai_game(2, ai_starts=False)
+        gui.ai_seed = calm_seed
+        human_move(gui, 0)
+        assert gui.game.move_history == [0, 3]
+
+    def test_orta_never_slips_in_the_real_game(self, gui):
+        gui.start_ai_game(4, ai_starts=False)
+        human_move(gui, 0)
+        assert gui.game.move_history == [0, 3]          # kitap hamlesi, hata yok
+
+
+# =============================================================================
+# B2: ilk hamleyi secme ve Yeni Oyun
+# =============================================================================
+
+class TestAIFirstMoveAndNewGame:
+    def test_toggle_on_difficulty_screen_decides_the_starter(self, gui):
+        gui.handle_button_click('AI')
+        gui.tick()
+        assert 'AI_FIRST_TOGGLE' in [bid for bid, _ in gui.buttons]
+        assert not gui.ai_starts_next
+        gui.handle_button_click('AI_FIRST_TOGGLE')
+        assert gui.ai_starts_next
+        gui.handle_button_click('AI_4')
+        assert gui.state == "PLAYING_AI" and gui.ai_starts and gui.game.current_player == PLAYER2_PIECE
+        assert gui.ai_thinking and gui.status_text == "AI dusunuyor..." and not gui.can_human_move()
+        settle(gui, lambda: gui.can_human_move())
+        assert gui.game.move_history == [3] and gui.status_text == "Senin siran!"
+        assert gui.my_piece == PLAYER1_PIECE and gui.human_piece() == PLAYER1_PIECE   # insan hep kirmizi
+
+    def test_human_first_by_default(self, gui):
+        gui.start_ai_game(4)
+        assert not gui.ai_starts and gui.can_human_move() and gui.game.move_history == []
+
+    def test_new_game_button_alternates_the_starter_and_keeps_depth(self, gui):
+        gui.start_ai_game(4, ai_starts=False)
+        human_move(gui, 0)
+        gui.tick()
+        assert 'NEW_AI_GAME' in [bid for bid, _ in gui.buttons]      # oyun sirasinda da gorunur
+        gui.handle_button_click('NEW_AI_GAME')
+        assert gui.state == "PLAYING_AI" and gui.ai.depth == 4 and gui.ai_starts
+        settle(gui, lambda: gui.can_human_move())
+        assert gui.game.move_history == [3]
+        gui.handle_button_click('NEW_AI_GAME')
+        assert not gui.ai_starts and gui.game.move_history == [] and gui.can_human_move()
+
+    def test_new_game_while_disc_falls_leaves_no_stale_move(self, gui):
+        gui.start_ai_game(4, ai_starts=False)
+        gui.handle_click(0)
+        assert gui.animating
+        gui.handle_button_click('NEW_AI_GAME')                       # AI baslar
+        assert not gui.animating and gui.anim_callback is None
+        settle(gui, lambda: gui.can_human_move())
+        for _ in range(60):
+            gui.tick()
+        assert gui.game.move_history == [3]                          # eski tasin geri cagrisi yeni oyuna sizmadi
+
+    def test_new_game_while_ai_thinks_discards_its_old_move(self, gui):
+        gui.start_ai_game(6, ai_starts=False)
+        gui.handle_click(0)
+        settle(gui, lambda: gui.ai_thinking)
+        gui.handle_button_click('NEW_AI_GAME')
+        settle(gui, lambda: gui.can_human_move(), timeout=30)
+        for _ in range(60):
+            gui.tick()
+        assert gui.game.move_history == [3]
+
+
+# =============================================================================
+# B3: Geri Al (yalnizca AI oyununda)
+# =============================================================================
+
+class TestUndo:
+    def test_undo_restores_the_exact_position(self, gui):
+        gui.start_ai_game(4)
+        start = copy.deepcopy(gui.game.to_dict())
+        assert not gui.can_undo()
+        human_move(gui, 3)
+        assert gui.game.move_history == [3, 3] and gui.can_undo()
+        gui.handle_button_click('UNDO')
+        assert gui.game.to_dict() == start and gui.can_human_move()
+        assert gui.status_text == "Hamle geri alindi. Senin siran!"
+        assert gui.ai is not None and gui.ai.depth == 4 and not gui.can_undo()
+
+    def test_undo_takes_back_only_the_last_round(self, gui):
+        gui.start_ai_game(4)
+        human_move(gui, 3)
+        human_move(gui, 1)
+        first_round = gui.game.move_history[:2]
+        gui.undo_ai_move()
+        assert gui.game.move_history == first_round and gui.game.current_player == PLAYER1_PIECE
+
+    def test_refused_while_a_disc_falls_or_ai_thinks(self, gui):
+        gui.start_ai_game(6)
+        human_move(gui, 3)
+        gui.handle_click(1)
+        assert gui.animating and not gui.can_undo()
+        gui.undo_ai_move()
+        assert gui.animating and gui.game.move_history == [3, 3]       # hicbir sey degismedi
+        settle(gui, lambda: gui.ai_thinking)
+        before = list(gui.game.move_history)
+        assert not gui.can_undo()
+        gui.undo_ai_move()
+        assert gui.game.move_history == before and gui.ai_thinking
+        settle(gui, lambda: gui.can_human_move(), timeout=30)
+        assert len(gui.game.move_history) == 4 and gui.can_undo()
+
+    def test_undo_while_ai_reply_is_pending_is_refused(self, gui):
+        gui.start_ai_game(4)
+        gui.handle_click(3)
+        settle(gui, lambda: gui.pending_ai_move is not None or len(gui.game.move_history) == 2)
+        gui.pending_ai_move = 3
+        assert not gui.can_undo()
+        gui.pending_ai_move = None
+
+    def test_undo_after_game_over_reopens_the_game(self, gui):
+        gui.start_ai_game(4)
+        gui.game = ConnectFourGame.from_moves(P1_WIN)                  # insan kazandi
+        assert gui.game.game_over and not gui.can_human_move()
+        gui.handle_game_over()
+        gui.undo_ai_move()
+        assert not gui.game.game_over and gui.game.get_winning_positions() == []
+        assert gui.game.move_history == P1_WIN[:6] and gui.can_human_move()
+        assert gui.result_headline() is None
+        gui.game = ConnectFourGame.from_moves(P2_WIN)                  # AI kazandi: yine insanin sirasina doner
+        gui.undo_ai_move()
+        assert gui.game.move_history == P2_WIN[:6] and gui.game.current_player == PLAYER1_PIECE
+        gui.game = ConnectFourGame.from_moves(P2_WIN)                   # yeniden bitince sonuc sesi tekrar calar
+        gui.handle_game_over()
+        assert gui.sfx.played['win'] == 1 and gui.sfx.played['lose'] == 1
+
+    def test_undo_when_the_ai_started(self, gui):
+        gui.start_ai_game(4, ai_starts=True)
+        settle(gui, lambda: gui.can_human_move())
+        assert gui.game.move_history == [3] and not gui.can_undo()     # henuz insan hamlesi yok
+        human_move(gui, 0)
+        assert len(gui.game.move_history) == 3 and gui.can_undo()
+        gui.undo_ai_move()
+        assert gui.game.move_history == [3] and gui.can_human_move() and gui.ai_starts
+
+    def test_undo_is_not_a_reroll_on_kolay(self, gui):
+        seed = next(s for s in range(500) if gui_app.slip_move(ConnectFourGame.from_moves([0]), 2, s) not in (None, 3))
+        gui.start_ai_game(2, ai_starts=False)
+        gui.ai_seed = seed
+        human_move(gui, 0)
+        reply = gui.game.move_history[1]
+        gui.undo_ai_move()
+        assert gui.ai_seed == seed                                      # tohum geri almayla degismez
+        human_move(gui, 0)
+        assert gui.game.move_history == [0, reply]
+
+    def test_undo_not_available_online_or_for_spectators(self, gui):
+        online(gui, PLAYER1_PIECE, [3, 4])
+        assert not gui.can_undo() and 'UNDO' not in [a[0] for a in gui.action_buttons()]
+        press(gui, pygame.K_u, 'u')
+        assert gui.game.move_history == [3, 4]
+        gui.tick()
+        assert 'UNDO' not in [bid for bid, _ in gui.buttons]
+        gui.handle_button_click('UNDO')
+        assert gui.game.move_history == [3, 4]
+
+    def test_keyboard_u_and_panel_buttons_in_ai_game(self, gui):
+        gui.start_ai_game(4)
+        human_move(gui, 3)
+        gui.tick()
+        assert [bid for bid, _ in gui.buttons] == ['BACK', 'UNDO', 'NEW_AI_GAME']
+        press(gui, pygame.K_u, 'u')
+        assert gui.game.move_history == []
+
+
+# =============================================================================
+# B4: sade zorluk etiketleri ve ilk hamle ipucu
+# =============================================================================
+
+class TestOnboarding:
+    def test_difficulty_labels_are_plain_language_and_ascii(self, gui):
+        gui.handle_button_click('AI')
+        gui.tick()
+        ids = [bid for bid, _ in gui.buttons]
+        assert ids == ['AI_FIRST_TOGGLE', 'AI_2', 'AI_4', 'AI_8', 'BACK']      # kimlikler ve derinlikler ayni
+        labels = gui_app.DIFFICULTY_LABELS
+        assert set(labels) == set(gui_app.AI_DEPTHS) == {'Kolay', 'Orta', 'Zor'}
+        for text in list(labels.values()) + [gui_app.COACH_TEXT]:
+            assert text.isascii() and "(D" not in text
+        widths = {bid: rect.width for bid, rect in gui.buttons if bid.startswith('AI_') and bid != 'AI_FIRST_TOGGLE'}
+        assert set(widths.values()) == {420}
+
+    @pytest.mark.parametrize("depth, name", [(2, "Kolay"), (4, "Orta"), (8, "Zor")])
+    def test_opponent_label_uses_the_level_name(self, gui, depth, name):
+        gui.start_ai_game(depth)
+        assert gui._player_labels()[2] == f"AI - {name}"
+
+    def test_coaching_line_on_empty_board_then_turn_messages(self, gui):
+        gui.start_ai_game(4)
+        assert gui.status_text == gui_app.COACH_TEXT and "Kirmizi sensin" in gui.status_text
+        assert gui.status_color() == COLORS['green']                       # sira sende
+        human_move(gui, 3)
+        assert gui.status_text == "Senin siran!"
+
+
+# =============================================================================
+# B5: isabet olcusu: esit iyi hamleler ve kitap hamlesi hata sayilmaz
+# =============================================================================
+
+class TestAccuracyMetric:
+    def test_every_equal_winning_column_counts(self):
+        game = ConnectFourGame.from_moves([2, 2, 3, 3, 4, 4])              # 1 ve 5 sutunlari kazanir
+        assert gui_app.best_columns(game, depth=2) == [1, 5]
+
+    def test_book_move_counts_even_when_search_prefers_another(self):
+        game = ConnectFourGame.from_moves([1])                              # kitap 2, D8 yalnizca 3 der
+        best = gui_app.best_columns(game, depth=gui_app.ANALYSIS_DEPTH)
+        assert 2 in best and 3 in best
+
+    def test_single_forced_block_and_cancel(self):
+        game = ConnectFourGame.from_moves([0, 6, 1, 6, 2])                  # sari sirada: kirmizinin 3'teki dortlusu engellenmeli
+        assert gui_app.best_columns(game, depth=2) == [3]                   # zorunlu blok tek hamle
+        import threading
+        stop = threading.Event()
+        stop.set()
+        assert gui_app.best_columns(ConnectFourGame(), depth=2, cancel_event=stop) is None
+
+    def test_search_result_is_still_one_of_the_columns(self):
+        for moves in ([], [3], [3, 3, 2], [0, 1, 2, 3, 4]):
+            game = ConnectFourGame.from_moves(moves)
+            best = gui_app.best_columns(game, depth=3)
+            chosen = gui_app.AIEngine(game.current_player, depth=3, use_opening_book=False).find_best_move(game)
+            assert chosen in best and best == sorted(best) and all(game.is_valid_location(c) for c in best)
+
+    def test_analysis_loop_marks_equivalent_and_book_moves_as_best(self, gui):
+        gui.state, gui.my_piece = "PLAYING_ONLINE", PLAYER1_PIECE
+        win = ConnectFourGame.from_moves([2, 2, 3, 3, 4, 4])
+        book = ConnectFourGame.from_moves([1])
+        gui.start_background_analysis(win, 6, PLAYER1_PIECE, 5)             # 5 de kazandirir (motor 1 doner)
+        gui.start_background_analysis(book, 1, PLAYER2_PIECE, 2)            # kitap hamlesi
+        gui.start_background_analysis(book, 1, PLAYER2_PIECE, 0)            # kotu hamle
+        deadline = time.time() + 30
+        while len(gui.analysis_data) < 3 and time.time() < deadline:
+            time.sleep(0.02)
+        by_col = {(d['move_num'], d['actual_col']): d for d in gui.analysis_data}
+        assert by_col[(6, 5)]['was_best'] and 5 in by_col[(6, 5)]['best_cols']
+        assert by_col[(1, 2)]['was_best'] and not by_col[(1, 0)]['was_best']
+        assert all(d['best_col'] in d['best_cols'] for d in gui.analysis_data)
+        gui.my_piece = PLAYER1_PIECE
+        assert gui.get_analysis_summary()['my_accuracy'] == 100.0
+
+
+# =============================================================================
+# A1: rovans (sunucu olaylari elle verilir; canli akis test_gui_use_cases.py'de)
+# =============================================================================
+
+class TestRematchClient:
+    @pytest.fixture
+    def finished(self, gui):
+        online(gui, PLAYER1_PIECE, P1_WIN)
+        gui.on_game_over_network({'winner': 1, 'reason': 'normal', 'elo_changes': {'p1': 15, 'p2': -15},
+                                  'new_ratings': {'p1': 1215, 'p2': 1185}})
+        gui.sent = []
+        gui.network.request_rematch = lambda: gui.sent.append(1) or True
+        return gui
+
+    def test_button_and_key_only_after_an_online_game_ended(self, gui):
+        online(gui, PLAYER1_PIECE, [3])
+        gui.tick()
+        assert 'REMATCH' not in [bid for bid, _ in gui.buttons] and not gui.can_request_rematch()
+        online(gui, PLAYER1_PIECE, P1_WIN)
+        gui.tick()
+        assert 'REMATCH' in [bid for bid, _ in gui.buttons] and gui.can_request_rematch()
+
+    def test_no_button_for_spectators_or_ai_games(self, gui):
+        online(gui, 0, P1_WIN)
+        gui.state, gui.is_spectator = "SPECTATING", True
+        gui.tick()
+        assert 'REMATCH' not in [bid for bid, _ in gui.buttons] and not gui.can_request_rematch()
+        gui.start_ai_game(2)
+        gui.game = ConnectFourGame.from_moves(P1_WIN)
+        gui.tick()
+        assert 'REMATCH' not in [bid for bid, _ in gui.buttons] and not gui.can_request_rematch()
+        press(gui, pygame.K_r, 'r')
+        assert gui.state == "PLAYING_AI"
+
+    def test_button_and_key_send_one_request(self, finished):
+        g = finished
+        g.handle_button_click('REMATCH')
+        assert g.sent == [1] and g.rematch_state == 'requested'
+        assert g.status_text == "Rovans istendi, rakip bekleniyor"
+        g.handle_button_click('REMATCH')                          # ikinci tiklama yeni istek gondermez
+        press(g, pygame.K_r, 'r')
+        assert g.sent == [1]
+        g.tick()
+        assert not g.can_request_rematch()                        # dugme pasif ama yerinde
+
+    def test_key_r_requests_rematch(self, finished):
+        press(finished, pygame.K_r, 'r')
+        assert finished.sent == [1]
+
+    def test_offer_texts_follow_from_piece(self, finished):
+        g = finished
+        g.on_rematch_offered({'room_id': 'AB12C', 'from_piece': PLAYER2_PIECE})
+        assert g.rematch_state == 'offered' and g.status_text == "Rakip rovans istiyor"
+        assert g.can_request_rematch()
+        g.handle_button_click('REMATCH')                          # karsilik verince baslar
+        assert g.sent == [1] and g.status_text == "Rovans baslatiliyor..."
+        g.on_rematch_offered({'room_id': 'AB12C', 'from_piece': PLAYER1_PIECE})
+        assert g.rematch_state == 'requested' and g.status_text == "Rovans istendi, rakip bekleniyor"
+
+    def test_unavailable_disables_button_and_keeps_result(self, finished):
+        g = finished
+        g.on_rematch_unavailable({'room_id': 'AB12C', 'reason': 'opponent_left'})
+        assert g.rematch_state == 'unavailable' and not g.can_request_rematch()
+        assert g.status_text == "Kazandin!  ELO +15 (1215)  |  Rakip ayrildi, rovans yapilamaz"
+        g.tick()
+        assert 'REMATCH' in [bid for bid, _ in g.buttons]         # gorunur ama pasif
+        g.handle_button_click('REMATCH')
+        press(g, pygame.K_r, 'r')
+        assert g.sent == []
+
+    def test_opponent_leaving_the_finished_game_disables_it_at_once(self, gui):
+        online(gui, PLAYER2_PIECE, [3])
+        gui.on_game_over_network({'winner': 2, 'reason': 'forfeit', 'detail': 'leave'})
+        assert gui.rematch_state == 'unavailable' and not gui.can_request_rematch()
+
+    def test_offer_arriving_before_the_final_animation_survives_it(self, gui):
+        online(gui, PLAYER2_PIECE, P1_WIN[:-1])
+        gui.on_game_over_network({'winner': 1, 'reason': 'normal'})
+        gui.on_rematch_offered({'from_piece': PLAYER1_PIECE})
+        gui.game = ConnectFourGame.from_moves(P1_WIN)
+        gui.handle_game_over()
+        assert gui.status_text == "Rakip rovans istiyor"
+
+    def test_rematch_game_start_resets_everything_and_swaps_seats(self, gui):
+        online(gui, PLAYER1_PIECE, P1_WIN)
+        gui.network.my_piece, gui.network.in_game = PLAYER1_PIECE, False
+        gui.on_game_over_network({'winner': 1, 'reason': 'normal', 'elo_changes': {'p1': 15, 'p2': -15},
+                                  'new_ratings': {'p1': 1215, 'p2': 1185}})
+        gui.rematch_state = 'requested'
+        gui.animating, gui.anim_callback = True, lambda: pytest.fail("eski animasyon yeni oyuna sizdi")
+        assert gui.last_elo_change == 15 and gui.sfx.played['win'] == 1
+        gui.on_game_start({'rematch': True, 'game_no': 2, 'player_piece': PLAYER2_PIECE, 'opponent_name': 'bob',
+                           'opponent_elo': 1185, 'move_time': 30, 'turn_seconds_left': 30})
+        assert gui.my_piece == PLAYER2_PIECE and gui.network.my_piece == PLAYER2_PIECE
+        assert gui.network.in_game                                  # otomatik geri donus yine calisir
+        assert gui.game.move_history == [] and not gui.game.game_over and not gui.animating
+        assert gui.result_headline() is None and gui.last_move_cell() is None
+        assert gui.last_elo_change is None and gui.final_status is None and gui.rematch_state == 'idle'
+        assert gui.game_no == 2 and gui.status_text == "Rovans basladi! Rakibin sirasi." and gui.opponent_elo == 1185
+        assert gui.sfx.played['start'] == 1
+        gui._play_result_once(PLAYER1_PIECE)                        # sonuc sesi bayragi sifirlandi
+        assert gui.sfx.played['lose'] == 1
+        assert gui.turn_seconds_left() == 30
+        gui.tick()
+        assert 'REMATCH' not in [bid for bid, _ in gui.buttons]
+
+    def test_new_seat_decides_who_moves_first(self, gui):
+        online(gui, PLAYER2_PIECE, P1_WIN)
+        gui.on_game_start({'rematch': True, 'game_no': 2, 'player_piece': PLAYER1_PIECE})
+        assert gui.can_human_move() and gui.status_text == "Rovans basladi! Senin siran."
+
+    def test_spectator_follows_rematch_started(self, gui):
+        online(gui, 0, P1_WIN)
+        gui.state, gui.is_spectator = "SPECTATING", True
+        gui.on_game_over_network({'winner': 1, 'reason': 'normal'})
+        gui.on_rematch_started({'room_id': 'AB12C', 'game_no': 2, 'p1_info': {'username': 'bob', 'rating': 1185},
+                                'p2_info': {'username': 'alice', 'rating': 1215},
+                                'current_state': ConnectFourGame().to_dict(), 'move_time': 0,
+                                'turn_seconds_left': None})
+        assert gui.game.move_history == [] and gui.result_headline() is None and gui.state == "SPECTATING"
+        assert gui.spectate_names == ('bob', 1185, 'alice', 1215) and gui.game_no == 2
+        assert gui.sfx.played['draw'] == 1
+        gui._play_result_once(PLAYER1_PIECE)
+        assert gui.sfx.played['draw'] == 2                          # sonuc sesi yeni oyun icin yeniden hazir
+
+    def test_players_ignore_the_room_broadcast_except_for_the_clock(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_rematch_started({'game_no': 2, 'current_state': ConnectFourGame().to_dict(),
+                                'move_time': 30, 'turn_seconds_left': 20})
+        assert gui.game.move_history == [] and gui.turn_seconds_left() == 20 and not gui.is_spectator
+
+    def test_rejoin_into_a_newer_game_resets_per_game_state(self, gui):
+        online(gui, PLAYER1_PIECE, P1_WIN)
+        gui.on_game_over_network({'winner': 1, 'reason': 'normal', 'elo_changes': {'p1': 15, 'p2': -15},
+                                  'new_ratings': {'p1': 1215, 'p2': 1185}})
+        gui.on_connection_lost(gui.network)
+        state = ConnectFourGame.from_moves([3]).to_dict()
+        gui.on_game_joined({'room_id': 'AB12C', 'player_piece': PLAYER2_PIECE, 'role': 'player', 'rejoined': True,
+                            'current_state': state, 'game_no': 2, 'opponent_info': {'username': 'bob'},
+                            'move_time': 0, 'turn_seconds_left': None})
+        assert gui.my_piece == PLAYER2_PIECE and gui.game.move_history == [3] and gui.game_no == 2
+        assert gui.last_elo_change is None and gui.final_status is None and gui.can_human_move()
+
+
+class TestNetworkRematch:
+    def _manager(self):
+        import network_client
+        posted = []
+        manager = network_client.NetworkManager("http://127.0.0.1:1", lambda fn, *args: posted.append((fn.__name__, args)),
+                                                gui_app.ConnectFourGUI.__new__(gui_app.ConnectFourGUI))
+        return manager, posted
+
+    def test_new_events_are_forwarded(self):
+        manager, posted = self._manager()
+        for event, method in (('rematch_offered', 'on_rematch_offered'), ('rematch_unavailable', 'on_rematch_unavailable'),
+                              ('rematch_started', 'on_rematch_started')):
+            manager.sio.handlers['/'][event]({'room_id': 'AB12C'})
+            assert posted[-1][0] == method
+
+    def test_rematch_game_start_updates_piece_and_rejoin_flag(self):
+        manager, posted = self._manager()
+        manager.my_piece, manager.in_game = PLAYER1_PIECE, False
+        manager.sio.handlers['/']['game_start']({'rematch': True, 'player_piece': PLAYER2_PIECE})
+        assert manager.my_piece == PLAYER2_PIECE and manager.in_game
+        manager.my_piece = PLAYER1_PIECE
+        manager.sio.handlers['/']['game_start']({'msg': 'Oyun Basladi!'})          # ilk oyun: dokunmaz
+        assert manager.my_piece == PLAYER1_PIECE
+
+    def test_request_rematch_emits_only_when_connected(self):
+        manager, _ = self._manager()
+        sent = []
+        manager.sio.emit = lambda *args: sent.append(args)
+        assert not manager.request_rematch() and sent == []
+        manager.connected, manager.room_id = True, "AB12C"
+        assert manager.request_rematch() and sent == [('rematch_request', {'room_id': 'AB12C'})]
+
+
+# =============================================================================
+# A2: hamle suresi geri sayimi
+# =============================================================================
+
+def move_event(moves):
+    """Sunucunun move_made yuku (hamle gecmisi + son sutun)."""
+    data = ConnectFourGame.from_moves(moves).to_dict()
+    data['col'] = moves[-1]
+    return data
+
+
+class TestMoveClock:
+    def test_counts_down_locally_and_never_below_zero(self, gui):
+        online(gui, PLAYER1_PIECE)
+        assert gui.turn_seconds_left() is None                      # sayac yok
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': 30})
+        assert gui.move_time == 30 and gui.turn_seconds_left() == 30
+        gui.turn_deadline -= 4.2
+        assert gui.turn_seconds_left() == 26
+        gui.turn_deadline -= 100
+        assert gui.turn_seconds_left() == 0
+        gui.tick()                                                  # cizim hata vermemeli
+
+    def test_null_means_no_countdown(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': 30})
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': None})
+        assert gui.turn_seconds_left() is None and gui.move_time == 30
+        gui.on_game_start({'move_time': 0, 'turn_seconds_left': None})
+        assert gui.turn_seconds_left() is None and gui.move_time == 0
+
+    def test_old_server_without_fields_has_no_clock(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_game_start({'msg': 'Oyun Basladi!'})
+        gui.on_move_made(move_event([3]))
+        assert gui.turn_seconds_left() is None and gui.move_time == 0
+
+    def test_move_made_resets_the_clock_but_stale_events_do_not(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': 30})
+        gui.turn_deadline -= 12
+        event = move_event([3])
+        event.update(move_time=30, turn_seconds_left=29)
+        gui.on_move_made(event)
+        assert gui.turn_seconds_left() == 29
+        gui.turn_deadline -= 12
+        gui.on_move_made(move_event([3, 4]) | {'move_time': 30, 'turn_seconds_left': 30})
+        gui.on_move_made(event)                                     # gecikmis eski olay saati geri sarmaz
+        assert gui.turn_seconds_left() == 30
+
+    def test_hidden_when_game_is_over(self, gui):
+        online(gui, PLAYER1_PIECE, [3])
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': 30})
+        online(gui, PLAYER1_PIECE, P1_WIN)
+        assert gui.turn_seconds_left() is None
+        gui.tick()
+        online(gui, PLAYER2_PIECE, [3])
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': 30})
+        gui.on_game_over_network({'winner': 1, 'reason': 'forfeit', 'detail': 'timeout'})
+        assert gui.turn_seconds_left() is None and gui.turn_deadline is None
+
+    def test_warning_colour_and_single_sound_only_on_my_last_seconds(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': 30})
+        gui.tick()
+        assert not gui.turn_warning() and gui.sfx.played['warn'] == 0
+        gui.turn_deadline -= 20                                     # 10 sn kaldi
+        gui.tick()
+        gui.tick()
+        assert gui.turn_seconds_left() == 10 and gui.turn_warning() and gui.sfx.played['warn'] == 1
+        gui.turn_deadline -= 5
+        gui.tick()
+        assert gui.sfx.played['warn'] == 1                          # ayni sirada tekrar calmaz
+        gui.game = ConnectFourGame.from_moves([3])                  # kendi hamlem; sunucu yankisi gelir
+        gui.on_move_made(move_event([3]) | {'move_time': 30, 'turn_seconds_left': 4})
+        gui.tick()                                                  # rakibin sirasi: kendi uyarim yok
+        assert not gui.turn_warning() and gui.sfx.played['warn'] == 1
+
+    def test_opponents_last_seconds_do_not_warn_me(self, gui):
+        online(gui, PLAYER2_PIECE)                                  # sira kirmizida (rakip)
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': 3})
+        gui.tick()
+        assert gui.turn_seconds_left() == 3 and not gui.turn_warning() and gui.sfx.played['warn'] == 0
+
+    def test_new_turn_can_warn_again(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': 8})
+        gui.tick()
+        assert gui.sfx.played['warn'] == 1
+        online(gui, PLAYER1_PIECE, [3, 4])
+        gui.on_move_made(move_event([3, 4, 2, 5]) | {'move_time': 30, 'turn_seconds_left': 9})
+        gui.tick()
+        assert gui.sfx.played['warn'] == 2
+
+    def test_spectator_sees_the_clock_without_warning(self, gui):
+        online(gui, 0, [3])
+        gui.state, gui.is_spectator = "SPECTATING", True
+        gui.on_game_joined({'room_id': 'AB12C', 'role': 'spectator', 'player_piece': 0,
+                            'current_state': ConnectFourGame.from_moves([3]).to_dict(),
+                            'move_time': 30, 'turn_seconds_left': 7})
+        gui.tick()
+        assert gui.turn_seconds_left() == 7 and not gui.turn_warning() and gui.sfx.played['warn'] == 0
+
+    def test_rejoin_restores_the_clock(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_connection_lost(gui.network)
+        gui.on_game_joined({'room_id': 'AB12C', 'player_piece': 1, 'role': 'player', 'rejoined': True,
+                            'current_state': ConnectFourGame.from_moves([3, 4]).to_dict(),
+                            'move_time': 30, 'turn_seconds_left': 12, 'game_no': 1,
+                            'opponent_info': {'username': 'bob'}})
+        assert gui.turn_seconds_left() == 12
+
+    def test_clock_pauses_while_opponent_is_away_on_my_turn(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': 25})
+        gui.on_opponent_disconnected({'grace_seconds': 30})
+        assert gui.turn_seconds_left() is None                      # sunucu da saati durdurur
+        gui.on_opponent_reconnected({})
+        assert gui.turn_seconds_left() == 30                        # dondugunde sunucu saati bastan baslatir
+
+    def test_clock_keeps_running_when_the_absent_opponent_is_the_one_to_move(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_game_start({'move_time': 30, 'turn_seconds_left': 25})
+        gui.game = ConnectFourGame.from_moves([3])                  # sira rakipte
+        gui.on_opponent_disconnected({'grace_seconds': 30})
+        assert gui.turn_seconds_left() == 25
+        gui.on_opponent_reconnected({})
+        assert gui.turn_seconds_left() == 25
+
+    def test_warn_tone_exists_in_the_sound_table(self):
+        assert 'warn' in gui_app.SFX_TONES
+
+
+# =============================================================================
+# A3 / A4: hukmen sonucunun nedeni ve rejoin'de sunucunun sonucu
+# =============================================================================
+
+class TestForfeitDetail:
+    @pytest.mark.parametrize("detail, mine, text, tone", [
+        ('timeout', PLAYER2_PIECE, "Sure doldu - hukmen kaybettin.", 'bad'),
+        ('timeout', PLAYER1_PIECE, "Rakibin suresi doldu - Kazandin!", 'good'),
+        ('disconnect', PLAYER2_PIECE, "Baglanti kopmasi nedeniyle hukmen kaybettin.", 'bad'),
+        ('disconnect', PLAYER1_PIECE, "Rakibin baglantisi koptu - Kazandin!", 'good'),
+        ('leave', PLAYER2_PIECE, "Hukmen kaybettin.", 'bad'),
+        ('leave', PLAYER1_PIECE, "Rakip oyunu terk etti - Kazandin!", 'good'),
+        (None, PLAYER2_PIECE, "Hukmen kaybettin.", 'bad'),                  # eski sunucu: bugunku metinler
+        (None, PLAYER1_PIECE, "Rakip oyunu terk etti - Kazandin!", 'good'),
+    ])
+    def test_player_texts(self, gui, detail, mine, text, tone):
+        online(gui, mine, [3])
+        gui.on_game_over_network({'winner': 1, 'reason': 'forfeit', 'detail': detail})
+        assert gui.status_text == text and gui.status_tone == tone
+        assert gui.result_headline()[0] == ("KAZANDIN!" if tone == 'good' else "KAYBETTIN")
+
+    @pytest.mark.parametrize("detail, suffix", [('timeout', " (sure doldu)"), ('disconnect', " (baglanti koptu)"),
+                                                ('leave', " (hukmen)"), (None, " (hukmen)")])
+    def test_spectator_texts(self, gui, detail, suffix):
+        online(gui, 0, [3])
+        gui.state, gui.is_spectator = "SPECTATING", True
+        gui.on_game_over_network({'winner': 1, 'reason': 'forfeit', 'detail': detail})
+        assert gui.status_text == "Kirmizi kazandi!" + suffix
+
+    def test_normal_result_ignores_detail_and_keeps_elo(self, gui):
+        online(gui, PLAYER2_PIECE, P1_WIN)
+        gui.on_game_over_network({'winner': 1, 'reason': 'normal', 'detail': None,
+                                  'elo_changes': {'p1': 15, 'p2': -15}, 'new_ratings': {'p1': 1215, 'p2': 1185}})
+        assert gui.status_text == "Kaybettin.  ELO -15 (1185)"
+
+
+class TestJoinedResult:
+    def _joined(self, mine, result, **extra):
+        data = {'room_id': 'AB12C', 'player_piece': mine, 'role': 'player', 'rejoined': True,
+                'current_state': dict(ConnectFourGame.from_moves([3]).to_dict(), game_over=True,
+                                      winner=PLAYER2_PIECE),
+                'opponent_info': {'username': 'bob'}, 'game_no': 1}
+        if result is not None:
+            data['result'] = result
+        data.update(extra)
+        return data
+
+    def test_server_result_with_elo_is_shown_on_rejoin(self, gui):
+        online(gui, PLAYER1_PIECE, [3])
+        gui.on_connection_lost(gui.network)
+        result = {'winner': 2, 'reason': 'forfeit', 'detail': 'timeout', 'elo_changes': {'p1': -15, 'p2': 15},
+                  'new_ratings': {'p1': 1185, 'p2': 1215}, 'move_count': 1}
+        gui.on_game_joined(self._joined(PLAYER1_PIECE, result))
+        assert gui.status_text == "Sure doldu - hukmen kaybettin.  ELO -15 (1185)" and gui.status_tone == 'bad'
+        assert gui.user_elo == 1185 and gui.last_elo_change == -15
+        assert gui.result_headline() == ("KAYBETTIN", COLORS['red']) and not gui.connection_down
+        assert not gui.network.in_game and gui.sfx.played['lose'] == 1
+
+    def test_without_result_todays_text_stays(self, gui):
+        online(gui, PLAYER1_PIECE, [3])
+        gui.on_connection_lost(gui.network)
+        gui.on_game_joined(self._joined(PLAYER1_PIECE, None))
+        assert gui.status_text == "bob kazandi!" and gui.status_tone == 'bad'
+
+    def test_spectator_joining_a_finished_room_gets_the_result(self, gui):
+        gui.spectate_game = None
+        gui.state, gui.is_spectator = "SPECTATING", True
+        state = dict(ConnectFourGame.from_moves(P1_WIN).to_dict())
+        gui.on_game_joined({'room_id': 'AB12C', 'role': 'spectator', 'player_piece': 0, 'current_state': state,
+                            'p1_info': {'username': 'a'}, 'p2_info': {'username': 'b'}, 'game_no': 1,
+                            'result': {'winner': 1, 'reason': 'normal', 'detail': None}})
+        assert gui.status_text == "Kirmizi kazandi!" and gui.result_headline()[0] == "KIRMIZI KAZANDI"

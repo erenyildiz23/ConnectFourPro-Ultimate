@@ -17,7 +17,7 @@ Kullanim:
     (veya CONNECT4_SERVER ortam degiskeni)
     CONNECT4_MUTE=1 python gui_app.py               # sessiz (oyunda M tusu / menuden acilir)
 
-Klavye: 1-7 hamle, Esc geri, M ses ac/kapat.
+Klavye: 1-7 hamle, Esc geri, M ses ac/kapat, R rovans (online, oyun bitince), U geri al (AI).
 """
 
 import os
@@ -43,7 +43,7 @@ from typing import Callable, List, Optional, Tuple  # noqa: E402
 import pygame  # noqa: E402
 
 import config  # noqa: E402
-from ai_vs_human import DIFFICULTY_DEPTHS, AIEngine  # noqa: E402
+from ai_vs_human import DIFFICULTY_DEPTHS, OPENING_BOOK, AIEngine  # noqa: E402
 from game_core import COLS, PLAYER1_PIECE, PLAYER2_PIECE, ROWS, ConnectFourGame  # noqa: E402
 from network_client import NetworkManager  # noqa: E402
 
@@ -78,6 +78,7 @@ RECONNECT_WARN_SECONDS = 20   # Bu kadar surede geri donulemezse oyuncuya secene
 # Kopma sonrasi odaya geri donus isteginin reddedildigini gosteren sunucu hatalari
 REJOIN_REFUSED_ERRORS = ('Oda bulunamadi', 'Yeniden baglanma anahtari gecersiz')
 LOBBY_RETURN_DELAY = 0.5  # Oyundan lobiye donuste ilk liste yenilemesinden once bekleme (sn)
+MOVE_WARN_SECONDS = 10    # Kendi hamle suremizin son bu kadar saniyesinde uyari rengi + bir uyari sesi
 
 
 def resolve_server_url(argv: List[str]) -> str:
@@ -110,6 +111,101 @@ COLORS = {
 }
 
 AI_DEPTHS = DIFFICULTY_DEPTHS
+# Zorluk seviyesi secim ekraninda sade dille aciklamalar (dugme kimligi AI_<derinlik> degismez)
+DIFFICULTY_LABELS = {'Kolay': "Kolay - yeni baslayanlar icin", 'Orta': "Orta - dengeli rakip",
+                     'Zor': "Zor - en guclu rakip"}
+COACH_TEXT = "Dort tasi yatay, dikey ya da capraz diz. Kirmizi sensin - bir sutuna tikla."
+
+# -----------------------------------------------------------------------------
+# Kolay seviyesinin "hata" politikasi. Arama bittikten SONRA istemcide uygulanir;
+# ai_vs_human.py (arama, dugum sayilari) aynen kalir. Unity portu ayni aritmetigi kullanmali.
+# Tum islemler 32 bit isaretsizdir (tasmada mod 2^32):
+#   fmix32(h): h ^= h >> 16; h *= 0x85EBCA6B; h ^= h >> 13; h *= 0xC2B2AE35; h ^= h >> 16
+#   ply = AI hamlesinden onceki hamle sayisi; seed = oyun basina rastgele 32 bit
+#   h1  = fmix32(seed + ply * 0x9E3779B1)        (hata olup olmayacagi)
+#   h2  = fmix32(h1 + 0x9E3779B9)                (hangi sutun)
+#   SLIP_PERMILLE = {2: 400}: derinlik 2'de binde 400 olasilik; diger seviyelerde hata yok
+#   AI'nin hemen kazanan hamlesi varsa asla hata yapmaz (kendi galibiyetini kacirmaz;
+#   rakibin tehdidini kacirabilir). Hata varsa: gecerli sutunlar artan sirada = valid;
+#   sutun = valid[h2 % len(valid)].
+# (seed, ply) saf fonksiyonu: geri alip ayni hamleyi oynamak hatayi yeniden zarlamaz.
+# -----------------------------------------------------------------------------
+SLIP_PERMILLE = {2: 400}
+_M32 = 0xFFFFFFFF
+
+
+def fmix32(h: int) -> int:
+    """Murmur3 son karistirici (avalans): ardisik girdiler birbirinden bagimsiz gorunur."""
+    h &= _M32
+    h ^= h >> 16
+    h = (h * 0x85EBCA6B) & _M32
+    h ^= h >> 13
+    h = (h * 0xC2B2AE35) & _M32
+    h ^= h >> 16
+    return h
+
+
+def slip_move(game: ConnectFourGame, depth: int, seed: int) -> Optional[int]:
+    """AI'nin aramasindan sonra uygulanan hata: hata yapilacaksa sutun, yoksa None."""
+    permille = SLIP_PERMILLE.get(depth, 0)
+    valid = game.get_valid_locations()
+    if not permille or game.game_over or not valid:
+        return None
+    h1 = fmix32(seed + len(game.move_history) * 0x9E3779B1)
+    if h1 % 1000 >= permille:
+        return None
+    me = game.current_player
+    for col in valid:
+        trial = game.clone()
+        trial.make_move(col)
+        if trial.winner == me:
+            return None
+    return valid[fmix32(h1 + 0x9E3779B9) % len(valid)]
+
+
+class _RootRecorder(AIEngine):
+    """Analiz icin: aramayi degistirmeden son tamamlanan derinligin kok skorlarini saklar."""
+
+    root_results: list = []
+    root_best = None
+
+    def _search_root(self, cur, mask, depth, order):
+        results, best = super()._search_root(cur, mask, depth, order)
+        self.root_results, self.root_best = results, best
+        return results, best
+
+
+def best_columns(game: ConnectFourGame, depth: int = 8, cancel_event=None) -> Optional[List[int]]:
+    """Pozisyonda 'isabetli' sayilan sutunlar: derinlik-`depth` aramasinin esit en iyi hamleleri
+    ile (varsa) kusursuz cozucuyle dogrulanmis acilis kitabi hamlesinin birlesimi.
+
+    Motor tek bir sutun dondurur; esit iyi hamleler (or. iki ayri kazanan sutun) hata sayilmasin diye
+    kok skorlarindan tum esit en iyi sutunlar toplanir. Iptal edilirse None.
+    """
+    me = game.current_player
+    engine = _RootRecorder(me, depth=depth, use_opening_book=False)
+    col = engine.find_best_move(game, cancel_event=cancel_event)
+    if col is None:
+        return None
+    best = [c for c, v in engine.root_results if v == engine.root_best] if engine.last_depth_reached else []
+    if not best:
+        # Arama atlandi (taktik kisayol): kazanan sutunlarin hepsi, yoksa zorunlu hamle
+        best = []
+        for c in game.get_valid_locations():
+            trial = game.clone()
+            trial.make_move(c)
+            if trial.winner == me:
+                best.append(c)
+        best = best or [col]
+    book = OPENING_BOOK.get(tuple(game.move_history))
+    if book is not None and book not in best:
+        best.append(book)
+    return sorted(best)
+
+
+def difficulty_name(depth) -> str:
+    """Derinlige karsilik gelen seviye adi (Kolay/Orta/Zor); bilinmiyorsa D<derinlik>."""
+    return next((name for name, d in AI_DEPTHS.items() if d == depth), f"D{depth}")
 
 # Hamle tuslari: 1-7 (ust sira ve sayisal tus takimi) -> sutun 0-6
 COLUMN_KEYS = {base + i: i for base in (pygame.K_1, pygame.K_KP1) for i in range(COLS)}
@@ -129,6 +225,7 @@ SFX_TONES = {
     'lose': (0.35, [(330, 0.160), (262, 0.160)]),
     'draw': (0.30, [(440, 0.100), (440, 0.100)]),
     'invalid': (0.20, [(110, 0.080)]),
+    'warn': (0.25, [(988, 0.060), (988, 0.060)]),   # Hamle suresinin son saniyeleri (Unity ToneSynth'e de eklenmeli)
 }
 SFX_ATTACK = 0.003                 # Dogrusal giris (sn)
 SFX_FADE = 0.005                   # Sonda sifira inis: tik sesi olmasin
@@ -268,6 +365,10 @@ class ConnectFourGUI:
         self.ai_cancel = threading.Event()        # Set edilince calisan arama durur
         self.pending_ai_move: Optional[int] = None
         self.pending_ai_session = -1
+        self.ai_depth = 0                         # Son baslatilan AI oyununun derinligi (Yeni Oyun / Geri Al)
+        self.ai_starts = False                    # Bu oyunda ilk hamleyi AI mi yapti
+        self.ai_starts_next = False               # Zorluk ekranindaki "ilk hamle" secimi
+        self.ai_seed = 0                          # Kolay seviyesinin hata zarlari icin oyun tohumu
 
         # Kullanici
         self.username = ""
@@ -293,6 +394,12 @@ class ConnectFourGUI:
         self.room_closed = False                  # Oda artik yok: hamle gonderilemez
         self.opponent_deadline: Optional[float] = None   # Rakibin geri donmesi icin son an
         self.opponent_remaining = -1              # Durum satirinda gosterilen saniye
+        # Rovans ve hamle suresi (sunucu: rematch_*, move_time / turn_seconds_left)
+        self.rematch_state = 'idle'               # 'idle' | 'requested' | 'offered' | 'unavailable'
+        self.game_no = 1                          # Odadaki kacinci oyun
+        self.move_time = 0                        # Sunucunun hamle suresi (sn, 0 = kapali)
+        self.turn_deadline: Optional[float] = None   # Sirasi gelenin son an (yerel saat); None = sayac yok
+        self.turn_warned = False                  # Bu sira icin uyari sesi calindi
 
         # Ekran verileri (arka planda cekilir)
         self.active_games: list = []
@@ -557,8 +664,7 @@ class ConnectFourGUI:
     def _player_labels(self):
         """(p1_adi, p1_elo, p2_adi, p2_elo) - p2_elo None ise gosterilmez."""
         if self.state == "PLAYING_AI":
-            depth = self.ai.depth if self.ai else '?'
-            return self.username, self.user_elo, f"AI (D{depth})", None
+            return self.username, self.user_elo, f"AI - {difficulty_name(self.ai_depth)}", None
         if self.is_spectator:
             return self.spectate_names[0], self.spectate_names[1], self.spectate_names[2], self.spectate_names[3]
         if self.my_piece == PLAYER1_PIECE:
@@ -569,7 +675,7 @@ class ConnectFourGUI:
 
     def draw_info_panel(self):
         px, py = INFO_PANEL_X, INFO_PANEL_Y
-        pygame.draw.rect(self.screen, COLORS['panel'], (px, py, 250, 360), border_radius=10)
+        pygame.draw.rect(self.screen, COLORS['panel'], (px, py, 250, 440), border_radius=10)
         highlight = self.turn_highlight()
         if highlight:
             pygame.draw.rect(self.screen, highlight[1], highlight[0], border_radius=8)
@@ -586,7 +692,11 @@ class ConnectFourGUI:
             if elo is not None:
                 self.draw_text(f"ELO: {elo}", self.font_tiny, COLORS['gray'], px + 50, y + 15, center=False)
             if self.game.current_player == piece and not self.game.game_over:
-                self.draw_text("< SIRA", self.font_small, COLORS['green'], px + 210, y)
+                left = self.turn_seconds_left()
+                self.draw_text("< SIRA", self.font_small, COLORS['green'], px + 210, y - (8 if left is not None else 0))
+                if left is not None:
+                    color = COLORS['error'] if self.turn_warning() else COLORS['white']
+                    self.draw_text(f"{left} sn", self.font_tiny, color, px + 210, y + 14)
 
         if self.room_id:
             self.draw_text(f"Oda: {self.room_id}", self.font_medium, COLORS['hover'], px + 125, py + 200)
@@ -599,11 +709,43 @@ class ConnectFourGUI:
                            self.font_small, COLORS['white'], px + 125, py + 284)
 
         hint = "Esc: cikis   M: ses" if self.is_spectator else "1-7: hamle   Esc: cikis   M: ses"
-        self.draw_text(hint, self.font_tiny, COLORS['gray'], px + 125, py + 380)
+        self.draw_text(hint, self.font_tiny, COLORS['gray'], px + 125, py + 408)
+        extra = ("U: geri al" if self.state == "PLAYING_AI"
+                 else "R: rovans" if self.rematch_button_visible() else "")
+        if extra:
+            self.draw_text(extra, self.font_tiny, COLORS['gray'], px + 125, py + 426)
 
         label = ("Cikisi Onayla" if time.time() < self.leave_confirm_until
                  else "Lobiye Don" if self.in_online_room() else "Menu")
-        return self.draw_button(label, px + 50, py + 305, 150, 40)
+        buttons = [('BACK', self.draw_button(label, px + 50, py + 305, 150, 40))]
+        actions = self.action_buttons()
+        width = (230 - 10 * (len(actions) - 1)) // max(1, len(actions))
+        for i, (bid, text, enabled) in enumerate(actions):
+            x, y = px + 10 + i * (width + 10), py + 355
+            if enabled:
+                buttons.append((bid, self.draw_button(text, x, y, width, 36)))
+            else:
+                rect = pygame.Rect(x, y, width, 36)        # Pasif: dugme gibi gorunmez, tiklamasi bir sey yapmaz
+                pygame.draw.rect(self.screen, COLORS['input_bg'], rect, border_radius=8)
+                self.draw_text(text, self.font_small, COLORS['gray'], rect.centerx, rect.centery)
+                buttons.append((bid, rect))
+        return buttons
+
+    def action_buttons(self):
+        """Bilgi panelinin alt satirindaki dugmeler: [(kimlik, yazi, etkin mi)]."""
+        if self.state == "PLAYING_AI":
+            return [('UNDO', "Geri Al", self.can_undo()), ('NEW_AI_GAME', "Yeni Oyun", True)]
+        if self.rematch_button_visible():
+            return [('REMATCH', "Rovans", self.can_request_rematch())]
+        return []
+
+    def rematch_button_visible(self) -> bool:
+        """Biten online oyunda oyuncuya rovans dugmesi gosterilir (seyirciye ve AI oyununa degil)."""
+        return self.state == "PLAYING_ONLINE" and self.game.game_over and not self.is_spectator
+
+    def can_request_rematch(self) -> bool:
+        return (self.rematch_button_visible() and not self.room_closed and not self.connection_down
+                and self.rematch_state in ('idle', 'offered'))
 
     def draw_game(self):
         if self.state == "PLAYING_ONLINE" and self.game.game_over:
@@ -617,7 +759,7 @@ class ConnectFourGUI:
             title, title_color = headline     # Sonuc kucuk durum satirinda kalmasin
         self.draw_text(title, self.font_large, title_color, WINDOW_WIDTH // 2, 30)
         self.draw_board()
-        self.buttons = [('BACK', self.draw_info_panel())]
+        self.buttons = self.draw_info_panel()
         pygame.draw.rect(self.screen, COLORS['panel'], (0, WINDOW_HEIGHT - 50, WINDOW_WIDTH, 50))
         self.draw_text(self.status_text, self.font_small, self.status_color(), WINDOW_WIDTH // 2, WINDOW_HEIGHT - 25)
 
@@ -663,10 +805,13 @@ class ConnectFourGUI:
         self.screen.fill(COLORS['bg'])
         self.draw_text("ZORLUK SEVIYESI SEC", self.font_large, COLORS['red'], WINDOW_WIDTH // 2, 80)
         bw, bh, cx = 200, 50, WINDOW_WIDTH // 2 - 100
-        self.buttons = []
-        y = 180
+        self.buttons = [('AI_FIRST_TOGGLE', self.draw_button(
+            "Ilk hamle: AI" if self.ai_starts_next else "Ilk hamle: Sen",
+            WINDOW_WIDTH // 2 - 130, 120, 260, 40, COLORS['panel']))]
+        y = 190
         for name, depth in AI_DEPTHS.items():
-            self.buttons.append((f'AI_{depth}', self.draw_button(f"{name} (D{depth})", cx, y, bw, bh)))
+            self.buttons.append((f'AI_{depth}', self.draw_button(DIFFICULTY_LABELS.get(name, f"{name} (D{depth})"),
+                                                                 WINDOW_WIDTH // 2 - 210, y, 420, bh)))
             y += 70
         self.buttons.append(('BACK', self.draw_button("Geri", cx, y + 30, bw, bh)))
 
@@ -919,19 +1064,74 @@ class ConnectFourGUI:
             self.ai_thinking = False
             self.ai = None
 
-    def start_ai_game(self, depth):
-        log.info("AI oyunu basliyor, derinlik=%d", depth)
+    def start_ai_game(self, depth, ai_starts=None):
+        """Yeni AI oyunu. ai_starts None ise zorluk ekranindaki secim kullanilir.
+
+        Insan hep kirmizi (P1), AI hep sari (P2); yalnizca ilk hamleyi kimin yaptigi degisir.
+        """
+        if ai_starts is None:
+            ai_starts = self.ai_starts_next
+        log.info("AI oyunu basliyor, derinlik=%d, ilk hamle=%s", depth, "AI" if ai_starts else "insan")
         self.invalidate_ai_session()
-        self.game = ConnectFourGame()
+        # Dusen bir tas varsa yeni oyuna sizmasin (Yeni Oyun dugmesi oyun sirasinda da basilabilir)
+        self.animating, self.anim_callback = False, None
+        self.game = ConnectFourGame(PLAYER2_PIECE if ai_starts else PLAYER1_PIECE)
         self.result_sound_played = False
         with self.ai_lock:
             self.ai = AIEngine(PLAYER2_PIECE, depth=depth)
+        self.ai_depth, self.ai_starts = depth, ai_starts
+        self.ai_seed = secrets.randbits(32)
         self.my_piece = PLAYER1_PIECE
         self.state = "PLAYING_AI"
         self.is_spectator = False
         self.room_id = None
         self.analysis_summary = None
-        self.set_status("Senin siran!")
+        if ai_starts:
+            self._request_ai_move()
+        else:
+            self.set_status(COACH_TEXT)       # Bos tahtada ilk ipucu; ilk hamleden sonra siradan mesajlar
+
+    def _request_ai_move(self):
+        """AI sirasi: dusunme durumunu acar ve hamleyi arka plan thread'inde hesaplatir."""
+        with self.ai_lock:
+            if self.ai is not None and self.game.current_player == PLAYER2_PIECE and not self.game.game_over:
+                self.set_status("AI dusunuyor...")
+                self.ai_thinking = True
+                threading.Thread(target=self.ai_move, args=(self.ai_session_id,), daemon=True).start()
+
+    def can_undo(self) -> bool:
+        """Geri Al: yalnizca AI oyununda; tas dusuyorken veya AI dusunurken yapilamaz."""
+        if (self.state != "PLAYING_AI" or self.animating or self.ai_thinking
+                or self.pending_ai_move is not None or self.ai_depth <= 0):
+            return False
+        return self._last_human_ply() is not None
+
+    def _last_human_ply(self) -> Optional[int]:
+        """Insanin son hamlesinin hamle gecmisindeki sirasi (0 tabanli); yoksa None."""
+        human_parity = 1 if self.ai_starts else 0      # Insan, ilk hamleyi AI yaptiysa tek sirali hamlelerde oynar
+        for i in range(len(self.game.move_history) - 1, -1, -1):
+            if i % 2 == human_parity:
+                return i
+        return None
+
+    def undo_ai_move(self):
+        """Insanin son hamlesini ve (varsa) AI'nin cevabini geri alir; sira yine insanda olur."""
+        if not self.can_undo():
+            return
+        ply = self._last_human_ply()
+        moves = self.game.move_history[:ply]
+        depth = self.ai_depth
+        self.invalidate_ai_session()
+        self.game = ConnectFourGame.from_moves(moves, PLAYER2_PIECE if self.ai_starts else PLAYER1_PIECE)
+        self.result_sound_played = False
+        with self.ai_lock:
+            self.ai = AIEngine(PLAYER2_PIECE, depth=depth)
+        self.set_status("Hamle geri alindi. Senin siran!")
+
+    def new_ai_game(self):
+        """Yeni Oyun: ayni zorluk, ilk hamle yapan taraf degisir."""
+        if self.state == "PLAYING_AI" and self.ai_depth > 0:
+            self.start_ai_game(self.ai_depth, ai_starts=not self.ai_starts)
 
     def ai_move(self, sid):
         """AI thread'i: hesaplar, sonucu oturum dogrulamasiyla birakir."""
@@ -939,10 +1139,13 @@ class ConnectFourGUI:
         with self.ai_lock:
             if self.ai is None or sid != self.ai_session_id or self.state != "PLAYING_AI":
                 return
-            ai_ref, snapshot, cancel = self.ai, self.game.clone(), self.ai_cancel
+            ai_ref, snapshot, cancel, seed = self.ai, self.game.clone(), self.ai_cancel, self.ai_seed
 
         try:
             col = ai_ref.find_best_move(snapshot, cancel_event=cancel)
+            slipped = slip_move(snapshot, ai_ref.depth, seed) if col is not None else None
+            if slipped is not None:
+                col = slipped         # Kolay seviyesi: arama sonrasi kasitli hata
         except Exception:
             log.exception("AI hatasi")
             col = None
@@ -998,17 +1201,18 @@ class ConnectFourGUI:
             if cancel.is_set():
                 continue
             try:
-                best_col = AIEngine(player_piece, depth=ANALYSIS_DEPTH).find_best_move(game_state, cancel_event=cancel)
+                best_cols = best_columns(game_state, ANALYSIS_DEPTH, cancel_event=cancel)
             except Exception:
                 log.exception("Analiz hatasi")
                 continue
             with self.analysis_lock:
-                if cancel.is_set() or best_col is None:
+                if cancel.is_set() or best_cols is None:
                     continue  # Oyundan cikildi / baska oyuna gecildi
                 self.analysis_data.append({
                     'move_num': move_num, 'player': player_piece,
-                    'actual_col': actual_col, 'best_col': best_col,
-                    'was_best': actual_col == best_col,
+                    'actual_col': actual_col, 'best_col': best_cols[0], 'best_cols': best_cols,
+                    # Oynanan hamle esit iyi hamlelerden biriyse (ya da kitap hamlesiyse) isabetli
+                    'was_best': actual_col in best_cols,
                 })
 
     def get_analysis_summary(self):
@@ -1079,7 +1283,42 @@ class ConnectFourGUI:
         self.last_elo_change = None
         self.final_status, self.final_tone = None, 'neutral'
         self.analysis_summary = None
+        self.rematch_state = 'idle'
+        self.move_time, self.turn_deadline, self.turn_warned = 0, None, False
         self._cancel_analysis()
+
+    def _apply_clock(self, data):
+        """Sunucunun move_time / turn_seconds_left alanlarini yerel geri sayima cevirir.
+
+        Alan yoksa (eski sunucu) sayac degismez; turn_seconds_left None ise sayac yok
+        (sure kapali ya da rakip kopuk oldugu icin duraklatildi).
+        """
+        if 'move_time' not in data:
+            return
+        self.move_time = data.get('move_time') or 0
+        left = data.get('turn_seconds_left')
+        numeric = isinstance(left, (int, float)) and not isinstance(left, bool)
+        self.turn_deadline = time.time() + left if numeric else None
+        self.turn_warned = False
+
+    def turn_seconds_left(self) -> Optional[int]:
+        """Sirasi gelen oyuncunun kalan hamle suresi (tam sn, 0'in altina inmez); sayac yoksa None."""
+        if (self.turn_deadline is None or self.game.game_over
+                or self.state not in ("PLAYING_ONLINE", "SPECTATING")):
+            return None
+        return max(0, math.ceil(self.turn_deadline - time.time()))
+
+    def turn_warning(self) -> bool:
+        """Kendi sirami ve sure bitmek uzere mi?"""
+        left = self.turn_seconds_left()
+        return (left is not None and left <= MOVE_WARN_SECONDS and not self.is_spectator
+                and self.game.current_player == self.my_piece)
+
+    def update_turn_clock(self):
+        """Her karede: kendi hamle surem bitmek uzereyken sira basina bir kez uyari sesi."""
+        if not self.turn_warned and self.turn_warning():
+            self.turn_warned = True
+            self.sfx.play('warn')
 
     # --- Sunucu olaylari (ana thread'de calisir) ---
 
@@ -1097,7 +1336,12 @@ class ConnectFourGUI:
                                    p2.get('username', 'Oyuncu 2'), p2.get('rating', config.DEFAULT_RATING))
             if 'current_state' in data:
                 self.game.from_dict(data['current_state'])
-            self.set_status("Canli izleniyor")
+            self.game_no = data.get('game_no', self.game_no)
+            self._apply_clock(data)
+            if self.game.game_over and data.get('result'):
+                self.on_game_over_network(data['result'])      # Oyun biten odaya girildi: sunucunun sonucu
+            else:
+                self.set_status("Canli izleniyor")
             return
 
         self.is_spectator = False
@@ -1106,30 +1350,97 @@ class ConnectFourGUI:
         self.opponent_elo = oi.get('rating', config.DEFAULT_RATING)
         if data.get('rejoined'):
             # Kopma sonrasi geri donus: oyunu sunucudaki durumdan surdur
+            if data.get('game_no', self.game_no) != self.game_no:
+                self._reset_online_game()        # Biz yokken rovansla yeni oyun baslamis
+            self.game_no = data.get('game_no', self.game_no)
             self.game.from_dict(data['current_state'])
             self.state = "PLAYING_ONLINE"
             self.animating = False
             self.connection_down = self.reconnect_warned = self.room_closed = False
+            self._apply_clock(data)
             if self.game.game_over:
                 # Biz yokken oyun bitmis (or. sure dolup hukmen): "sira" mesaji yaniltici olurdu
                 self.network.in_game = False
                 self.opponent_deadline = None
-                self.handle_game_over()
+                if data.get('result'):
+                    self.on_game_over_network(data['result'])   # ELO degisimi dahil sunucunun sonucu
+                else:
+                    self.handle_game_over()
             else:
                 self.set_status("Oyuna geri donuldu. " + ("Senin siran!" if self.game.current_player == self.my_piece
                                                            else "Rakibin sirasi..."))
 
     def on_game_start(self, data):
-        log.info("Online oyun basliyor")
+        rematch = bool(data.get('rematch'))
+        log.info("Online oyun basliyor%s", " (rovans)" if rematch else "")
         self.invalidate_ai_session()
+        if rematch:
+            # Koltuklar yer degistirdi: yeni tasimiz ve oyun yeniden "icinde" (otomatik geri donus calissin)
+            self.my_piece = data.get('player_piece', self.my_piece)
+            self.network.my_piece = self.my_piece
+            self.network.in_game = True
+            self.animating, self.anim_callback = False, None
+            self.leave_confirm_until = 0.0
         self._reset_online_game()
+        self.game_no = data.get('game_no', 1)
+        self._apply_clock(data)
         self.sfx.play('start')
         self.state = "PLAYING_ONLINE"
         self.is_spectator = False
         self.opponent_name = data.get('opponent_name') or 'Rakip'
         self.opponent_elo = data.get('opponent_elo', config.DEFAULT_RATING)
-        self.set_status("Oyun basladi!" + (" Senin siran." if self.game.current_player == self.my_piece
-                                           else " Rakibin sirasi."))
+        self.set_status(("Rovans basladi!" if rematch else "Oyun basladi!")
+                        + (" Senin siran." if self.game.current_player == self.my_piece else " Rakibin sirasi."))
+
+    def on_rematch_started(self, data):
+        """Oda yayini: seyirci bos tahtayla yeni oyunu izler; oyuncular game_start ile zaten basladi."""
+        if self.state == "SPECTATING" and self.is_spectator:
+            self._reset_online_game()
+            self.animating, self.anim_callback = False, None
+            p1, p2 = data.get('p1_info') or {}, data.get('p2_info') or {}
+            self.spectate_names = (p1.get('username', 'Oyuncu 1'), p1.get('rating', config.DEFAULT_RATING),
+                                   p2.get('username', 'Oyuncu 2'), p2.get('rating', config.DEFAULT_RATING))
+            if data.get('current_state'):
+                self.game.from_dict(data['current_state'])
+            self.game_no = data.get('game_no', self.game_no + 1)
+            self._apply_clock(data)
+            self.set_status("Rovans basladi - canli izleniyor")
+        elif self.state == "PLAYING_ONLINE":
+            self._apply_clock(data)       # Yalnizca saat: game_start ile ayni deger (sira onemsiz)
+
+    def on_rematch_offered(self, data):
+        if self.state != "PLAYING_ONLINE" or self.is_spectator:
+            return
+        self.rematch_state = 'requested' if data.get('from_piece') == self.my_piece else 'offered'
+        self._show_rematch_status()
+
+    def on_rematch_unavailable(self, data):
+        if self.state != "PLAYING_ONLINE" or self.is_spectator:
+            return
+        self.rematch_state = 'unavailable'
+        self._show_rematch_status()
+
+    def _show_rematch_status(self):
+        """Rovans durumunu durum satirina yazar (sonuc metni varsa ELO bilgisi korunur)."""
+        text = {'requested': "Rovans istendi, rakip bekleniyor", 'offered': "Rakip rovans istiyor",
+                'unavailable': "Rakip ayrildi, rovans yapilamaz"}.get(self.rematch_state)
+        if text is None:
+            return
+        if self.rematch_state == 'unavailable' and self.final_status:
+            self.set_status(f"{self.final_status}  |  {text}", self.final_tone)
+        else:
+            self.set_status(text, 'bad' if self.rematch_state == 'unavailable' else 'good')
+
+    def request_rematch(self):
+        """Rovans dugmesi / R tusu."""
+        if not self.can_request_rematch():
+            return
+        if not self.network.request_rematch():
+            self.set_status("Rovans istenemedi: baglanti yok", 'bad')
+            return
+        offered = self.rematch_state == 'offered'
+        self.rematch_state = 'requested'
+        self.set_status("Rovans baslatiliyor..." if offered else "Rovans istendi, rakip bekleniyor", 'good')
 
     def on_move_made(self, data):
         """
@@ -1150,6 +1461,7 @@ class ConnectFourGUI:
         server_len, local_len = len(data.get('history', [])), len(self.game.move_history)
         if server_len < local_len:
             return
+        self._apply_clock(data)
         if server_len == local_len:
             self.game.from_dict(data)
             if self.game.game_over:
@@ -1184,7 +1496,9 @@ class ConnectFourGUI:
     def on_game_over_network(self, data):
         w = data.get('winner')
         reason = data.get('reason', 'normal')
+        detail = data.get('detail')      # 'timeout' | 'disconnect' | 'leave' | None (eski sunucuda yok)
         self._clear_connection_state()
+        self.turn_deadline = None
         if reason == 'forfeit' and not self.game.game_over:
             self.game.game_over, self.game.winner = True, w
         self._play_result_once(w)
@@ -1200,18 +1514,24 @@ class ConnectFourGUI:
         if self.is_spectator:
             msg = "Kirmizi kazandi!" if w == PLAYER1_PIECE else ("Sari kazandi!" if w == PLAYER2_PIECE else "Berabere!")
             if reason == 'forfeit':
-                msg += " (hukmen)"
+                msg += {'timeout': " (sure doldu)", 'disconnect': " (baglanti koptu)"}.get(detail, " (hukmen)")
         elif w is None:
             msg = "Berabere!"
         elif w == self.my_piece:
-            msg, tone = ("Rakip oyunu terk etti - Kazandin!" if reason == 'forfeit' else "Kazandin!"), 'good'
+            won = {'timeout': "Rakibin suresi doldu - Kazandin!", 'disconnect': "Rakibin baglantisi koptu - Kazandin!"}
+            msg, tone = (won.get(detail, "Rakip oyunu terk etti - Kazandin!") if reason == 'forfeit'
+                         else "Kazandin!"), 'good'
         else:
-            msg, tone = ("Hukmen kaybettin." if reason == 'forfeit' else "Kaybettin."), 'bad'
+            lost = {'timeout': "Sure doldu - hukmen kaybettin.",
+                    'disconnect': "Baglanti kopmasi nedeniyle hukmen kaybettin."}
+            msg, tone = (lost.get(detail, "Hukmen kaybettin.") if reason == 'forfeit' else "Kaybettin."), 'bad'
         if self.last_elo_change:
             sign = '+' if self.last_elo_change > 0 else ''
             msg += f"  ELO {sign}{self.last_elo_change} ({self.user_elo})"
         self.final_status, self.final_tone = msg, tone
         self.set_status(msg, tone)
+        if detail == 'leave' and not self.is_spectator:
+            self.rematch_state = 'unavailable'      # Rakip odadan ayrildi: rovans mumkun degil
         self.analysis_summary = self.get_analysis_summary()
         self.refresh_user_elo()
 
@@ -1225,12 +1545,18 @@ class ConnectFourGUI:
         if self.state == "PLAYING_ONLINE" and not self.game.game_over:
             grace = data.get('grace_seconds', config.RECONNECT_GRACE_SECONDS)
             self.opponent_deadline, self.opponent_remaining = time.time() + grace, grace
+            if self.game.current_player == self.my_piece:
+                self.turn_deadline = None    # Sunucu, bekleyen rakibin kopuklugunde sirasi gelenin saatini durdurur
             self.set_status(f"Rakibin baglantisi koptu! {grace} sn icinde donmezse kazanirsin.", 'bad')
         elif self.is_spectator:
             self.set_status("Bir oyuncunun baglantisi koptu...", 'bad')
 
     def on_opponent_reconnected(self, data):
         self.opponent_deadline = None
+        if (self.state == "PLAYING_ONLINE" and not self.game.game_over and self.move_time > 0
+                and self.turn_deadline is None and self.game.current_player == self.my_piece):
+            # Sunucu, donen rakibin karsisindaki bekleyen oyuncu icin saati bastan baslatir
+            self.turn_deadline, self.turn_warned = time.time() + self.move_time, False
         if self.state in ("PLAYING_ONLINE", "SPECTATING") and not self.game.game_over:
             turn = "Senin siran!" if self.game.current_player == self.my_piece else "Rakibin sirasi..."
             self.set_status("Rakip geri dondu. " + ("" if self.is_spectator else turn))
@@ -1356,11 +1682,7 @@ class ConnectFourGUI:
         if self.game.game_over:
             self.handle_game_over()
             return
-        with self.ai_lock:
-            if self.ai is not None and self.game.current_player == PLAYER2_PIECE:
-                self.set_status("AI dusunuyor...")
-                self.ai_thinking = True
-                threading.Thread(target=self.ai_move, args=(self.ai_session_id,), daemon=True).start()
+        self._request_ai_move()
 
     def _play_result_once(self, winner):
         """Sonuc sesi oyun basina bir kez (yerel bitis ve sunucu olayi iki sirayla da gelebilir)."""
@@ -1378,6 +1700,7 @@ class ConnectFourGUI:
         if self.final_status and self.state != "PLAYING_AI":
             # Sunucunun sonucu (ELO dahil) animasyon bitmeden geldiyse onu koru
             self.set_status(self.final_status, self.final_tone)
+            self._show_rematch_status()     # Animasyon bitmeden gelen rovans teklifi silinmesin
             return
         tone = 'neutral' if w is None or self.is_spectator else ('good' if w == self.human_piece() else 'bad')
         if self.state == "PLAYING_AI":
@@ -1411,10 +1734,14 @@ class ConnectFourGUI:
         self.analysis_summary = None
         self.leave_confirm_until = 0.0
         self._clear_connection_state()
-        if self.state in ("PLAYING_ONLINE", "WAITING"):
-            self.network.leave_game()
+        leaving = self.state in ("PLAYING_ONLINE", "WAITING")
         network, self.network = self.network, self._new_network()
-        threading.Thread(target=network.disconnect, daemon=True).start()
+
+        def close_connection():
+            if leaving:
+                network.leave_game(wait=2.0)   # Onay gelmeden kapatilirsa sunucu ayrilmayi kopma sanabilir
+            network.disconnect()
+        threading.Thread(target=close_connection, daemon=True).start()
         self.room_id, self.is_spectator = None, False
         self.animating = False
         self.game = ConnectFourGame()
@@ -1432,7 +1759,7 @@ class ConnectFourGUI:
         self.invalidate_ai_session()
         self._cancel_analysis()
         if self.state in ("PLAYING_ONLINE", "WAITING"):
-            self.network.leave_game()
+            self.network.leave_game(wait=1.0)
         self.network.disconnect()
         pygame.quit()
         sys.exit()
@@ -1462,6 +1789,10 @@ class ConnectFourGUI:
                 self.request_back()
         elif e.key == pygame.K_m:
             self.sfx.toggle_mute()
+        elif e.key == pygame.K_r and self.state == "PLAYING_ONLINE":
+            self.request_rematch()
+        elif e.key == pygame.K_u and self.state == "PLAYING_AI":
+            self.undo_ai_move()
         elif e.key in COLUMN_KEYS and self.state in ("PLAYING_AI", "PLAYING_ONLINE"):
             self.handle_click(COLUMN_KEYS[e.key])  # Fare tiklamasiyla ayni kurallar
 
@@ -1522,6 +1853,10 @@ class ConnectFourGUI:
             'CREATE': self.create_online_game,
             'QUIT': self.shutdown,
             'MUTE': self.sfx.toggle_mute,
+            'REMATCH': self.request_rematch,
+            'UNDO': self.undo_ai_move,
+            'NEW_AI_GAME': self.new_ai_game,
+            'AI_FIRST_TOGGLE': lambda: setattr(self, 'ai_starts_next', not self.ai_starts_next),
         }
         if bid != 'MUTE':
             self.sfx.play('click')
@@ -1558,6 +1893,7 @@ class ConnectFourGUI:
         self.process_events()
         self.handle_events()
         self.update_connection_state()
+        self.update_turn_clock()
         self.update_animation()
         self.process_pending_ai_move()
         self.draw()

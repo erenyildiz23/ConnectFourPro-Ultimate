@@ -87,7 +87,7 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 - **Aktör:** Oyuncu, AI Motoru · **Gereksinim:** FR-05, FR-06, NFR-01
 - **Ön koşul:** Oturum açık (kayıtlı veya misafir). Sunucu gerekmez.
 - **Ana akış:**
-  1. "Yapay Zekaya Karşı" → zorluk seçer: Kolay (D2), Orta (D4), Zor (D8).
+  1. "Yapay Zekaya Karşı" → zorluğu ("Kolay - yeni başlayanlar için", "Orta - dengeli rakip", "Zor - en güçlü rakip"; arka planda D2/D4/D8) ve ilk hamleyi kimin yapacağını ("İlk hamle: Sen / AI") seçer. Boş tahtada "Kırmızı sensin" ipucu gösterilir; oyuncu hep kırmızıdır.
   2. Oyuncu (kırmızı) sütuna tıklar veya 1–7 tuşlarından birine basar; taş düşme animasyonu oynar. Fare bir sütunun üzerindeyken taşın ineceği hücre oyuncunun renginde bir halkayla, son oynanan taş beyaz bir halkayla işaretlenir.
   3. Oyun motoru hamleyi doğrular ve kazanma/beraberlik kontrol eder.
   4. AI ayrı thread'de hamlesini hesaplar ("AI düşünüyor..."), sonra hamle animasyonla uygulanır.
@@ -96,8 +96,11 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
   - Sıra AI'dayken veya animasyon sürerken yapılan tıklamalar yok sayılır.
   - Dolu sütuna tıklanırsa hamle yapılmaz, "Bu sütun dolu!" uyarısı gösterilir; tahta dışı tıklama yok sayılır.
   - Oyuncu AI düşünürken menüye dönerse AI oturumu geçersiz kılınır; geç gelen AI hamlesi uygulanmaz.
+  - "Geri Al" (veya U): oyuncunun son hamlesini ve AI'nın cevabını geri alır; oyun bittikten sonra da çalışır. Taş düşerken ve AI düşünürken reddedilir; online oyunda yoktur.
+  - "Yeni Oyun": aynı zorlukta yeni oyun; ilk hamleyi yapan taraf her seferinde değişir.
+  - Kolay seviye kasıtlı hata yapar (arama bittikten sonra, oyun ve hamle sırasından türeyen deterministik zarla: %40; kendi kazanan hamlesini kaçırmaz). Orta ve Zor hata yapmaz.
 - **Son koşul:** Oyun sonucu ekranda; sunucuya kayıt yapılmaz.
-- **Kısayollar:** 1–7 hamle, Esc geri, M ses aç/kapat (ses menüden de kapatılabilir; `CONNECT4_MUTE=1` ile kapalı başlar).
+- **Kısayollar:** 1–7 hamle, Esc geri, M ses aç/kapat (ses menüden de kapatılabilir; `CONNECT4_MUTE=1` ile kapalı başlar), U geri al (AI oyunu), R rovans (biten online oyun).
 - **Testler:** `TestPlayVsAI` (3 test), `tests/gui/test_gui_feedback.py` (animasyon, işaretler, klavye, ses), `tests/unit/test_ai.py` (taktik, arama doğruluğu, oyun sonu), `tests/unit/test_game_core.py`; hamle kalitesi: `benchmarks/ai_quality_benchmark.py`
 
 ### UC-06 Online oyun odası oluştur
@@ -152,7 +155,7 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
   3. Sunucu oyuncuyu koltuğuna geri oturtur ve güncel oyun durumunu gönderir; rakibe "Rakip geri döndü" bildirilir.
   4. Oyun kaldığı yerden devam eder.
 - **Alternatif akışlar:**
-  - 2a. Oyuncu süre (`RECONNECT_GRACE_SECONDS`, varsayılan 30 sn) içinde dönmezse rakip **hükmen** kazanır (→ UC-13, `reason=forfeit`). Oyuncu daha sonra dönerse sıra mesajı yerine oyunun sonucunu görür.
+  - 2a. Oyuncu süre (`RECONNECT_GRACE_SECONDS`, varsayılan 30 sn) içinde dönmezse rakip **hükmen** kazanır (→ UC-13, `reason=forfeit`, `detail=disconnect`). Oyuncu daha sonra dönerse sıra mesajı yerine sunucunun gönderdiği sonucu (neden ve ELO değişimi dahil) görür.
   - 2b. Yeniden bağlanma 20 sn'den uzun sürerse oyuncuya bekleyebileceği veya lobiye dönebileceği hatırlatılır.
   - 2c. Oda artık yoksa (geri dönüş reddedilirse) "Oyuna geri dönülemedi" mesajı gösterilir; oyuncu onay istenmeden lobiye dönebilir.
   - 2d. Seyircinin bağlantısı koparsa "Yayın bağlantısı koptu" mesajı gösterilir; lobiden yeniden izlemeye girer.
@@ -173,6 +176,9 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
   2. Oyun hamle listesi ve bitiş nedeniyle (`normal` / `forfeit`) kaydedilir.
   3. Oyunculara `elo_update`, odadaki herkese `game_over` gönderilir; istemci başlıkta "KAZANDIN!" / "KAYBETTİN" / "BERABERE", durum satırında "Kazandın! ELO +15 (1215)" gösterir (kazanç yeşil, kayıp kırmızı).
 - **Alternatif akışlar:** Beraberlikte ELO değişmez ama oyun kaydedilir. Misafir varsa ELO/kayıt atlanır, ELO bildirimi gönderilmez.
+- **Hükmen nedeni (`game_over.detail`):** istemci metni nedene göre seçer: `timeout` → "Süre doldu - hükmen kaybettin." / "Rakibin süresi doldu - Kazandın!"; `disconnect` → "Bağlantı kopması nedeniyle hükmen kaybettin." / "Rakibin bağlantısı koptu - Kazandın!"; `leave` veya alan yoksa (eski sunucu) → "Hükmen kaybettin." / "Rakip oyunu terk etti - Kazandın!".
+- **Hamle süresi:** sunucu `move_time` ve `turn_seconds_left` gönderirse bilgi panelinde sırası gelenin yanında kalan saniye geri sayar; kendi hamle sürenin son 10 saniyesinde sayaç uyarı rengine döner ve bir uyarı sesi çalar. Sayaç kapalıyken, rakip koptuğu için duraklatılmışken ve oyun bitince gösterilmez.
+- **Rovans:** oyun bitince oyuncuya (seyirciye ve AI oyununa değil) "Rovans" düğmesi / R tuşu çıkar; rakip istediğinde "Rakip rovans istiyor", kendin istediğinde "Rovans istendi, rakip bekleniyor" görünür. Rakip odadan ayrıldıysa düğme pasifleşir. İki taraf da isterse koltuklar yer değiştirir (yeni kırmızı ilk hamleyi yapar), tahta ve sonuç sıfırlanır; seyirci yeni oyunu bos tahtayla izlemeye devam eder.
 - **Testler:** `test_uc09_uc13_uc16_full_online_match`, `test_server_socket.py::TestRegisteredPlayers`, `test_database.py::TestEloAndGames`, `tests/unit/test_security_and_elo.py::TestElo`
 
 ### UC-14 Liderlik tablosunu görüntüle
@@ -189,7 +195,7 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 
 ### UC-16 Hamle analizini görüntüle
 - **Aktör:** Oyuncu
-- **Ana akış:** Online maç sırasında her hamleden önceki pozisyon arka planda D8 AI ile analiz edilir. Maç sonunda bilgi panelinde "Hamle analizi (isabet): Sen %X, Rakip %Y" gösterilir (oynanan hamlenin AI'nın en iyi hamlesiyle aynı olma oranı).
+- **Ana akış:** Online maç sırasında her hamleden önceki pozisyon arka planda D8 AI ile analiz edilir. Maç sonunda bilgi panelinde "Hamle analizi (isabet): Sen %X, Rakip %Y" gösterilir (oynanan hamlenin AI'nın en iyi hamlelerinden biri olma oranı: D8 aramasında eşit iyi çıkan tüm sütunlar ve doğrulanmış açılış kitabı hamlesi isabetli sayılır).
 - **Testler:** `test_uc09_uc13_uc16_full_online_match`
 
 ### UC-17 Eski odaları temizle
