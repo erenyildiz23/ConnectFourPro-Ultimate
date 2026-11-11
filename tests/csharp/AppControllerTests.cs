@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace ConnectFourPro.Tests
 {
-    public class AppControllerTests
+    public partial class AppControllerTests
     {
         private const string Url = "http://test";
         private const string LoginOk = "{\"user\":{\"username\":\"Ali\",\"rating\":1337},\"token\":\"tok-1\"}";
@@ -698,7 +698,7 @@ namespace ConnectFourPro.Tests
             _app.GuestLogin();
             StartOnlineGameAsP1();
             _transport.Receive("game_ended", "{\"reason\":\"timeout\"}");
-            Assert.That(_app.Status, Is.EqualTo("Oda zaman aşımı nedeniyle kapatıldı."));
+            Assert.That(_app.Status, Is.EqualTo("Oda zaman aşımı nedeniyle kapatıldı. Lobiye dönebilirsin."));
             Assert.That(_app.Tone, Is.EqualTo(StatusTone.Bad));
         }
 
@@ -728,7 +728,7 @@ namespace ConnectFourPro.Tests
 
             Time.unscaledTime += 1f;
             _app.RequestBack();
-            Assert.That(_app.Screen, Is.EqualTo(AppScreen.Menu));
+            Assert.That(_app.Screen, Is.EqualTo(AppScreen.Lobby), "online oyundan lobiye donulur");
             Assert.That(_transport.EmittedOf("leave_game")[0].GetString("room_id"), Is.EqualTo("AB12C"));
             Assert.That(_transport.DisconnectCalls, Is.EqualTo(1));
             Assert.That(_app.RoomId, Is.Null);
@@ -745,7 +745,7 @@ namespace ConnectFourPro.Tests
             _transport.Receive("game_created", Created);
 
             _app.RequestBack();
-            Assert.That(_app.Screen, Is.EqualTo(AppScreen.Menu));
+            Assert.That(_app.Screen, Is.EqualTo(AppScreen.Lobby));
             Assert.That(_transport.EmittedOf("leave_game").Count, Is.EqualTo(1));
         }
 

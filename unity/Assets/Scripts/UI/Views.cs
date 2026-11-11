@@ -262,6 +262,7 @@ namespace ConnectFourPro.UI
     // -------------------------------------------------------------------------
     public sealed class WaitingView : View
     {
+        private static readonly string[] Dots = { "Bekleniyor", "Bekleniyor.", "Bekleniyor..", "Bekleniyor..." };
         private readonly Text _room;
         private readonly Text _hint;
         private readonly Text _dots;
@@ -287,7 +288,7 @@ namespace ConnectFourPro.UI
                 _room.text = "";
                 _hint.text = "Oda oluşturuluyor...";
             }
-            _dots.text = "Bekleniyor" + new string('.', (int)(Time.unscaledTime * 2) % 4);
+            _dots.text = Dots[(int)(Time.unscaledTime * 2) % 4];
         }
     }
 
@@ -395,6 +396,8 @@ namespace ConnectFourPro.UI
         private readonly Text _accuracyTitle;
         private readonly Text _accuracy;
         private readonly Button _menu;
+        private readonly Text _menuLabel;
+        private readonly Button _again;
 
         public BoardView Board { get; }
 
@@ -424,13 +427,36 @@ namespace ConnectFourPro.UI
             _moves = UIKit.Label(Root, "", 19, Theme.Gray, px, 422, 300, 28);
             _accuracyTitle = UIKit.Label(Root, "Hamle analizi (isabet)", 15, Theme.Gray, px, 458, 300, 24);
             _accuracy = UIKit.Label(Root, "", 20, Theme.White, px, 484, 300, 28);
-            _menu = UIKit.Button(Root, "Menü", Theme.Button, app.RequestBack, px, 560, 180, 48);
+            // Biten AI oyununda "Tekrar Oyna" (panel y 135-615 icinde)
+            _again = UIKit.Button(Root, "Tekrar Oyna", Theme.Green, app.PlayAgain, px, 530, 180, 48);
+            _again.gameObject.SetActive(false);
+            _menu = UIKit.Button(Root, "Menü", Theme.Button, app.RequestBack, px, 590, 180, 48);
+            _menuLabel = _menu.GetComponentInChildren<Text>();
         }
+
+        public override void OnShow() => UIKit.ClearSelection();
 
         public override void Refresh()
         {
             var app = App;
-            _title.text = app.IsSpectator ? "CANLI YAYIN" : app.Screen == AppScreen.PlayingAI ? "Yapay Zekâya Karşı" : "Online Maç";
+
+            // Klavye: 1-7 tasi o sutuna birakir (siranin kimde oldugunu HandleColumnClick denetler)
+            int key = Keys.ColumnPressed();
+            if (key >= 0)
+                app.HandleColumnClick(key);
+
+            // Oyun bitince baslik sonucu gosterir (son tas dusmeden once degil)
+            var headline = app.ResultHeadline;
+            if (headline.HasValue && !Board.IsAnimating)
+            {
+                _title.text = headline.Value.text;
+                _title.color = HeadlineColor(headline.Value.tone);
+            }
+            else
+            {
+                _title.text = app.IsSpectator ? "CANLI YAYIN" : app.Screen == AppScreen.PlayingAI ? "Yapay Zekâya Karşı" : "Online Maç";
+                _title.color = Theme.Red;
+            }
             _panelTitle.text = app.IsSpectator ? "İZLİYORSUNUZ" : "OYUN BİLGİSİ";
             _panelTitle.color = app.IsSpectator ? Theme.Waiting : Theme.White;
 
@@ -445,12 +471,26 @@ namespace ConnectFourPro.UI
             _accuracyTitle.enabled = s != null;
             _accuracy.text = s != null ? $"Sen: %{s.MyAccuracy:0}   Rakip: %{s.OpponentAccuracy:0}" : "";
 
-            UIKit.SetLabel(_menu, app.LeaveConfirmPending ? "Çıkışı Onayla" : "Menü");
+            _menuLabel.text = app.BackLabel;
+            bool again = app.Screen == AppScreen.PlayingAI && app.Game.GameOver;
+            if (_again.gameObject.activeSelf != again)
+                _again.gameObject.SetActive(again);
+        }
+
+        private Color HeadlineColor(StatusTone tone)
+        {
+            int w = App.Game.Winner;
+            if (App.IsSpectator && w != 0)
+                return Theme.PieceColor(w);
+            return tone == StatusTone.Good ? Theme.Green : tone == StatusTone.Bad ? Theme.Red : Theme.Yellow;
         }
 
         private void SetPlayer(int i, string name, int? elo, int piece)
         {
-            _names[i].text = name != null && name.Length > 14 ? name.Substring(0, 14) : name;
+            if (App.IsLocalPiece(piece))
+                _names[i].text = (name != null && name.Length > 9 ? name.Substring(0, 9) : name) + " (Sen)";
+            else
+                _names[i].text = name != null && name.Length > 14 ? name.Substring(0, 14) : name;
             _elos[i].text = elo.HasValue ? "ELO: " + elo.Value : "";
             _turns[i].enabled = App.Game.CurrentPlayer == piece && !App.Game.GameOver;
         }

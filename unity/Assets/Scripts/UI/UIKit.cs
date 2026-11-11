@@ -32,11 +32,15 @@ namespace ConnectFourPro.UI
         public static readonly Color Green = Rgb(46, 204, 113);
         public static readonly Color CellBackground = Rgb(10, 10, 21);
         public static readonly Color Hover = Rgb(52, 152, 219);
-        public static readonly Color Button = Rgb(233, 69, 96);
+        // Buton dolgusu disk kirmizisindan (Red) koyu: beyaz yazi 4.88:1 (WCAG AA).
+        // Red degismez; tests/e2e diskleri bu renkle okur.
+        public static readonly Color Button = Rgb(190, 40, 68);
         public static readonly Color Waiting = Rgb(230, 126, 34);
         public static readonly Color Playing = Rgb(46, 204, 113);
         public static readonly Color InputBackground = Rgb(44, 62, 80);
         public static readonly Color WinHighlight = Rgb(0, 255, 128);
+        /// <summary>Durum satirindaki hata yazisi (panel uzerinde 5.8:1).</summary>
+        public static readonly Color Error = Rgb(255, 107, 129);
 
         public const float ReferenceWidth = 1280f;
         public const float ReferenceHeight = 720f;
@@ -44,6 +48,18 @@ namespace ConnectFourPro.UI
         public static Color Rgb(int r, int g, int b) => new Color(r / 255f, g / 255f, b / 255f);
 
         public static Color PieceColor(int piece) => piece == 1 ? Red : Yellow;
+
+        /// <summary>
+        /// Dolgu uzerinde okunur yazi rengi: acik dolguda koyu (Background), koyu
+        /// dolguda beyaz. Esik WCAG goreli parlakligi 0.2 (yesil/mavi/gri -> koyu yazi).
+        /// </summary>
+        public static Color OnColor(Color fill) => Luminance(fill) > 0.2f ? Background : White;
+
+        private static float Luminance(Color c) =>
+            0.2126f * Linear(c.r) + 0.7152f * Linear(c.g) + 0.0722f * Linear(c.b);
+
+        private static float Linear(float v) =>
+            v <= 0.03928f ? v / 12.92f : Mathf.Pow((v + 0.055f) / 1.055f, 2.4f);
     }
 
     public static class UIKit
@@ -51,6 +67,7 @@ namespace ConnectFourPro.UI
         private static Font _font;
         private static Sprite _circle;
         private static Sprite _rounded;
+        private static Sprite _ring;
 
         public static Font Font
         {
@@ -69,6 +86,12 @@ namespace ConnectFourPro.UI
         /// <summary>Kenarlari yumusatilmis daire (tahta hucreleri ve taslar).</summary>
         public static Sprite Circle => _circle != null ? _circle : (_circle = MakeCircle(128));
 
+        /// <summary>
+        /// Ici bos halka (son hamle, inis yeri). Merkez saydamdir: tests/e2e hucre
+        /// merkezindeki 5x5 pikselden tas rengini okur, halka bunu bozmamali.
+        /// </summary>
+        public static Sprite Ring => _ring != null ? _ring : (_ring = MakeRing(128, 14f));
+
         /// <summary>9-dilimli yuvarlak koseli dikdortgen (butonlar, paneller).</summary>
         public static Sprite Rounded => _rounded != null ? _rounded : (_rounded = MakeRounded(64, 16));
 
@@ -82,6 +105,23 @@ namespace ConnectFourPro.UI
                 {
                     float d = Mathf.Sqrt((x + 0.5f - r) * (x + 0.5f - r) + (y + 0.5f - r) * (y + 0.5f - r));
                     byte a = (byte)(Mathf.Clamp01(r - d) * 255);
+                    pixels[y * size + x] = new Color32(255, 255, 255, a);
+                }
+            tex.SetPixels32(pixels);
+            tex.Apply(false, true);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static Sprite MakeRing(int size, float thickness)
+        {
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            float r = size / 2f;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float d = Mathf.Sqrt((x + 0.5f - r) * (x + 0.5f - r) + (y + 0.5f - r) * (y + 0.5f - r));
+                    byte a = (byte)(Mathf.Clamp01(r - d) * Mathf.Clamp01(d - (r - thickness)) * 255);
                     pixels[y * size + x] = new Color32(255, 255, 255, a);
                 }
             tex.SetPixels32(pixels);
@@ -228,14 +268,25 @@ namespace ConnectFourPro.UI
             colors.disabledColor = new Color(0.6f, 0.6f, 0.6f, 0.6f);
             colors.colorMultiplier = 1f;
             button.colors = colors;
+            // Tiklanan buton secili kalmasin: yoksa Enter/Bosluk (Submit) onu yeniden
+            // tetikler (ornegin "Cikisi Onayla" hukmen yenilgiyi onaylar)
+            button.onClick.AddListener(ClearSelection);
             if (onClick != null)
                 button.onClick.AddListener(onClick);
-            var text = Text(img.transform, label, fontSize, Theme.White);
+            var text = Text(img.transform, label, fontSize, Theme.OnColor(color));
             var trt = text.rectTransform;
             trt.anchorMin = Vector2.zero;
             trt.anchorMax = Vector2.one;
             trt.offsetMin = trt.offsetMax = Vector2.zero;
             return button;
+        }
+
+        /// <summary>EventSystem'deki secili ogeyi birakir.</summary>
+        public static void ClearSelection()
+        {
+            var es = EventSystem.current;
+            if (es != null)
+                es.SetSelectedGameObject(null);
         }
 
         public static void SetLabel(Button button, string label) =>

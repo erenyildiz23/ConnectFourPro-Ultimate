@@ -7,6 +7,7 @@
 // * Oda / tas bilgisini olaylardan takip eder.
 // * Kopma sonrasi socket.io yeniden baglaninca oyuna otomatik geri katilir
 //   (sunucu RECONNECT_GRACE_SECONDS icinde donen oyuncuyu kabul eder, NFR-08).
+//   Seyirci de yeniden baglaninca yayina geri katilir (sunucu guncel durumu yollar).
 
 using System;
 using System.Collections.Generic;
@@ -30,6 +31,8 @@ namespace ConnectFourPro.Net
         public string RejoinToken { get; private set; }
         /// <summary>Oyuncu olarak bir odada (seyirci degil); yeniden baglaninca geri katilir.</summary>
         public bool InGame { get; private set; }
+        /// <summary>Seyirci olarak bir odada; yeniden baglaninca yayina geri katilir.</summary>
+        public bool Spectating { get; private set; }
         public bool IsConnected => _transport.IsConnected;
 
         /// <summary>Sunucu olayi (ad, veri) - ana thread'de.</summary>
@@ -92,11 +95,13 @@ namespace ConnectFourPro.Net
             if (IsConnected && RoomId != null)
                 _transport.Emit(SocketEvents.LeaveGame, Json.Serialize(new Dictionary<string, object> { ["room_id"] = RoomId }));
             InGame = false;
+            Spectating = false;
         }
 
         public void Disconnect()
         {
             InGame = false;
+            Spectating = false;
             _pending.Clear();
             _connecting = false;
             _transport.Disconnect();
@@ -134,12 +139,12 @@ namespace ConnectFourPro.Net
             _connecting = false;
             Debug.Log("[GameSocket] Sunucuya baglandi: " + _serverUrl);
             // Kopma sonrasi otomatik yeniden baglanma: oyuna geri don
-            if (InGame && RoomId != null && UserId != null && _pending.Count == 0)
+            if ((InGame || Spectating) && RoomId != null && UserId != null && _pending.Count == 0)
             {
                 Debug.Log("[GameSocket] Oyuna yeniden katiliniyor: " + RoomId);
                 var payload = Identity();
                 payload["room_id"] = RoomId;
-                if (RejoinToken != null)
+                if (InGame && RejoinToken != null)
                     payload["rejoin_token"] = RejoinToken;
                 _transport.Emit(SocketEvents.JoinGame, Json.Serialize(payload));
             }
@@ -184,12 +189,14 @@ namespace ConnectFourPro.Net
             {
                 RoomId = data.GetString("room_id", RoomId);
                 MyPiece = data.GetInt("player_piece", MyPiece);
-                InGame = data.GetString("role") != "spectator";
+                Spectating = data.GetString("role") == "spectator";
+                InGame = !Spectating;
                 RejoinToken = data.GetString("rejoin_token", RejoinToken);
             }
             else if (name == SocketEvents.GameOver)
             {
                 InGame = false;
+                Spectating = false;
             }
             ServerEvent?.Invoke(name, data);
         }

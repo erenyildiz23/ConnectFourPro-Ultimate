@@ -80,6 +80,9 @@ namespace ConnectFourPro.Game
         public bool IsGuest { get; private set; }
         /// <summary>/login (veya /signup) token'i; sunucu kayitli kimligi bununla dogrular. Misafirde null.</summary>
         private string _authToken;
+        // Her giris/kayit istegi bir donem alir; misafir girisi/cikis donemi ilerletir,
+        // boylece gec gelen eski yanit yeni oturumu ezmez.
+        private int _authEpoch;
         public int UserElo { get; private set; } = UserInfo.DefaultRating;
         public bool AuthPending { get; private set; }
         public string OpponentName { get; private set; } = "Rakip";
@@ -91,6 +94,19 @@ namespace ConnectFourPro.Game
         public int? LastEloChange { get; private set; }
         private string _finalStatus;
         private float _leaveConfirmUntil;
+        // Kendi baglantimiz koptugunda zaman (-1: bagli). Sayac yerel tahmindir;
+        // sunucunun bekleme suresi kopmayi fark ettiginde baslar.
+        private float _lostAt = -1f;
+        private int _lostShownSeconds = -1;
+        // Rakip koptu: sunucunun verdigi bekleme suresinin bitis zamani (-1: yok)
+        private float _opponentDeadline = -1f;
+        private int _opponentShownSeconds = -1;
+        // Oturum artik ilerleyemez (oda kapandi, geri donus reddedildi, baglanti donmedi)
+        // ama Game.GameOver da degil: hamle engellenir, cikis onay istemez.
+        private bool _sessionDead;
+        // join_game gonderildi, yanit (game_joined/game_start/error) bekleniyor:
+        // cift tiklama ikinci istegi gondermesin
+        private bool _joinPending;
         public (string p1, int p1Elo, string p2, int p2Elo) SpectateNames { get; private set; } =
             ("Oyuncu 1", UserInfo.DefaultRating, "Oyuncu 2", UserInfo.DefaultRating);
 
@@ -107,6 +123,8 @@ namespace ConnectFourPro.Game
         // Hamle analizi (online oyunlarda)
         public bool AnalysisEnabled = true;
         private readonly List<(int player, bool wasBest)> _analysis = new List<(int, bool)>();
+        // Tick'te ozet yalnizca yeni analiz eklenince yeniden hesaplanir (her kare nesne uretme)
+        private int _summaryCount = -1;
         public AnalysisSummary Summary { get; private set; }
 
         public string Status { get; private set; } = "";
@@ -138,6 +156,7 @@ namespace ConnectFourPro.Game
             var socket = new GameSocket(_transport, _api.BaseUrl);
             socket.ServerEvent += OnServerEvent;
             socket.ConnectionFailed += _ => ConnectionFailed();
+            socket.ConnectionLost += OnConnectionLost;
             return socket;
         }
 
@@ -164,11 +183,65 @@ namespace ConnectFourPro.Game
             _ai.Tick();
             if (Screen == AppScreen.Lobby && Time.unscaledTime - _lastLobbyRefresh > LobbyRefreshSeconds)
                 RefreshActiveGames();
-            if (Screen == AppScreen.PlayingOnline && Game.GameOver)
+            if (Screen == AppScreen.PlayingOnline && Game.GameOver && _analysis.Count != _summaryCount)
+            {
+                _summaryCount = _analysis.Count;
                 Summary = ComputeSummary();   // analizler oyun bittikten sonra da tamamlanabilir
+            }
+            TickConnectionCountdowns();
         }
 
         public bool LeaveConfirmPending => Time.unscaledTime < _leaveConfirmUntil;
+
+        /// <summary>Kendi sunucu baglantimiz oyun/yayin sirasinda koptu; yeniden baglaniliyor.</summary>
+        public bool Offline => _lostAt >= 0f;
+
+        /// <summary>Online oturum sona erdi (oyun bitmeden); yalnizca cikis mumkun.</summary>
+        public bool SessionDead => _sessionDead;
+
+        private void TickConnectionCountdowns()
+        {
+            bool live = (Screen == AppScreen.PlayingOnline || Screen == AppScreen.Spectating) && !Game.GameOver;
+            // Cikis onayi metni sayacla ezilmesin
+            if (!live || LeaveConfirmPending)
+                return;
+            if (Offline && !_sessionDead)
+            {
+                int left = (int)Math.Ceiling(ReconnectGraceDefault - (Time.unscaledTime - _lostAt));
+                if (left <= 0)
+                {
+                    _sessionDead = true;
+                    SetStatus(IsSpectator
+                        ? "Yayın bağlantısı geri gelmedi. Lobiye dönüp tekrar izleyebilirsin."
+                        : "Sunucuya yeniden bağlanılamadı. Oyun hükmen kaybedilmiş olabilir; lobiye dönebilirsin.",
+                        StatusTone.Bad);
+                }
+                else if (left != _lostShownSeconds)
+                {
+                    _lostShownSeconds = left;
+                    SetStatus($"Bağlantı koptu! Yeniden bağlanılıyor... ({left} sn)", StatusTone.Bad);
+                }
+                return;
+            }
+            if (_opponentDeadline >= 0f && Screen == AppScreen.PlayingOnline)
+            {
+                int left = Math.Max(0, (int)Math.Ceiling(_opponentDeadline - Time.unscaledTime));
+                if (left != _opponentShownSeconds)
+                {
+                    _opponentShownSeconds = left;
+                    SetStatus($"Rakibin bağlantısı koptu! {left} sn içinde dönmezse kazanırsın.", StatusTone.Bad);
+                }
+            }
+        }
+
+        private void ClearConnectionState()
+        {
+            _lostAt = -1f;
+            _lostShownSeconds = -1;
+            _opponentDeadline = -1f;
+            _opponentShownSeconds = -1;
+            _sessionDead = false;
+        }
 
         public bool CanHumanMove()
         {
@@ -177,12 +250,16 @@ namespace ConnectFourPro.Game
             if (Screen == AppScreen.PlayingAI)
                 return Game.CurrentPlayer == Board.Player1 && !AIThinking && Engine != null;
             if (Screen == AppScreen.PlayingOnline)
-                return Game.CurrentPlayer == MyPiece;
+                return Game.CurrentPlayer == MyPiece && !Offline && !_sessionDead && _socket.IsConnected;
             return false;
         }
 
         /// <summary>Oyuncunun hover'da gosterilecek tas rengi.</summary>
         public int HumanPiece => Screen == AppScreen.PlayingAI ? Board.Player1 : MyPiece;
+
+        /// <summary>Bilgi panelinde "(Sen)" etiketi: bu tas yerel oyuncunun mu.</summary>
+        public bool IsLocalPiece(int piece) =>
+            !IsSpectator && (Screen == AppScreen.PlayingAI || Screen == AppScreen.PlayingOnline) && piece == HumanPiece;
 
         /// <summary>(p1 adi, p1 elo, p2 adi, p2 elo); elo null ise gosterilmez.</summary>
         public (string p1, int? p1Elo, string p2, int? p2Elo) PlayerLabels()
@@ -211,9 +288,12 @@ namespace ConnectFourPro.Game
                 return;
             }
             AuthPending = true;
+            int epoch = ++_authEpoch;
             SetStatus("Giriş yapılıyor...", StatusTone.Good);
             _api.Login(username, password, r =>
             {
+                if (epoch != _authEpoch)
+                    return;   // bu arada misafir girisi/cikis yapildi
                 AuthPending = false;
                 if (r.NetworkError)
                     SetStatus("Sunucuya bağlanılamadı!", StatusTone.Bad);
@@ -250,9 +330,12 @@ namespace ConnectFourPro.Game
                 return;
             }
             AuthPending = true;
+            int epoch = ++_authEpoch;
             SetStatus("Hesap oluşturuluyor...", StatusTone.Good);
             _api.Signup(username, password, r =>
             {
+                if (epoch != _authEpoch)
+                    return;
                 AuthPending = false;
                 if (r.NetworkError)
                     SetStatus("Sunucuya bağlanılamadı!", StatusTone.Bad);
@@ -276,6 +359,8 @@ namespace ConnectFourPro.Game
 
         public void GuestLogin()
         {
+            _authEpoch++;
+            AuthPending = false;
             // Sunucu "misafir_" ile baslayan adlarla kayit olunmasina izin vermez
             EnterMenu($"Misafir_{UnityEngine.Random.Range(0, 1000000):D6}", UserInfo.DefaultRating, true);
             SetStatus("");
@@ -294,6 +379,8 @@ namespace ConnectFourPro.Game
 
         public void Logout()
         {
+            _authEpoch++;
+            AuthPending = false;
             Username = "";
             _authToken = null;
             UserElo = UserInfo.DefaultRating;
@@ -307,9 +394,11 @@ namespace ConnectFourPro.Game
         {
             if (string.IsNullOrEmpty(Username) || IsGuest)
                 return;
-            _api.User(Username, r =>
+            string user = Username;
+            _api.User(user, r =>
             {
-                if (r.Status == 200)
+                // Yanit gelene kadar oturum degismis olabilir (cikis + misafir girisi)
+                if (r.Status == 200 && user == Username && !IsGuest)
                     UserElo = r.BodyObject.GetObject("user").GetInt("rating", UserElo);
             });
         }
@@ -338,10 +427,29 @@ namespace ConnectFourPro.Game
                 _lobbyFetching = false;
                 if (r.Ok)
                 {
-                    ActiveGames = ActiveGame.ListFrom(r.ParseBody());
+                    var games = ActiveGame.ListFrom(r.ParseBody());
+                    // Liste ayniysa surum artmaz: LobbyView satirlari yeniden kurmaz
+                    // (kurulum basili tutulan 'Katil'/'Izle' tiklamasini yutar)
+                    if (SameGames(ActiveGames, games))
+                        return;
+                    ActiveGames = games;
                     ActiveGamesVersion++;
                 }
             });
+        }
+
+        private static bool SameGames(List<ActiveGame> a, List<ActiveGame> b)
+        {
+            if (a.Count != b.Count)
+                return false;
+            for (int i = 0; i < a.Count; i++)
+            {
+                ActiveGame x = a[i], y = b[i];
+                if (x.RoomId != y.RoomId || x.P1 != y.P1 || x.P1Elo != y.P1Elo || x.P2 != y.P2
+                    || x.P2Elo != y.P2Elo || x.Waiting != y.Waiting || x.MoveCount != y.MoveCount)
+                    return false;
+            }
+            return true;
         }
 
         public void OpenLeaderboard()
@@ -457,6 +565,7 @@ namespace ConnectFourPro.Game
         {
             _ai.CancelAnalysis();
             _analysis.Clear();
+            _summaryCount = -1;
         }
 
         private AnalysisSummary ComputeSummary()
@@ -491,6 +600,8 @@ namespace ConnectFourPro.Game
 
         public void CreateOnlineGame()
         {
+            if (_joinPending)
+                return;
             InvalidateAISession();
             RoomId = null;
             SetScreen(AppScreen.Waiting);
@@ -500,7 +611,11 @@ namespace ConnectFourPro.Game
 
         public void JoinOnlineGame(string roomId)
         {
+            if (_joinPending)
+                return;
+            _joinPending = true;
             InvalidateAISession();
+            ResetOnlineGame();   // onceki macin sonucu/ELO'su yeni odaya tasinmasin
             RoomId = roomId.ToUpperInvariant();
             IsSpectator = false;
             SetStatus("Odaya katılınıyor...");
@@ -509,6 +624,8 @@ namespace ConnectFourPro.Game
 
         public void SpectateGame(string roomId)
         {
+            if (_joinPending)
+                return;
             InvalidateAISession();
             RoomId = roomId.ToUpperInvariant();
             IsSpectator = true;
@@ -520,9 +637,30 @@ namespace ConnectFourPro.Game
 
         private void ConnectionFailed()
         {
+            _joinPending = false;
             SetStatus("Sunucuya bağlanılamadı!", StatusTone.Bad);
             if (Screen == AppScreen.Waiting || Screen == AppScreen.Spectating)
                 SetScreen(AppScreen.Lobby);
+        }
+
+        private void OnConnectionLost(string reason)
+        {
+            // ResetToMenu'nun kendi Disconnect'i (WebGL'de senkron gelir) kopma degildir
+            if (reason == "io client disconnect")
+                return;
+            _joinPending = false;   // yanitsiz kalan katilma istegi 'Katil'i kilitlemesin
+            if (Screen == AppScreen.Waiting)
+            {
+                // Sunucu kurucusu kopan bekleyen odayi hemen siler; geri baglaninca
+                // "Oda bulunamadi" gelir ve lobiye donulur (OnServerError)
+                SetStatus("Bağlantı koptu! Oda kapanmış olabilir, yeniden bağlanılıyor...", StatusTone.Bad);
+                return;
+            }
+            if ((Screen != AppScreen.PlayingOnline && Screen != AppScreen.Spectating) || Game.GameOver || _sessionDead)
+                return;
+            _lostAt = Time.unscaledTime;
+            _lostShownSeconds = -1;
+            SetStatus("Bağlantı koptu! Yeniden bağlanılıyor...", StatusTone.Bad);
         }
 
         private void ResetOnlineGame()
@@ -533,6 +671,7 @@ namespace ConnectFourPro.Game
             _finalStatus = null;
             Summary = null;
             CancelAnalysis();
+            ClearConnectionState();
         }
 
         private void OnServerEvent(string name, JsonObject data)
@@ -563,6 +702,7 @@ namespace ConnectFourPro.Game
 
         private void OnGameJoined(JsonObject data)
         {
+            _joinPending = false;
             RoomId = data.GetString("room_id", RoomId);
             MyPiece = data.GetInt("player_piece");
             if (data.GetString("role") == "spectator")
@@ -575,7 +715,12 @@ namespace ConnectFourPro.Game
                                  p2.GetString("username", "Oyuncu 2"), p2.GetInt("rating", UserInfo.DefaultRating));
                 if (data.Has("current_state"))
                     GameSnapshot.Apply(Game, data.GetObject("current_state"));
-                SetStatus("Canlı izleniyor");
+                bool resumed = Offline || _sessionDead;
+                ClearConnectionState();
+                if (Game.GameOver)
+                    HandleGameOver();   // kopukken biten yayin
+                else
+                    SetStatus(resumed ? "Yayına geri dönüldü. Canlı izleniyor" : "Canlı izleniyor");
                 return;
             }
 
@@ -585,17 +730,54 @@ namespace ConnectFourPro.Game
             OpponentElo = opponent.GetInt("rating", UserInfo.DefaultRating);
             if (data.GetBool("rejoined"))
             {
-                // Kopma sonrasi geri donus: oyunu sunucudaki durumdan surdur
+                // Kopma sonrasi geri donus: oyunu sunucudaki durumdan surdur. Yerel sayac
+                // dolduktan sonra da gelebilir (sunucunun suresi daha gec baslar).
                 CancelAnimation();
+                ClearConnectionState();
                 GameSnapshot.Apply(Game, data.GetObject("current_state"));
                 SetScreen(AppScreen.PlayingOnline);
-                SetStatus("Oyuna geri dönüldü. " + (Game.CurrentPlayer == MyPiece ? "Senin sıran!" : "Rakibin sırası..."));
+                if (Game.GameOver)
+                    ShowRejoinedResult();
+                else
+                    SetStatus("Oyuna geri dönüldü. " + (Game.CurrentPlayer == MyPiece ? "Senin sıran!" : "Rakibin sırası..."));
             }
+        }
+
+        /// <summary>Geri donuldugunde oyun coktan bitmis (sunucu biten odayi bir sure tutar).</summary>
+        private void ShowRejoinedResult()
+        {
+            string msg;
+            StatusTone tone;
+            if (Game.Winner == MyPiece)
+            {
+                msg = "Kazandın!";
+                tone = StatusTone.Good;
+            }
+            else if (Game.Winner == 0)
+            {
+                msg = "Berabere!";
+                tone = StatusTone.Neutral;
+            }
+            else if (Game.Status == GameStatus.Win)
+            {
+                msg = "Kaybettin.";
+                tone = StatusTone.Bad;
+            }
+            else
+            {
+                // Hukmen: tahtada dortlu yok, sunucu yalnizca kazanani isaretledi
+                msg = "Bağlantın koptuğu için hükmen kaybettin.";
+                tone = StatusTone.Bad;
+            }
+            _finalStatus = msg;
+            SetStatus(msg, tone);
+            RefreshUserElo();
         }
 
         private void OnGameStart(JsonObject data)
         {
             Debug.Log("[App] Online oyun basliyor");
+            _joinPending = false;
             InvalidateAISession();
             ResetOnlineGame();
             IsSpectator = false;
@@ -672,6 +854,7 @@ namespace ConnectFourPro.Game
         {
             var info = GameOverInfo.From(data);
             int w = info.Winner;
+            _opponentDeadline = -1f;
             bool forfeit = info.Reason == "forfeit";
             if (forfeit && !Game.GameOver)
             {
@@ -729,6 +912,8 @@ namespace ConnectFourPro.Game
             if (Screen == AppScreen.PlayingOnline && !Game.GameOver)
             {
                 int grace = data.GetInt("grace_seconds", ReconnectGraceDefault);
+                _opponentDeadline = Time.unscaledTime + grace;
+                _opponentShownSeconds = grace;
                 SetStatus($"Rakibin bağlantısı koptu! {grace} sn içinde dönmezse kazanırsın.", StatusTone.Bad);
             }
             else if (IsSpectator)
@@ -737,6 +922,7 @@ namespace ConnectFourPro.Game
 
         private void OnOpponentReconnected()
         {
+            _opponentDeadline = -1f;
             if ((Screen == AppScreen.PlayingOnline || Screen == AppScreen.Spectating) && !Game.GameOver)
             {
                 string turn = Game.CurrentPlayer == MyPiece ? "Senin sıran!" : "Rakibin sırası...";
@@ -746,13 +932,45 @@ namespace ConnectFourPro.Game
 
         private void OnGameEnded()
         {
-            if (!Game.GameOver)
-                SetStatus("Oda zaman aşımı nedeniyle kapatıldı.", StatusTone.Bad);
+            if (Screen == AppScreen.Waiting)
+            {
+                // Bekleyen oda silindi: olu oda kodunu gostermeye devam etme. LeaveGame
+                // InGame'i dusurur; yoksa sonraki yeniden baglanma olu odaya katilmaya calisir.
+                _socket.LeaveGame();
+                RoomId = null;
+                SetScreen(AppScreen.Lobby);
+                SetStatus("Oda zaman aşımına uğradı.", StatusTone.Bad);
+                RefreshActiveGames();
+                return;
+            }
+            if ((Screen == AppScreen.PlayingOnline || Screen == AppScreen.Spectating) && !Game.GameOver)
+            {
+                ClearConnectionState();
+                _sessionDead = true;
+                SetStatus("Oda zaman aşımı nedeniyle kapatıldı. Lobiye dönebilirsin.", StatusTone.Bad);
+            }
         }
 
         private void OnServerError(JsonObject data)
         {
+            _joinPending = false;
             string msg = data.GetString("msg", "");
+            if (Screen == AppScreen.PlayingOnline && !Game.GameOver
+                && (msg == "Oda bulunamadi" || (Offline && msg == "Yeniden baglanma anahtari gecersiz")))
+            {
+                // Geri donus reddedildi ya da oda sunucuda yok: oyun burada surdurulemez
+                ClearConnectionState();
+                _sessionDead = true;
+                SetStatus("Oyun sunucuda sona ermiş. Lobiye dönebilirsin.", StatusTone.Bad);
+                return;
+            }
+            if (Screen == AppScreen.Spectating && Game.MoveCount > 0 && !Game.GameOver && msg == "Oda bulunamadi")
+            {
+                ClearConnectionState();
+                _sessionDead = true;
+                SetStatus("Yayın sunucuda sona ermiş. Lobiye dönebilirsin.", StatusTone.Bad);
+                return;
+            }
             SetStatus("Hata: " + msg, StatusTone.Bad);
             if ((Screen == AppScreen.Spectating || Screen == AppScreen.Waiting) && Game.MoveCount == 0 && msg == "Oda bulunamadi")
                 SetScreen(AppScreen.Lobby);
@@ -764,8 +982,14 @@ namespace ConnectFourPro.Game
 
         public void HandleColumnClick(int col)
         {
-            if (!CanHumanMove() || !Game.IsValidLocation(col))
+            // Sira bizde degilse / animasyon / AI dusunurken sessizce yok sayilir
+            if (!CanHumanMove() || col < 0 || col >= Board.Cols)
                 return;
+            if (!Game.IsValidLocation(col))
+            {
+                SetStatus("Bu sütun dolu!", StatusTone.Bad);
+                return;
+            }
             AnimateDrop(col, Game.NextRow(col), Game.CurrentPlayer, () => FinishMove(col));
         }
 
@@ -773,6 +997,12 @@ namespace ConnectFourPro.Game
         {
             if (Screen == AppScreen.PlayingOnline)
             {
+                // Dusme animasyonu sirasinda baglanti kopmus olabilir: hayalet tas birakma
+                if (!_socket.IsConnected || Offline || _sessionDead)
+                {
+                    SetStatus("Bağlantı yok, hamle gönderilemedi.", StatusTone.Bad);
+                    return;
+                }
                 var before = Game.Clone();
                 if (!Game.MakeMove(col))
                     return;
@@ -812,25 +1042,64 @@ namespace ConnectFourPro.Game
                           w == 0 ? StatusTone.Neutral : (w == MyPiece ? StatusTone.Good : StatusTone.Bad));
         }
 
-        /// <summary>Menu/Geri/Iptal. Aktif online oyundan cikis onay ister (hukmen yenilgi).</summary>
+        /// <summary>
+        /// Menu/Geri/Iptal. Aktif online oyundan cikis onay ister (hukmen yenilgi).
+        /// Online ekranlardan (bekleme, oyun, yayin) lobiye, digerlerinden menuye donulur.
+        /// </summary>
         public void RequestBack()
         {
-            if (Screen == AppScreen.PlayingOnline && !Game.GameOver && !LeaveConfirmPending)
+            if (Screen == AppScreen.PlayingOnline && !Game.GameOver && !_sessionDead && !LeaveConfirmPending)
             {
                 _leaveConfirmUntil = Time.unscaledTime + LeaveConfirmSeconds;
                 SetStatus("Oyundan çıkmak hükmen yenilgi sayılır. Onaylamak için tekrar basın.", StatusTone.Bad);
                 return;
             }
-            ResetToMenu();
+            bool online = Screen == AppScreen.Waiting || Screen == AppScreen.PlayingOnline || Screen == AppScreen.Spectating;
+            LeaveSession(online ? AppScreen.Lobby : AppScreen.Menu);
         }
 
-        public void ResetToMenu()
+        /// <summary>Oyun ekranindaki geri butonunun yazisi.</summary>
+        public string BackLabel =>
+            LeaveConfirmPending ? "Çıkışı Onayla"
+            : Screen == AppScreen.PlayingOnline || Screen == AppScreen.Spectating ? "Lobiye Dön"
+            : "Menü";
+
+        /// <summary>Biten AI oyununu ayni zorlukla yeniden baslatir.</summary>
+        public void PlayAgain()
+        {
+            if (Screen == AppScreen.PlayingAI && Engine != null && Game.GameOver)
+                StartAIGame(Engine.Depth);
+        }
+
+        /// <summary>Biten oyunun buyuk basligi (null: oyun suruyor).</summary>
+        public (string text, StatusTone tone)? ResultHeadline
+        {
+            get
+            {
+                if (!Game.GameOver)
+                    return null;
+                int w = Game.Winner;
+                if (w == 0)
+                    return ("BERABERE", StatusTone.Neutral);
+                if (IsSpectator)
+                    return (w == Board.Player1 ? "KIRMIZI KAZANDI" : "SARI KAZANDI", StatusTone.Neutral);
+                if (Screen == AppScreen.PlayingAI)
+                    return w == Board.Player1 ? ("KAZANDIN!", StatusTone.Good) : ("AI KAZANDI", StatusTone.Bad);
+                return w == MyPiece ? ("KAZANDIN!", StatusTone.Good) : ("KAYBETTİN", StatusTone.Bad);
+            }
+        }
+
+        public void ResetToMenu() => LeaveSession(AppScreen.Menu);
+
+        private void LeaveSession(AppScreen target)
         {
             InvalidateAISession();
             CancelAnalysis();
             CancelAnimation();
             Summary = null;
             _leaveConfirmUntil = 0f;
+            _joinPending = false;
+            ClearConnectionState();
             if (Screen == AppScreen.PlayingOnline || Screen == AppScreen.Waiting)
                 _socket.LeaveGame();
             _socket.Disconnect();
@@ -839,7 +1108,12 @@ namespace ConnectFourPro.Game
             RoomId = null;
             IsSpectator = false;
             Game = new GameState();
-            SetScreen(string.IsNullOrEmpty(Username) ? AppScreen.Login : AppScreen.Menu);
+            if (string.IsNullOrEmpty(Username))
+                SetScreen(AppScreen.Login);
+            else if (target == AppScreen.Lobby)
+                OpenLobby();
+            else
+                SetScreen(AppScreen.Menu);
             SetStatus("");
             RefreshUserElo();
         }

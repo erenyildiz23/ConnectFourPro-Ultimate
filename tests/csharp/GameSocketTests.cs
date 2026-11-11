@@ -140,12 +140,43 @@ namespace ConnectFourPro.Tests
         }
 
         [Test]
-        public void SpectatorDoesNotRejoin()
+        public void SpectatorRejoinsBroadcastWithoutSeatToken()
+        {
+            _socket.JoinGame("AB12C", "ali");
+            _transport.RaiseConnected();
+            _transport.Receive("game_joined", "{\"room_id\":\"AB12C\",\"player_piece\":0,\"role\":\"spectator\",\"rejoin_token\":\"x\"}");
+            Assert.That(_socket.InGame, Is.False);
+            Assert.That(_socket.Spectating, Is.True);
+            _transport.RaiseDisconnected("transport close");
+            _transport.RaiseConnected();
+            var joins = _transport.EmittedOf("join_game");
+            Assert.That(joins.Count, Is.EqualTo(2), "seyirci yeniden baglaninca yayina geri katilmali");
+            Assert.That(joins[1].GetString("room_id"), Is.EqualTo("AB12C"));
+            Assert.That(joins[1].GetString("user_id"), Is.EqualTo("ali"));
+            Assert.That(joins[1].Has("rejoin_token"), Is.False, "seyircinin koltuk anahtari yoktur");
+        }
+
+        [Test]
+        public void FinishedBroadcastIsNotRejoined()
         {
             _socket.JoinGame("AB12C", "ali");
             _transport.RaiseConnected();
             _transport.Receive("game_joined", "{\"room_id\":\"AB12C\",\"player_piece\":0,\"role\":\"spectator\"}");
-            Assert.That(_socket.InGame, Is.False);
+            _transport.Receive("game_over", "{\"winner\":1,\"reason\":\"normal\"}");
+            Assert.That(_socket.Spectating, Is.False);
+            _transport.RaiseDisconnected("transport close");
+            _transport.RaiseConnected();
+            Assert.That(_transport.EmittedOf("join_game").Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void LeavingOrDisconnectingStopsSpectatorRejoin()
+        {
+            _socket.JoinGame("AB12C", "ali");
+            _transport.RaiseConnected();
+            _transport.Receive("game_joined", "{\"room_id\":\"AB12C\",\"player_piece\":0,\"role\":\"spectator\"}");
+            _socket.LeaveGame();
+            Assert.That(_socket.Spectating, Is.False);
             _transport.RaiseDisconnected("transport close");
             _transport.RaiseConnected();
             Assert.That(_transport.EmittedOf("join_game").Count, Is.EqualTo(1));
