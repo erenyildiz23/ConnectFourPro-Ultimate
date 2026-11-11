@@ -391,6 +391,7 @@ namespace ConnectFourPro.UI
         private readonly Text[] _names = new Text[2];
         private readonly Text[] _elos = new Text[2];
         private readonly Text[] _turns = new Text[2];
+        private readonly Text[] _clocks = new Text[2];
         private readonly Text _room;
         private readonly Text _moves;
         private readonly Text _accuracyTitle;
@@ -398,6 +399,7 @@ namespace ConnectFourPro.UI
         private readonly Button _menu;
         private readonly Text _menuLabel;
         private readonly Button _again;
+        private readonly Button _rematch;
 
         public BoardView Board { get; }
 
@@ -421,6 +423,8 @@ namespace ConnectFourPro.UI
                 _names[i] = UIKit.Label(Root, "", 21, Theme.White, px - 10, y - 10, 180, 28, TextAnchor.MiddleLeft);
                 _elos[i] = UIKit.Label(Root, "", 16, Theme.Gray, px - 10, y + 14, 180, 22, TextAnchor.MiddleLeft);
                 _turns[i] = UIKit.Label(Root, "< SIRA", 18, Theme.Green, px + 110, y, 90, 30, TextAnchor.MiddleCenter, FontStyle.Bold);
+                // Hamle suresi: "< SIRA"nin hemen altinda (y+13..y+35; sonraki satir y+46'da baslar)
+                _clocks[i] = UIKit.Label(Root, "", 16, Theme.Gray, px + 110, y + 24, 80, 22, TextAnchor.MiddleCenter, FontStyle.Bold);
             }
 
             _room = UIKit.Label(Root, "", 24, Theme.Hover, px, 385, 300, 34, TextAnchor.MiddleCenter, FontStyle.Bold);
@@ -430,6 +434,9 @@ namespace ConnectFourPro.UI
             // Biten AI oyununda "Tekrar Oyna" (panel y 135-615 icinde)
             _again = UIKit.Button(Root, "Tekrar Oyna", Theme.Green, app.PlayAgain, px, 530, 180, 48);
             _again.gameObject.SetActive(false);
+            // Biten online oyunda "Rovans": ayni yerde, "Tekrar Oyna" yalnizca AI oyununda gorunur
+            _rematch = UIKit.Button(Root, "Rövanş", Theme.Green, app.RequestRematch, px, 530, 180, 48, 18);
+            _rematch.gameObject.SetActive(false);
             _menu = UIKit.Button(Root, "Menü", Theme.Button, app.RequestBack, px, 590, 180, 48);
             _menuLabel = _menu.GetComponentInChildren<Text>();
         }
@@ -475,6 +482,11 @@ namespace ConnectFourPro.UI
             bool again = app.Screen == AppScreen.PlayingAI && app.Game.GameOver;
             if (_again.gameObject.activeSelf != again)
                 _again.gameObject.SetActive(again);
+            bool rematch = app.CanRequestRematch;
+            if (rematch)
+                UIKit.SetLabel(_rematch, app.RematchLabel);
+            if (_rematch.gameObject.activeSelf != rematch)
+                _rematch.gameObject.SetActive(rematch);
         }
 
         private Color HeadlineColor(StatusTone tone)
@@ -493,6 +505,14 @@ namespace ConnectFourPro.UI
                 _names[i].text = name != null && name.Length > 14 ? name.Substring(0, 14) : name;
             _elos[i].text = elo.HasValue ? "ELO: " + elo.Value : "";
             _turns[i].enabled = App.Game.CurrentPlayer == piece && !App.Game.GameOver;
+            int? secs = App.TurnSecondsLeft;
+            if (_turns[i].enabled && secs.HasValue)
+            {
+                _clocks[i].text = secs.Value + " sn";
+                _clocks[i].color = App.TurnClockWarning ? Theme.Error : Theme.Gray;
+            }
+            else
+                _clocks[i].text = "";
         }
     }
 }

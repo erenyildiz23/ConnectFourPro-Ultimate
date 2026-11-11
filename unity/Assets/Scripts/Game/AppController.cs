@@ -40,6 +40,15 @@ namespace ConnectFourPro.Game
         Bad,
     }
 
+    /// <summary>Biten online oyundan sonra rovans durumu.</summary>
+    public enum RematchState
+    {
+        None,
+        OfferedByMe,
+        OfferedByOpponent,
+        Unavailable,
+    }
+
     public sealed class AnalysisSummary
     {
         public int TotalMoves;
@@ -57,6 +66,8 @@ namespace ConnectFourPro.Game
         public const int UsernameMaxLength = 20;
         public const int PasswordMinLength = 8;
         public const int ReconnectGraceDefault = 30;
+        /// <summary>Yerel oyuncunun kendi sirasinda son bu kadar saniye uyari rengiyle gosterilir.</summary>
+        public const int TurnWarningSeconds = 10;
 
         private readonly ApiClient _api;
         private readonly ISocketTransport _transport;
@@ -107,6 +118,14 @@ namespace ConnectFourPro.Game
         // join_game gonderildi, yanit (game_joined/game_start/error) bekleniyor:
         // cift tiklama ikinci istegi gondermesin
         private bool _joinPending;
+        // Rovans: sunucu destekliyor mu (game_over/game_joined 'detail'/'result' tasir) ve durum
+        private bool _rematchSupported;
+        public RematchState Rematch { get; private set; }
+        // Hamle suresi: sunucunun son bildirdigi kalan saniye ve geldigi yerel zaman (null: sure yok)
+        private int? _turnSecondsLeft;
+        private float _turnClockAt;
+        /// <summary>Sunucunun hamle suresi (sn); 0: kapali ya da eski sunucu.</summary>
+        public int MoveTimeSeconds { get; private set; }
         public (string p1, int p1Elo, string p2, int p2Elo) SpectateNames { get; private set; } =
             ("Oyuncu 1", UserInfo.DefaultRating, "Oyuncu 2", UserInfo.DefaultRating);
 
@@ -198,6 +217,42 @@ namespace ConnectFourPro.Game
 
         /// <summary>Online oturum sona erdi (oyun bitmeden); yalnizca cikis mumkun.</summary>
         public bool SessionDead => _sessionDead;
+
+        /// <summary>
+        /// Sirasi gelen oyuncunun kalan tam saniyesi (0'in altina inmez); hamle suresi yoksa,
+        /// oyun bittiyse ya da baglanti yoksa null.
+        /// </summary>
+        public int? TurnSecondsLeft
+        {
+            get
+            {
+                if ((Screen != AppScreen.PlayingOnline && Screen != AppScreen.Spectating) || Game.GameOver
+                    || _turnSecondsLeft == null || Offline || _sessionDead)
+                    return null;
+                double left = _turnSecondsLeft.Value - (Time.unscaledTime - _turnClockAt);
+                return Math.Max(0, (int)Math.Ceiling(left));
+            }
+        }
+
+        /// <summary>Yerel oyuncunun kendi sirasinda son TurnWarningSeconds saniye.</summary>
+        public bool TurnClockWarning =>
+            Screen == AppScreen.PlayingOnline && !IsSpectator && Game.CurrentPlayer == MyPiece
+            && TurnSecondsLeft is int s && s <= TurnWarningSeconds;
+
+        /// <summary>Sunucunun yolladigi hamle suresi alanlarini alir (eski sunucuda alan yok: sure yok).</summary>
+        private void UpdateTurnClock(JsonObject data)
+        {
+            _turnSecondsLeft = data.GetNullableInt("turn_seconds_left");
+            _turnClockAt = Time.unscaledTime;
+            if (data.Has("move_time"))
+                MoveTimeSeconds = data.GetInt("move_time");
+        }
+
+        private void ClearTurnClock()
+        {
+            _turnSecondsLeft = null;
+            MoveTimeSeconds = 0;
+        }
 
         private void TickConnectionCountdowns()
         {
@@ -656,6 +711,14 @@ namespace ConnectFourPro.Game
                 SetStatus("Bağlantı koptu! Oda kapanmış olabilir, yeniden bağlanılıyor...", StatusTone.Bad);
                 return;
             }
+            if (Screen == AppScreen.PlayingOnline && !IsSpectator && ResultKnown && _rematchSupported
+                && Rematch != RematchState.Unavailable)
+            {
+                // Biten oyunda koltuga geri katilinmaz (sunucu ayrilan oyuncunun rovansini iptal eder)
+                Rematch = RematchState.Unavailable;
+                SetStatus("Bağlantı koptu, rövanş yapılamaz.", StatusTone.Bad);
+                return;
+            }
             if ((Screen != AppScreen.PlayingOnline && Screen != AppScreen.Spectating) || Game.GameOver || _sessionDead)
                 return;
             _lostAt = Time.unscaledTime;
@@ -672,7 +735,13 @@ namespace ConnectFourPro.Game
             Summary = null;
             CancelAnalysis();
             ClearConnectionState();
+            ClearTurnClock();
+            _rematchSupported = false;
+            Rematch = RematchState.None;
         }
+
+        /// <summary>Sunucunun sonucu geldi (son tasin animasyonu henuz bitmemis olabilir).</summary>
+        private bool ResultKnown => Game.GameOver || _finalStatus != null;
 
         private void OnServerEvent(string name, JsonObject data)
         {
@@ -688,6 +757,9 @@ namespace ConnectFourPro.Game
                 case SocketEvents.OpponentReconnected: OnOpponentReconnected(); break;
                 case SocketEvents.GameEnded: OnGameEnded(); break;
                 case SocketEvents.Error: OnServerError(data); break;
+                case SocketEvents.RematchOffered: OnRematchOffered(data); break;
+                case SocketEvents.RematchUnavailable: OnRematchUnavailable(data); break;
+                case SocketEvents.RematchStarted: OnRematchStarted(data); break;
             }
         }
 
@@ -715,9 +787,12 @@ namespace ConnectFourPro.Game
                                  p2.GetString("username", "Oyuncu 2"), p2.GetInt("rating", UserInfo.DefaultRating));
                 if (data.Has("current_state"))
                     GameSnapshot.Apply(Game, data.GetObject("current_state"));
+                UpdateTurnClock(data);
                 bool resumed = Offline || _sessionDead;
                 ClearConnectionState();
-                if (Game.GameOver)
+                if (Game.GameOver && data.Has("result"))
+                    ApplyResult(GameOverInfo.From(data.GetObject("result")));   // sunucunun kesin sonucu
+                else if (Game.GameOver)
                     HandleGameOver();   // kopukken biten yayin
                 else
                     SetStatus(resumed ? "Yayına geri dönüldü. Canlı izleniyor" : "Canlı izleniyor");
@@ -735,15 +810,18 @@ namespace ConnectFourPro.Game
                 CancelAnimation();
                 ClearConnectionState();
                 GameSnapshot.Apply(Game, data.GetObject("current_state"));
+                UpdateTurnClock(data);
                 SetScreen(AppScreen.PlayingOnline);
-                if (Game.GameOver)
+                if (Game.GameOver && data.Has("result"))
+                    ApplyResult(GameOverInfo.From(data.GetObject("result")));   // kesin sonuc ve ELO
+                else if (Game.GameOver)
                     ShowRejoinedResult();
                 else
                     SetStatus("Oyuna geri dönüldü. " + (Game.CurrentPlayer == MyPiece ? "Senin sıran!" : "Rakibin sırası..."));
             }
         }
 
-        /// <summary>Geri donuldugunde oyun coktan bitmis (sunucu biten odayi bir sure tutar).</summary>
+        /// <summary>Geri donuldugunde oyun coktan bitmis; eski sunucu sonucu yollamaz, tahtadan cikarilir.</summary>
         private void ShowRejoinedResult()
         {
             string msg;
@@ -781,12 +859,24 @@ namespace ConnectFourPro.Game
             InvalidateAISession();
             ResetOnlineGame();
             IsSpectator = false;
+            bool rematch = data.GetBool("rematch");
+            // Rovansta koltuklar yer degistirir; ilk oyunda tas game_created/game_joined'dan gelir
+            MyPiece = data.GetInt("player_piece", MyPiece);
+            RoomId = data.GetString("room_id", RoomId);
+            UpdateTurnClock(data);
             SetScreen(AppScreen.PlayingOnline);
             OpponentName = data.GetString("opponent_name");
             if (string.IsNullOrEmpty(OpponentName))
                 OpponentName = "Rakip";
             OpponentElo = data.GetInt("opponent_elo", UserInfo.DefaultRating);
-            SetStatus("Oyun başladı!" + (Game.CurrentPlayer == MyPiece ? " Senin sıran." : " Rakibin sırası."));
+            if (rematch && !IsGuest)
+            {
+                var mine = data.GetObject(MyPiece == Board.Player1 ? "p1_info" : "p2_info");
+                if (mine.Has("rating"))
+                    UserElo = mine.GetInt("rating", UserElo);
+            }
+            SetStatus((rematch ? "Rövanş başladı!" : "Oyun başladı!")
+                      + (Game.CurrentPlayer == MyPiece ? " Senin sıran." : " Rakibin sırası."));
         }
 
         /// <summary>
@@ -808,6 +898,7 @@ namespace ConnectFourPro.Game
             int localLen = Game.MoveCount;
             if (serverLen < localLen)
                 return;
+            UpdateTurnClock(data);
             if (serverLen == localLen)
             {
                 GameSnapshot.Apply(Game, data);
@@ -850,11 +941,19 @@ namespace ConnectFourPro.Game
                 SetStatus("Rakibin sırası...");
         }
 
-        private void OnGameOver(JsonObject data)
+        private void OnGameOver(JsonObject data) => ApplyResult(GameOverInfo.From(data));
+
+        /// <summary>Sunucunun sonucu: game_over ya da yokken biten oyuna donuldugunde game_joined.result.</summary>
+        private void ApplyResult(GameOverInfo info)
         {
-            var info = GameOverInfo.From(data);
             int w = info.Winner;
             _opponentDeadline = -1f;
+            _turnSecondsLeft = null;
+            if (info.HasDetailField)
+                _rematchSupported = true;
+            // Rakip ayrildi / koptu: rovans istenemez
+            if (!IsSpectator && w == MyPiece && (info.Detail == "leave" || info.Detail == "disconnect"))
+                Rematch = RematchState.Unavailable;
             bool forfeit = info.Reason == "forfeit";
             if (forfeit && !Game.GameOver)
             {
@@ -873,32 +972,109 @@ namespace ConnectFourPro.Game
                 }
             }
 
-            string msg;
-            StatusTone tone = StatusTone.Neutral;
-            if (IsSpectator)
-            {
-                msg = w == Board.Player1 ? "Kırmızı kazandı!" : (w == Board.Player2 ? "Sarı kazandı!" : "Berabere!");
-                if (forfeit)
-                    msg += " (hükmen)";
-            }
-            else if (w == 0)
-                msg = "Berabere!";
-            else if (w == MyPiece)
-            {
-                msg = forfeit ? "Rakip oyunu terk etti - Kazandın!" : "Kazandın!";
-                tone = StatusTone.Good;
-            }
-            else
-            {
-                msg = forfeit ? "Hükmen kaybettin." : "Kaybettin.";
-                tone = StatusTone.Bad;
-            }
+            var (msg, tone) = ResultText(w, forfeit, info.Detail);
             if (LastEloChange.HasValue && LastEloChange.Value != 0)
                 msg += $"  ELO {(LastEloChange.Value > 0 ? "+" : "")}{LastEloChange.Value} ({UserElo})";
             _finalStatus = msg;
             SetStatus(msg, tone);
             Summary = ComputeSummary();
             RefreshUserElo();
+        }
+
+        /// <summary>Sonuc metni; detail yoksa (eski sunucu) eski metinler.</summary>
+        private (string msg, StatusTone tone) ResultText(int w, bool forfeit, string detail)
+        {
+            if (IsSpectator)
+            {
+                string msg = w == Board.Player1 ? "Kırmızı kazandı!" : (w == Board.Player2 ? "Sarı kazandı!" : "Berabere!");
+                if (forfeit)
+                    msg += detail == "timeout" ? " (süre doldu)"
+                         : detail == "disconnect" ? " (bağlantı koptu)"
+                         : detail == "leave" ? " (oyun terk edildi)"
+                         : " (hükmen)";
+                return (msg, StatusTone.Neutral);
+            }
+            if (w == 0)
+                return ("Berabere!", StatusTone.Neutral);
+            if (w == MyPiece)
+            {
+                string msg = !forfeit ? "Kazandın!"
+                           : detail == "timeout" ? "Rakibin süresi doldu, kazandın!"
+                           : detail == "disconnect" ? "Rakibin bağlantısı koptu, hükmen kazandın!"
+                           : "Rakip oyunu terk etti - Kazandın!";
+                return (msg, StatusTone.Good);
+            }
+            string lost = !forfeit ? "Kaybettin."
+                        : detail == "timeout" ? "Süre doldu, hükmen kaybettin."
+                        : detail == "disconnect" ? "Bağlantın koptuğu için hükmen kaybettin."
+                        : detail == "leave" ? "Oyunu terk ettin, hükmen kaybettin."
+                        : "Hükmen kaybettin.";
+            return (lost, StatusTone.Bad);
+        }
+
+        // =====================================================================
+        // Rovans
+        // =====================================================================
+
+        /// <summary>Biten online oyunda (oyuncu, sunucu destekliyor, rakip hala odada) rovans istenebilir.</summary>
+        public bool CanRequestRematch =>
+            Screen == AppScreen.PlayingOnline && !IsSpectator && Game.GameOver && _rematchSupported
+            && RoomId != null && _socket.IsConnected
+            && (Rematch == RematchState.None || Rematch == RematchState.OfferedByOpponent);
+
+        /// <summary>Rovans butonunun yazisi.</summary>
+        public string RematchLabel => Rematch == RematchState.OfferedByOpponent ? "Rövanşı Kabul Et" : "Rövanş";
+
+        public void RequestRematch()
+        {
+            if (!CanRequestRematch || !_socket.RequestRematch())
+                return;
+            if (Rematch == RematchState.OfferedByOpponent)
+                SetStatus("Rövanş kabul edildi, oyun başlıyor...", StatusTone.Good);
+            else
+                SetStatus("Rövanş istendi, rakip bekleniyor...");
+            Rematch = RematchState.OfferedByMe;
+        }
+
+        private bool IsRematchForMe(JsonObject data) =>
+            Screen == AppScreen.PlayingOnline && !IsSpectator && ResultKnown && _rematchSupported
+            && data.GetString("room_id", RoomId) == RoomId;
+
+        private void OnRematchOffered(JsonObject data)
+        {
+            if (!IsRematchForMe(data) || Rematch == RematchState.Unavailable)
+                return;
+            int from = data.GetInt("from_piece");
+            if (from == MyPiece)
+                return;   // kendi istegimizin yankisi
+            if (Rematch == RematchState.OfferedByMe)
+                return;   // iki istek de sunucuda: game_start gelecek
+            Rematch = RematchState.OfferedByOpponent;
+            SetStatus("Rakip rövanş istiyor!", StatusTone.Good);
+        }
+
+        private void OnRematchUnavailable(JsonObject data)
+        {
+            if (!IsRematchForMe(data))
+                return;
+            Rematch = RematchState.Unavailable;
+            SetStatus("Rakip ayrıldı, rövanş yapılamaz.", StatusTone.Bad);
+        }
+
+        /// <summary>Seyirci: ayni odada yeni oyun (oyuncular game_start alir).</summary>
+        private void OnRematchStarted(JsonObject data)
+        {
+            if (Screen != AppScreen.Spectating || !IsSpectator || data.GetString("room_id", RoomId) != RoomId)
+                return;
+            ResetOnlineGame();
+            var p1 = data.GetObject("p1_info");
+            var p2 = data.GetObject("p2_info");
+            SpectateNames = (p1.GetString("username", "Oyuncu 1"), p1.GetInt("rating", UserInfo.DefaultRating),
+                             p2.GetString("username", "Oyuncu 2"), p2.GetInt("rating", UserInfo.DefaultRating));
+            if (data.Has("current_state"))
+                GameSnapshot.Apply(Game, data.GetObject("current_state"));
+            UpdateTurnClock(data);
+            SetStatus("Rövanş başladı! Canlı izleniyor");
         }
 
         private void OnEloUpdate(JsonObject data)
@@ -914,15 +1090,28 @@ namespace ConnectFourPro.Game
                 int grace = data.GetInt("grace_seconds", ReconnectGraceDefault);
                 _opponentDeadline = Time.unscaledTime + grace;
                 _opponentShownSeconds = grace;
+                // Sunucu, sira bendeyken kopan rakibi beklerken saatimi durdurur (_clock_paused)
+                if (Game.CurrentPlayer == MyPiece)
+                    _turnSecondsLeft = null;
                 SetStatus($"Rakibin bağlantısı koptu! {grace} sn içinde dönmezse kazanırsın.", StatusTone.Bad);
             }
             else if (IsSpectator)
+            {
+                _turnSecondsLeft = null;   // kimin koptugu bilinmez: saat gosterilmez
                 SetStatus("Bir oyuncunun bağlantısı koptu...");
+            }
         }
 
         private void OnOpponentReconnected()
         {
             _opponentDeadline = -1f;
+            // Sunucu, rakip donunce sirasi gelen oyuncunun suresini bastan baslatir
+            if (Screen == AppScreen.PlayingOnline && !IsSpectator && !Game.GameOver
+                && Game.CurrentPlayer == MyPiece && MoveTimeSeconds > 0)
+            {
+                _turnSecondsLeft = MoveTimeSeconds;
+                _turnClockAt = Time.unscaledTime;
+            }
             if ((Screen == AppScreen.PlayingOnline || Screen == AppScreen.Spectating) && !Game.GameOver)
             {
                 string turn = Game.CurrentPlayer == MyPiece ? "Senin sıran!" : "Rakibin sırası...";
@@ -949,6 +1138,12 @@ namespace ConnectFourPro.Game
                 _sessionDead = true;
                 SetStatus("Oda zaman aşımı nedeniyle kapatıldı. Lobiye dönebilirsin.", StatusTone.Bad);
             }
+            else if (Screen == AppScreen.PlayingOnline && !IsSpectator && _rematchSupported
+                     && Rematch != RematchState.Unavailable)
+            {
+                Rematch = RematchState.Unavailable;   // biten oda silindi
+                SetStatus("Oda kapandı, rövanş yapılamaz.", StatusTone.Bad);
+            }
         }
 
         private void OnServerError(JsonObject data)
@@ -969,6 +1164,13 @@ namespace ConnectFourPro.Game
                 ClearConnectionState();
                 _sessionDead = true;
                 SetStatus("Yayın sunucuda sona ermiş. Lobiye dönebilirsin.", StatusTone.Bad);
+                return;
+            }
+            if (Screen == AppScreen.PlayingOnline && Game.GameOver && Rematch == RematchState.OfferedByMe)
+            {
+                // Rovans istegi reddedildi (oda silindi ya da koltuk artik bizim degil)
+                Rematch = RematchState.Unavailable;
+                SetStatus("Rövanş yapılamaz.", StatusTone.Bad);
                 return;
             }
             SetStatus("Hata: " + msg, StatusTone.Bad);
@@ -1028,8 +1230,10 @@ namespace ConnectFourPro.Game
             int w = Game.Winner;
             if (_finalStatus != null && Screen != AppScreen.PlayingAI)
             {
-                // Sunucunun sonucu (ELO dahil) animasyon bitmeden geldiyse onu koru
-                SetStatus(_finalStatus, Tone);
+                // Sunucunun sonucu (ELO dahil) animasyon bitmeden geldiyse onu koru; bu arada
+                // gelen rovans mesaji ezilmez (sonuc baslikta gorunur)
+                if (Rematch == RematchState.None)
+                    SetStatus(_finalStatus, Tone);
                 return;
             }
             if (Screen == AppScreen.PlayingAI)
@@ -1100,6 +1304,9 @@ namespace ConnectFourPro.Game
             _leaveConfirmUntil = 0f;
             _joinPending = false;
             ClearConnectionState();
+            ClearTurnClock();
+            _rematchSupported = false;
+            Rematch = RematchState.None;
             if (Screen == AppScreen.PlayingOnline || Screen == AppScreen.Waiting)
                 _socket.LeaveGame();
             _socket.Disconnect();

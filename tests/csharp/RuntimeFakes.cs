@@ -84,5 +84,75 @@ namespace ConnectFourPro.Tests
 
         public static string MoveMade(params int[] moves) =>
             Snapshot(GameState.FromMoves(moves), moves[moves.Length - 1]);
+
+        /// <summary>Yeni sunucunun move_made'i: hamle suresi alanlariyla (sure yoksa secondsLeft null).</summary>
+        public static string MoveMadeTimed(int? secondsLeft, int moveTime, params int[] moves) =>
+            WithFields(MoveMade(moves), Clock(secondsLeft, moveTime));
+
+        /// <summary>_finish_game yukuyle ayni bicim; detail null ise alan yine gonderilir (yeni sunucu).</summary>
+        public static string GameOver(int? winner, string reason = "normal", string detail = null,
+                                      int eloP1 = 0, int eloP2 = 0, int? ratingP1 = null, int? ratingP2 = null)
+        {
+            return Json.Serialize(GameOverFields(winner, reason, detail, eloP1, eloP2, ratingP1, ratingP2));
+        }
+
+        public static Dictionary<string, object> GameOverFields(int? winner, string reason = "normal", string detail = null,
+                                                                int eloP1 = 0, int eloP2 = 0, int? ratingP1 = null, int? ratingP2 = null)
+        {
+            return new Dictionary<string, object>
+            {
+                ["winner"] = winner,
+                ["elo_changes"] = new Dictionary<string, object> { ["p1"] = eloP1, ["p2"] = eloP2 },
+                ["new_ratings"] = new Dictionary<string, object> { ["p1"] = ratingP1, ["p2"] = ratingP2 },
+                ["reason"] = reason,
+                ["detail"] = detail,
+            };
+        }
+
+        /// <summary>Rovansta her koltuga giden game_start (player_piece yeni koltuk).</summary>
+        public static string RematchStart(int piece, string opponent, int opponentElo, string me, int myElo,
+                                          int? secondsLeft = null, int moveTime = 0, string roomId = "AB12C")
+        {
+            var mine = new Dictionary<string, object> { ["username"] = me, ["rating"] = myElo };
+            var theirs = new Dictionary<string, object> { ["username"] = opponent, ["rating"] = opponentElo };
+            var data = new Dictionary<string, object>
+            {
+                ["msg"] = "Rovans basladi!", ["room_id"] = roomId, ["player_piece"] = piece,
+                ["rematch"] = true, ["game_no"] = 2,
+                ["p1_info"] = piece == Board.Player1 ? mine : theirs,
+                ["p2_info"] = piece == Board.Player1 ? theirs : mine,
+                ["opponent_name"] = opponent, ["opponent_elo"] = opponentElo,
+            };
+            foreach (var kv in Clock(secondsLeft, moveTime))
+                data[kv.Key] = kv.Value;
+            return Json.Serialize(data);
+        }
+
+        /// <summary>Odaya giden rematch_started (seyirciler icin bos tahta).</summary>
+        public static string RematchStarted(string p1, string p2, int? secondsLeft = null, int moveTime = 0, string roomId = "AB12C")
+        {
+            var data = new Dictionary<string, object>
+            {
+                ["room_id"] = roomId, ["game_no"] = 2,
+                ["p1_info"] = new Dictionary<string, object> { ["username"] = p1, ["rating"] = 1250 },
+                ["p2_info"] = new Dictionary<string, object> { ["username"] = p2, ["rating"] = 1300 },
+                ["current_state"] = Json.Parse(Snapshot(new GameState())),
+            };
+            foreach (var kv in Clock(secondsLeft, moveTime))
+                data[kv.Key] = kv.Value;
+            return Json.Serialize(data);
+        }
+
+        public static Dictionary<string, object> Clock(int? secondsLeft, int moveTime) =>
+            new Dictionary<string, object> { ["move_time"] = moveTime, ["turn_seconds_left"] = secondsLeft };
+
+        /// <summary>JSON nesnesine alan ekler.</summary>
+        public static string WithFields(string json, Dictionary<string, object> fields)
+        {
+            var d = (Dictionary<string, object>)Json.Parse(json);
+            foreach (var kv in fields)
+                d[kv.Key] = kv.Value;
+            return Json.Serialize(d);
+        }
     }
 }

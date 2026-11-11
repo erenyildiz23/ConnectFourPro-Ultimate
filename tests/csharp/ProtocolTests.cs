@@ -116,6 +116,30 @@ namespace ConnectFourPro.Tests
         }
 
         [Test]
+        public void GameOverDetailIsReadAndMarksNewServer()
+        {
+            var info = GameOverInfo.From(JsonObject.ParseObject(
+                "{\"winner\": 1, \"elo_changes\": {}, \"new_ratings\": {}, \"reason\": \"forfeit\", \"detail\": \"timeout\"}"));
+            Assert.That(info.Detail, Is.EqualTo("timeout"));
+            Assert.That(info.HasDetailField, Is.True);
+
+            var normal = GameOverInfo.From(JsonObject.ParseObject("{\"winner\": 1, \"reason\": \"normal\", \"detail\": null}"));
+            Assert.That(normal.Detail, Is.Null);
+            Assert.That(normal.HasDetailField, Is.True, "yeni sunucu null ayrintiyi da gonderir");
+
+            var old = GameOverInfo.From(JsonObject.ParseObject("{\"winner\": 1, \"reason\": \"forfeit\"}"));
+            Assert.That(old.Detail, Is.Null);
+            Assert.That(old.HasDetailField, Is.False);
+        }
+
+        [Test]
+        public void RematchEventsAreKnownServerEvents()
+        {
+            Assert.That(SocketEvents.RematchRequest, Is.EqualTo("rematch_request"));
+            Assert.That(SocketEvents.ServerEvents, Is.SupersetOf(new[] { "rematch_offered", "rematch_unavailable", "rematch_started" }));
+        }
+
+        [Test]
         public void ActiveGamesList()
         {
             var games = ActiveGame.ListFrom(Json.Parse(

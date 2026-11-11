@@ -21,6 +21,8 @@ namespace ConnectFourPro.Net
         private readonly string _serverUrl;
         private readonly Queue<(string evt, string json)> _pending = new Queue<(string, string)>();
         private bool _connecting;
+        // Odaya seyirci olarak katildik; game_over Spectating'i dusurse de rovansta yayina doneriz
+        private bool _spectatorRole;
 
         public string RoomId { get; private set; }
         public int MyPiece { get; private set; }
@@ -56,6 +58,7 @@ namespace ConnectFourPro.Net
             UserId = userId;
             AuthToken = authToken;
             RejoinToken = null;
+            _spectatorRole = false;
             Send(SocketEvents.CreateGame, Json.Serialize(Identity()));
         }
 
@@ -89,6 +92,16 @@ namespace ConnectFourPro.Net
             }));
         }
 
+        /// <summary>Biten oyundan sonra ayni rakiple yeni oyun ister (sunucu iki koltuk da isteyince baslatir).</summary>
+        public bool RequestRematch()
+        {
+            if (!IsConnected || RoomId == null)
+                return false;
+            _transport.Emit(SocketEvents.RematchRequest,
+                            Json.Serialize(new Dictionary<string, object> { ["room_id"] = RoomId }));
+            return true;
+        }
+
         /// <summary>Oyundan bilerek ayril (aktif oyunda hukmen yenilgi).</summary>
         public void LeaveGame()
         {
@@ -96,12 +109,14 @@ namespace ConnectFourPro.Net
                 _transport.Emit(SocketEvents.LeaveGame, Json.Serialize(new Dictionary<string, object> { ["room_id"] = RoomId }));
             InGame = false;
             Spectating = false;
+            _spectatorRole = false;
         }
 
         public void Disconnect()
         {
             InGame = false;
             Spectating = false;
+            _spectatorRole = false;
             _pending.Clear();
             _connecting = false;
             _transport.Disconnect();
@@ -191,7 +206,21 @@ namespace ConnectFourPro.Net
                 MyPiece = data.GetInt("player_piece", MyPiece);
                 Spectating = data.GetString("role") == "spectator";
                 InGame = !Spectating;
+                _spectatorRole = Spectating;
                 RejoinToken = data.GetString("rejoin_token", RejoinToken);
+            }
+            else if (name == SocketEvents.GameStart)
+            {
+                // Rovansta koltuklar yer degistirir: yeni tas hamlede ve geri katilmada kullanilir
+                RoomId = data.GetString("room_id", RoomId);
+                MyPiece = data.GetInt("player_piece", MyPiece);
+                InGame = true;
+                Spectating = false;
+            }
+            else if (name == SocketEvents.RematchStarted)
+            {
+                if (_spectatorRole && !InGame && data.GetString("room_id", RoomId) == RoomId)
+                    Spectating = true;   // yeni oyun da canli izlenir: kopunca yayina geri don
             }
             else if (name == SocketEvents.GameOver)
             {

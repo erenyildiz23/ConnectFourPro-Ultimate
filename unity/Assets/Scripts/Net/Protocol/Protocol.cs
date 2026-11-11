@@ -19,6 +19,7 @@ namespace ConnectFourPro.Net
         public const string MakeMove = "make_move";
         public const string LeaveGame = "leave_game";
         public const string LatencyPing = "latency_ping";
+        public const string RematchRequest = "rematch_request";
 
         // Sunucu -> istemci
         public const string GameCreated = "game_created";
@@ -32,11 +33,16 @@ namespace ConnectFourPro.Net
         public const string GameEnded = "game_ended";
         public const string Error = "error";
         public const string LatencyPong = "latency_pong";
+        // Rovans (eski sunucular gondermez)
+        public const string RematchOffered = "rematch_offered";
+        public const string RematchUnavailable = "rematch_unavailable";
+        public const string RematchStarted = "rematch_started";
 
         public static readonly string[] ServerEvents =
         {
             GameCreated, GameJoined, GameStart, MoveMade, GameOver, EloUpdate,
             OpponentDisconnected, OpponentReconnected, GameEnded, Error, LatencyPong,
+            RematchOffered, RematchUnavailable, RematchStarted,
         };
     }
 
@@ -159,6 +165,10 @@ namespace ConnectFourPro.Net
     {
         public int Winner;           // 0: beraberlik
         public string Reason;        // normal / forfeit
+        /// <summary>Hukmen sonucun ayrintisi: timeout / disconnect / leave; yoksa null.</summary>
+        public string Detail;
+        /// <summary>Sunucu 'detail' alanini gonderdi (rovans ve hamle suresi bilen surum).</summary>
+        public bool HasDetailField;
         public int EloChangeP1;
         public int EloChangeP2;
         public int? NewRatingP1;
@@ -172,6 +182,8 @@ namespace ConnectFourPro.Net
             {
                 Winner = o.GetNullableInt("winner") ?? 0,
                 Reason = o.GetString("reason", "normal"),
+                Detail = o.GetString("detail"),
+                HasDetailField = o.Has("detail"),
                 EloChangeP1 = changes.GetInt("p1"),
                 EloChangeP2 = changes.GetInt("p2"),
                 NewRatingP1 = ratings.GetNullableInt("p1"),

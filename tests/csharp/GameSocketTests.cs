@@ -195,6 +195,87 @@ namespace ConnectFourPro.Tests
         }
 
         [Test]
+        public void RematchRequestNeedsConnectionAndRoom()
+        {
+            Assert.That(_socket.RequestRematch(), Is.False);
+            _socket.CreateGame("ali");
+            _transport.RaiseConnected();
+            Assert.That(_socket.RequestRematch(), Is.False, "oda yokken gonderilmez");
+            _transport.Receive("game_created", "{\"room_id\":\"AB12C\",\"player_piece\":1,\"rejoin_token\":\"seat-1\"}");
+            _transport.Receive("game_over", "{\"winner\":1,\"reason\":\"normal\",\"detail\":null}");
+            Assert.That(_socket.RequestRematch(), Is.True);
+            Assert.That(_transport.EmittedOf("rematch_request")[0].GetString("room_id"), Is.EqualTo("AB12C"));
+
+            _transport.RaiseDisconnected("transport close");
+            Assert.That(_socket.RequestRematch(), Is.False);
+            Assert.That(_transport.EmittedOf("rematch_request").Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RematchGameStartTakesNewSeatForMovesAndRejoin()
+        {
+            _socket.CreateGame("ali", "tok-1");
+            _transport.RaiseConnected();
+            _transport.Receive("game_created", "{\"room_id\":\"AB12C\",\"player_piece\":1,\"rejoin_token\":\"seat-1\"}");
+            _transport.Receive("game_over", "{\"winner\":1,\"reason\":\"normal\",\"detail\":null}");
+            Assert.That(_socket.InGame, Is.False);
+
+            _transport.Receive("game_start", "{\"room_id\":\"AB12C\",\"player_piece\":2,\"rematch\":true,\"game_no\":2}");
+            Assert.That(_socket.MyPiece, Is.EqualTo(2));
+            Assert.That(_socket.InGame, Is.True);
+            _socket.SendMove(3);
+            Assert.That(_transport.EmittedOf("make_move")[0].GetInt("player_piece"), Is.EqualTo(2));
+
+            _transport.RaiseDisconnected("transport close");
+            _transport.RaiseConnected();
+            var joins = _transport.EmittedOf("join_game");
+            Assert.That(joins.Count, Is.EqualTo(1), "rovans oyunu da geri katilinir");
+            Assert.That(joins[0].GetString("token"), Is.EqualTo("tok-1"));
+            Assert.That(joins[0].GetString("rejoin_token"), Is.EqualTo("seat-1"));
+        }
+
+        [Test]
+        public void FirstGameStartKeepsPieceFromJoin()
+        {
+            _socket.JoinGame("AB12C", "ali");
+            _transport.RaiseConnected();
+            _transport.Receive("game_joined", "{\"room_id\":\"AB12C\",\"player_piece\":2,\"role\":\"player\"}");
+            _transport.Receive("game_start", "{\"msg\":\"Oyun Basladi!\",\"opponent_name\":\"veli\"}");
+            Assert.That(_socket.MyPiece, Is.EqualTo(2), "eski game_start player_piece tasimaz");
+            Assert.That(_socket.RoomId, Is.EqualTo("AB12C"));
+        }
+
+        [Test]
+        public void SpectatorFollowsRematchForRejoin()
+        {
+            _socket.JoinGame("AB12C", "ali");
+            _transport.RaiseConnected();
+            _transport.Receive("game_joined", "{\"room_id\":\"AB12C\",\"player_piece\":0,\"role\":\"spectator\"}");
+            _transport.Receive("game_over", "{\"winner\":1,\"reason\":\"normal\"}");
+            Assert.That(_socket.Spectating, Is.False);
+
+            _transport.Receive("rematch_started", "{\"room_id\":\"XY9Z0\"}");
+            Assert.That(_socket.Spectating, Is.False, "baska oda");
+            _transport.Receive("rematch_started", "{\"room_id\":\"AB12C\",\"game_no\":2}");
+            Assert.That(_socket.Spectating, Is.True);
+            Assert.That(_socket.InGame, Is.False);
+            _transport.RaiseDisconnected("transport close");
+            _transport.RaiseConnected();
+            Assert.That(_transport.EmittedOf("join_game").Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void PlayerIgnoresRematchStartedForSpectating()
+        {
+            _socket.CreateGame("ali");
+            _transport.RaiseConnected();
+            _transport.Receive("game_created", "{\"room_id\":\"AB12C\",\"player_piece\":1}");
+            _transport.Receive("game_over", "{\"winner\":1,\"reason\":\"normal\"}");
+            _transport.Receive("rematch_started", "{\"room_id\":\"AB12C\"}");
+            Assert.That(_socket.Spectating, Is.False);
+        }
+
+        [Test]
         public void SendMoveCarriesRoomColumnAndPiece()
         {
             _socket.SendMove(3);
