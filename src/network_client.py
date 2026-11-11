@@ -53,6 +53,7 @@ class NetworkManager:
         self.token: Optional[str] = None          # /login token'i (misafirde None)
         self.rejoin_token: Optional[str] = None   # Sunucunun verdigi koltuk anahtari
         self.in_game = False             # Yeniden baglaninca odaya geri katil
+        self._closing = False            # disconnect() cagrildi: kopma bilerek yapildi
         self._lock = threading.Lock()
         self._setup_events()
 
@@ -72,6 +73,11 @@ class NetworkManager:
         def disconnect():
             self.connected = False
             log.info("Sunucu baglantisi kesildi")
+            # Beklenmeyen kopma: arayuz oyuncuyu bilgilendirsin ve hamleleri durdursun.
+            # Kendi disconnect() cagrimiz (menuye donus, kapanis) bildirilmez.
+            notify = getattr(self._handler, 'on_connection_lost', None)
+            if notify is not None and not self._closing and (self.in_game or self.room_id):
+                self._post(notify, self)
 
         for event, method in _EVENT_HANDLERS.items():
             self.sio.on(event, self._make_forwarder(event, method))
@@ -97,6 +103,7 @@ class NetworkManager:
         with self._lock:
             if self.connected:
                 return True
+            self._closing = False
             try:
                 self.sio.connect(self.server_url, wait_timeout=5)
                 return self.sio.connected
@@ -142,6 +149,7 @@ class NetworkManager:
 
     def disconnect(self) -> None:
         self.in_game = False
+        self._closing = True
         if self.sio.connected:
             try:
                 self.sio.disconnect()

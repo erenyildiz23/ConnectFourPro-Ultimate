@@ -88,23 +88,24 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 - **Ön koşul:** Oturum açık (kayıtlı veya misafir). Sunucu gerekmez.
 - **Ana akış:**
   1. "Yapay Zekaya Karşı" → zorluk seçer: Kolay (D2), Orta (D4), Zor (D8).
-  2. Oyuncu (kırmızı) sütuna tıklar; taş düşme animasyonu oynar.
+  2. Oyuncu (kırmızı) sütuna tıklar veya 1–7 tuşlarından birine basar; taş düşme animasyonu oynar. Fare bir sütunun üzerindeyken taşın ineceği hücre oyuncunun renginde bir halkayla, son oynanan taş beyaz bir halkayla işaretlenir.
   3. Oyun motoru hamleyi doğrular ve kazanma/beraberlik kontrol eder.
   4. AI ayrı thread'de hamlesini hesaplar ("AI düşünüyor..."), sonra hamle animasyonla uygulanır.
-  5. 2–4, oyun bitene kadar tekrarlanır; sonuç gösterilir, kazanan dörtlü parlatılır.
+  5. 2–4, oyun bitene kadar tekrarlanır; sonuç ekran başlığında (KAZANDIN! / AI KAZANDI / BERABERE) ve renkli durum satırında gösterilir, kazanan dörtlü parlatılır, diğer taşlar soluklaşır.
 - **Alternatif akışlar:**
   - Sıra AI'dayken veya animasyon sürerken yapılan tıklamalar yok sayılır.
-  - Dolu sütun / tahta dışı tıklama yok sayılır.
+  - Dolu sütuna tıklanırsa hamle yapılmaz, "Bu sütun dolu!" uyarısı gösterilir; tahta dışı tıklama yok sayılır.
   - Oyuncu AI düşünürken menüye dönerse AI oturumu geçersiz kılınır; geç gelen AI hamlesi uygulanmaz.
 - **Son koşul:** Oyun sonucu ekranda; sunucuya kayıt yapılmaz.
-- **Testler:** `TestPlayVsAI` (3 test), `tests/unit/test_ai.py` (taktik, arama doğruluğu, oyun sonu), `tests/unit/test_game_core.py`; hamle kalitesi: `benchmarks/ai_quality_benchmark.py`
+- **Kısayollar:** 1–7 hamle, Esc geri, M ses aç/kapat (ses menüden de kapatılabilir; `CONNECT4_MUTE=1` ile kapalı başlar).
+- **Testler:** `TestPlayVsAI` (3 test), `tests/gui/test_gui_feedback.py` (animasyon, işaretler, klavye, ses), `tests/unit/test_ai.py` (taktik, arama doğruluğu, oyun sonu), `tests/unit/test_game_core.py`; hamle kalitesi: `benchmarks/ai_quality_benchmark.py`
 
 ### UC-06 Online oyun odası oluştur
 - **Aktör:** Oyuncu · **Gereksinim:** FR-03
 - **Ana akış:** Lobide "+ Yeni Oyun" → sunucu 5 karakterlik oda kodu üretir → oyuncu kırmızı (P1) olarak bekleme ekranına geçer → oda lobide "Bekliyor" olarak listelenir.
 - **Alternatif akışlar:**
   - Oyuncunun zaten bekleyen odası varsa eskisi silinir (tek bekleyen oda kuralı).
-  - "İptal" → oda silinir. Bekleyen oyuncunun bağlantısı koparsa oda silinir.
+  - "İptal" (veya Esc) → oda silinir, oyuncu lobiye döner. Bekleyen oyuncunun bağlantısı koparsa oda silinir.
   - Sunucuya ulaşılamıyor → lobiye dönülür, hata mesajı.
 - **Testler:** `TestOnlineUseCases::_start_online_match`, `test_uc06_cancel_waiting_room`, `test_server_socket.py::TestRooms`
 
@@ -138,7 +139,7 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 
 ### UC-10 Maç izle
 - **Aktör:** Seyirci · **Gereksinim:** FR-09
-- **Ana akış:** Lobide "İzle" → anlık oyun durumu ve oyuncu bilgileri yüklenir → sonraki hamleler canlı izlenir → oyun sonucu gösterilir.
+- **Ana akış:** Lobide "İzle" → anlık oyun durumu ve oyuncu bilgileri yüklenir (son oynanan taş halkayla işaretlidir) → sonraki hamleler canlı izlenir → oyun sonucu gösterilir (KIRMIZI KAZANDI / SARI KAZANDI / BERABERE) → "Lobiye Dön" ile lobiye dönülür.
 - **Kural:** Seyirci hiçbir şekilde hamle yapamaz (sunucu reddeder).
 - **Testler:** `test_uc09_uc13_uc16_full_online_match` (seyirci istemci), `test_third_user_becomes_spectator_and_sees_moves`, `test_spectator_cannot_move`
 
@@ -146,17 +147,21 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 - **Aktör:** Oyuncu, Zamanlayıcı · **Gereksinim:** NFR-08
 - **Tetikleyici:** Aktif oyunda bir oyuncunun bağlantısı beklenmedik şekilde kopar.
 - **Ana akış:**
-  1. Sunucu rakibe "Rakibin bağlantısı koptu, 30 sn içinde dönmezse kazanırsın" bildirir.
+  1. Sunucu rakibe "Rakibin bağlantısı koptu, 30 sn içinde dönmezse kazanırsın" bildirir; rakibin ekranında kalan süre saniye saniye geri sayar. Bağlantısı kopan oyuncu "Bağlantı koptu - yeniden bağlanılıyor..." mesajını görür ve bağlantı dönene kadar hamle yapamaz (hamle sunucuya ulaşmayacağı için yerelde de oynatılmaz).
   2. İstemci otomatik olarak yeniden bağlanır ve aynı odaya katılır.
   3. Sunucu oyuncuyu koltuğuna geri oturtur ve güncel oyun durumunu gönderir; rakibe "Rakip geri döndü" bildirilir.
   4. Oyun kaldığı yerden devam eder.
-- **Alternatif akış:** 2a. Oyuncu süre (`RECONNECT_GRACE_SECONDS`, varsayılan 30 sn) içinde dönmezse rakip **hükmen** kazanır (→ UC-13, `reason=forfeit`).
+- **Alternatif akışlar:**
+  - 2a. Oyuncu süre (`RECONNECT_GRACE_SECONDS`, varsayılan 30 sn) içinde dönmezse rakip **hükmen** kazanır (→ UC-13, `reason=forfeit`). Oyuncu daha sonra dönerse sıra mesajı yerine oyunun sonucunu görür.
+  - 2b. Yeniden bağlanma 20 sn'den uzun sürerse oyuncuya bekleyebileceği veya lobiye dönebileceği hatırlatılır.
+  - 2c. Oda artık yoksa (geri dönüş reddedilirse) "Oyuna geri dönülemedi" mesajı gösterilir; oyuncu onay istenmeden lobiye dönebilir.
+  - 2d. Seyircinin bağlantısı koparsa "Yayın bağlantısı koptu" mesajı gösterilir; lobiden yeniden izlemeye girer.
 - **Güvenlik:** Bağlı bir oyuncunun koltuğu ikinci bir bağlantıyla ele geçirilemez.
-- **Testler:** `test_server_socket.py::TestDisconnectAndReconnect`
+- **Testler:** `test_server_socket.py::TestDisconnectAndReconnect`, `TestOnlineUseCases::test_uc11_*`, `tests/gui/test_gui_feedback.py::TestConnectionState`
 
 ### UC-12 Oyundan ayrıl (hükmen yenilgi)
 - **Aktör:** Oyuncu · **Gereksinim:** NFR-08
-- **Ana akış:** Aktif online oyunda "Menü" → istemci uyarır: "Çıkmak hükmen yenilgi sayılır, onaylamak için tekrar basın" → tekrar basılır → oyun rakip lehine hükmen biter (→ UC-13), oyuncu menüye döner.
+- **Ana akış:** Aktif online oyunda "Lobiye Dön" (veya Esc) → istemci uyarır: "Çıkmak hükmen yenilgi sayılır, onaylamak için tekrar basın" → tekrar basılır → oyun rakip lehine hükmen biter (→ UC-13), oyuncu lobiye döner.
 - **Alternatif akış:** Onay 3 saniye içinde verilmezse işlem iptal olur.
 - **Testler:** `test_uc12_leaving_requires_confirmation_and_forfeits`, `test_leave_game_is_immediate_forfeit`
 
@@ -166,7 +171,7 @@ Bu belge sistemin kullanım senaryolarını (use case), bunların tez gereksinim
 - **Ana akış:**
   1. İki oyuncu da kayıtlıysa ELO tek veritabanı transaction'ında güncellenir (K=30, en az ±10): kazanana +Δ, kaybedene −Δ; galibiyet/mağlubiyet sayaçları artar.
   2. Oyun hamle listesi ve bitiş nedeniyle (`normal` / `forfeit`) kaydedilir.
-  3. Oyunculara `elo_update`, odadaki herkese `game_over` gönderilir; istemci "Kazandın! ELO +15 (1215)" gösterir.
+  3. Oyunculara `elo_update`, odadaki herkese `game_over` gönderilir; istemci başlıkta "KAZANDIN!" / "KAYBETTİN" / "BERABERE", durum satırında "Kazandın! ELO +15 (1215)" gösterir (kazanç yeşil, kayıp kırmızı).
 - **Alternatif akışlar:** Beraberlikte ELO değişmez ama oyun kaydedilir. Misafir varsa ELO/kayıt atlanır, ELO bildirimi gönderilmez.
 - **Testler:** `test_uc09_uc13_uc16_full_online_match`, `test_server_socket.py::TestRegisteredPlayers`, `test_database.py::TestEloAndGames`, `tests/unit/test_security_and_elo.py::TestElo`
 
