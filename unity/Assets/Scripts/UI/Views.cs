@@ -44,10 +44,31 @@ namespace ConnectFourPro.UI
         /// <summary>Ekran yonu degisince cagrilir (Responsive.Apply'dan sonra).</summary>
         public virtual void OnLayoutChanged(LayoutOrientation o)
         {
+            // Sigdirma yalnizca dikeyde acilir; yatay gorunum degismez
+            foreach (var t in _fit)
+                t.resizeTextForBestFit = o == LayoutOrientation.Portrait;
         }
 
-        protected Text Title(string text, float y = 50) =>
-            UIKit.Label(Root, text, 44, Theme.Red, 0, y, 1000, 60, TextAnchor.MiddleCenter, FontStyle.Bold);
+        private readonly List<Text> _fit = new List<Text>();
+
+        /// <summary>Dikeyde yazi kutuya sigmazsa min ile max arasinda kuculur.</summary>
+        protected void FitInPortrait(Text t, int min, int max)
+        {
+            t.resizeTextMinSize = min;
+            t.resizeTextMaxSize = max;
+            _fit.Add(t);
+        }
+
+        protected Text Title(string text, float y = 50)
+        {
+            var t = UIKit.Label(Root, text, 44, Theme.Red, 0, y, 1000, 60, TextAnchor.MiddleCenter, FontStyle.Bold);
+            FitInPortrait(t, 30, 44);
+            return t;
+        }
+
+        // Dik konum kisayolu: Portrait kaydi, ogenin son Place'inden sonra yapilir
+        protected static void P(Component c, float x, float y, float w, float h) =>
+            Responsive.Portrait((RectTransform)c.transform, x, y, w, h);
     }
 
     // -------------------------------------------------------------------------
@@ -58,24 +79,30 @@ namespace ConnectFourPro.UI
 
         public LoginView(AppController app, Transform parent) : base(app, parent, "Login")
         {
-            Title("CONNECT FOUR PRO", 80);
-            UIKit.Label(Root, "ULTIMATE", 22, Theme.Yellow, 0, 122, 400, 30, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.Label(Root, "Hoş geldiniz!", 26, Theme.White, 0, 170);
+            P(Title("CONNECT FOUR PRO", 80), 0, 150, 510, 60);
+            P(UIKit.Label(Root, "ULTIMATE", 22, Theme.Yellow, 0, 122, 400, 30, TextAnchor.MiddleCenter, FontStyle.Bold),
+              0, 200, 400, 30);
+            P(UIKit.Label(Root, "Hoş geldiniz!", 26, Theme.White, 0, 170), 0, 250, 480, 40);
 
-            UIKit.Label(Root, "Kullanıcı Adı", 18, Theme.Gray, 0, 220, 320, 26);
+            P(UIKit.Label(Root, "Kullanıcı Adı", 18, Theme.Gray, 0, 220, 320, 26), 0, 310, 440, 26);
             _username = UIKit.Input(Root, "kullanıcı adı", false, 0, 255, 320, 50, AppController.UsernameMaxLength);
-            UIKit.Label(Root, "Şifre", 18, Theme.Gray, 0, 305, 320, 26);
+            P(_username, 0, 350, 440, 56);
+            P(UIKit.Label(Root, "Şifre", 18, Theme.Gray, 0, 305, 320, 26), 0, 410, 440, 26);
             _password = UIKit.Input(Root, "şifre", true, 0, 340, 320, 50, 128);
+            P(_password, 0, 450, 440, 56);
 
-            UIKit.Button(Root, "Giriş Yap", Theme.Button, Login, -82, 420, 150, 50);
-            UIKit.Button(Root, "Kayıt Ol", Theme.Green, () => App.Register(_username.text, _password.text), 82, 420, 150, 50);
+            P(UIKit.Button(Root, "Giriş Yap", Theme.Button, Login, -82, 420, 150, 50), -112, 530, 216, 56);
+            P(UIKit.Button(Root, "Kayıt Ol", Theme.Green, () => App.Register(_username.text, _password.text), 82, 420, 150, 50),
+              112, 530, 216, 56);
 
             var line = UIKit.Image(Root, "Divider", Theme.Gray);
             UIKit.Place(line.rectTransform, 0, 488, 240, 1);
+            P(line, 0, 600, 300, 1);
             var orBg = UIKit.Image(Root, "OrBg", Theme.Background);
             UIKit.Place(orBg.rectTransform, 0, 488, 60, 22);
-            UIKit.Label(Root, "veya", 16, Theme.Gray, 0, 488, 60, 22);
-            UIKit.Button(Root, "Misafir Olarak Devam", Theme.Panel, App.GuestLogin, 0, 540, 280, 50);
+            P(orBg, 0, 600, 60, 24);
+            P(UIKit.Label(Root, "veya", 16, Theme.Gray, 0, 488, 60, 22), 0, 600, 60, 24);
+            P(UIKit.Button(Root, "Misafir Olarak Devam", Theme.Panel, App.GuestLogin, 0, 540, 280, 50), 0, 660, 440, 56);
 
             app.InputsCleared += () =>
             {
@@ -128,9 +155,11 @@ namespace ConnectFourPro.UI
 
         public MenuView(AppController app, Transform parent) : base(app, parent, "Menu")
         {
-            Title("CONNECT FOUR PRO", 50);
+            P(Title("CONNECT FOUR PRO", 50), 0, 150, 510, 60);
             _name = UIKit.Label(Root, "", 26, Theme.White, 0, 100);
+            P(_name, 0, 215, 480, 40);
             _elo = UIKit.Label(Root, "", 20, Theme.Green, 0, 130);
+            P(_elo, 0, 255, 480, 40);
 
             var items = new List<(string label, Color color, UnityEngine.Events.UnityAction action)>
             {
@@ -145,7 +174,8 @@ namespace ConnectFourPro.UI
             items.Add(("Oyunu Kapat", Theme.Gray, Quit));
 #endif
             for (int i = 0; i < items.Count; i++)
-                UIKit.Button(Root, items[i].label, items[i].color, items[i].action, 0, 200 + i * 66, 300, 52, 21);
+                P(UIKit.Button(Root, items[i].label, items[i].color, items[i].action, 0, 200 + i * 66, 300, 52, 21),
+                  0, 340 + i * 78, 440, 60);
         }
 
         private static void Quit()
@@ -183,18 +213,22 @@ namespace ConnectFourPro.UI
 
         public AISelectView(AppController app, Transform parent) : base(app, parent, "AISelect")
         {
-            Title("ZORLUK SEVİYESİ SEÇ", 90);
+            P(Title("ZORLUK SEVİYESİ SEÇ", 90), 0, 150, 510, 60);
             // Ilk hamle secimi: baslik (60-120) ile ilk zorluk dugmesi (172-228) arasinda (124-160)
             _firstMove = UIKit.Button(Root, app.AIStartsLabel, Theme.Panel, app.ToggleAIStartsNext, 0, 142, 260, 36, 18);
+            P(_firstMove, 0, 230, 440, 48);
             // Zorluk dugmelerinin merkezleri degismez (tests/e2e/webgl.spec.mjs Kolay'a (0, 200)'den tiklar)
             float y = 200;
+            float py = 320;
             foreach (var (name, depth) in AIEngine.Difficulties)
             {
                 int d = depth;
-                UIKit.Button(Root, AppController.DifficultyLabel(name), Theme.Button, () => app.StartAIGame(d), 0, y, 420, 56, 22);
+                P(UIKit.Button(Root, AppController.DifficultyLabel(name), Theme.Button, () => app.StartAIGame(d), 0, y, 420, 56, 22),
+                  0, py, 440, 64);
                 y += 76;
+                py += 90;
             }
-            UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, y + 30, 260, 50);
+            P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, y + 30, 260, 50), 0, py + 20, 300, 56);
         }
 
         public override void Refresh() => UIKit.SetLabel(_firstMove, App.AIStartsLabel);
@@ -281,11 +315,15 @@ namespace ConnectFourPro.UI
 
         public WaitingView(AppController app, Transform parent) : base(app, parent, "Waiting")
         {
-            Title("RAKİP BEKLENİYOR", 170);
+            P(Title("RAKİP BEKLENİYOR", 170), 0, 250, 510, 60);
             _room = UIKit.Label(Root, "", 44, Theme.Green, 0, 270, 900, 60, TextAnchor.MiddleCenter, FontStyle.Bold);
+            P(_room, 0, 340, 480, 70);
+            FitInPortrait(_room, 28, 44);
             _hint = UIKit.Label(Root, "", 24, Theme.White, 0, 330);
+            P(_hint, 0, 420, 480, 40);
             _dots = UIKit.Label(Root, "", 24, Theme.Gray, 0, 400);
-            UIKit.Button(Root, "İptal", Theme.Panel, app.RequestBack, 0, 480, 180, 50);
+            P(_dots, 0, 480, 480, 40);
+            P(UIKit.Button(Root, "İptal", Theme.Panel, app.RequestBack, 0, 480, 180, 50), 0, 580, 240, 56);
         }
 
         public override void Refresh()
