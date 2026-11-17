@@ -26,6 +26,8 @@ namespace ConnectFourPro.Game
         private View _active;
         private Text _status;
         private Image _statusBar;
+        private CanvasScaler _scaler;
+        private LayoutOrientation _orientation = LayoutOrientation.Landscape;
 
         public AppController App => _app;
 
@@ -119,8 +121,22 @@ namespace ConnectFourPro.Game
             st.offsetMin = new Vector2(20, 0);
             st.offsetMax = new Vector2(-20, 0);
 
-            UIKit.Label(root, "Sunucu: " + _app.ServerUrl, 13, new Color(1, 1, 1, 0.25f), 0, 12, 1200, 20,
-                        TextAnchor.MiddleRight);
+            var server = UIKit.Label(root, "Sunucu: " + _app.ServerUrl, 13, new Color(1, 1, 1, 0.25f), 0, 12, 1200, 20,
+                                     TextAnchor.MiddleRight);
+            // Dikey: durum cubugu biraz yuksek (uzun metin sarar), sunucu etiketi 540 genislige sigar
+            Responsive.Portrait(sb, 0, 0, 0, 72);
+            Responsive.Portrait(server.rectTransform, 0, 12, 520, 24);
+
+            _scaler = canvas.GetComponent<CanvasScaler>();
+            ApplyOrientation(ScreenLayout.For(Screen.width, Screen.height));
+        }
+
+        private void ApplyOrientation(LayoutOrientation o)
+        {
+            _orientation = o;
+            Responsive.Apply(o, _scaler);
+            foreach (var v in _views.Values)
+                v.OnLayoutChanged(o);
         }
 
         private void ShowScreen(AppScreen screen)
@@ -137,6 +153,10 @@ namespace ConnectFourPro.Game
 
         private void Update()
         {
+            var orientation = ScreenLayout.For(Screen.width, Screen.height);
+            if (orientation != _orientation)
+                ApplyOrientation(orientation);
+
             _app.Tick();
             _active?.Refresh();
 

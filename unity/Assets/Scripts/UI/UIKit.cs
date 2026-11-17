@@ -243,6 +243,7 @@ namespace ConnectFourPro.UI
             t.horizontalOverflow = HorizontalWrapMode.Wrap;
             t.verticalOverflow = VerticalWrapMode.Overflow;
             t.raycastTarget = false;
+            Responsive.TrackFont(t);
             return t;
         }
 

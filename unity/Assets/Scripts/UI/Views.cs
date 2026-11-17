@@ -41,6 +41,11 @@ namespace ConnectFourPro.UI
         {
         }
 
+        /// <summary>Ekran yonu degisince cagrilir (Responsive.Apply'dan sonra).</summary>
+        public virtual void OnLayoutChanged(LayoutOrientation o)
+        {
+        }
+
         protected Text Title(string text, float y = 50) =>
             UIKit.Label(Root, text, 44, Theme.Red, 0, y, 1000, 60, TextAnchor.MiddleCenter, FontStyle.Bold);
     }
