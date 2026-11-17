@@ -41,6 +41,23 @@ class TestWebClient:
         assert r.headers['Content-Type'] == content_type
         assert r.data == (web_build / "Build" / name).read_bytes()   # sunucu acmaz, tarayici acar
 
+    def test_server_config_is_served_uncached(self, http, web_build):
+        (web_build / "server-config.js").write_text('window.CF4_SERVER_URL = "";', encoding="utf-8")
+        r = http.get('/play/server-config.js')
+        assert r.status_code == 200 and r.headers['Content-Type'] == 'application/javascript'
+        assert r.headers['Cache-Control'] == 'no-cache'
+
+    def test_template_ships_empty_server_config(self):
+        """Flask'tan sunulan build ayni origin'e baglanir: sablondaki adres bos olmali."""
+        import pathlib
+        import re
+        template = pathlib.Path(__file__).resolve().parents[2] / "unity" / "Assets" / "WebGLTemplates" / "ConnectFour"
+        js = (template / "server-config.js").read_text(encoding="utf-8")
+        assert re.search(r'^window\.CF4_SERVER_URL = "";$', js, re.M)
+        html = (template / "index.html").read_text(encoding="utf-8")
+        # Unity yukleyicisinden once yuklenmeli
+        assert html.index('src="server-config.js"') < html.index('{{{ LOADER_FILENAME }}}')
+
     def test_plain_javascript(self, http, web_build):
         r = http.get('/play/Build/WebGL.loader.js')
         assert r.status_code == 200 and r.headers['Content-Type'] == 'application/javascript'

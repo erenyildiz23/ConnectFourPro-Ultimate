@@ -46,7 +46,10 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = config.SECRET_KEY
 # cors_allowed_origins=None: tarayicidan sadece ayni origin (bkz. config.CORS_ALLOWED_ORIGINS);
 # ayni ayar REST API'nin CORS basliklarini da belirler (bkz. _cors_headers)
-socketio = SocketIO(app, cors_allowed_origins=config.CORS_ALLOWED_ORIGINS, async_mode='threading')
+# cors_credentials=False: kimlik cerezle degil mesajdaki token'la tasinir. engineio'nun varsayilani
+# (True) Access-Control-Allow-Credentials gonderir; `*` ile bu, her siteye kimlik bilgili erisim olurdu
+socketio = SocketIO(app, cors_allowed_origins=config.CORS_ALLOWED_ORIGINS, cors_credentials=False,
+                    async_mode='threading')
 
 # Werkzeug istek loglari cok gurultulu
 config.get_logger("werkzeug").setLevel("ERROR")
@@ -481,7 +484,9 @@ def _cors_origin_for(origin: Optional[str]) -> Optional[str]:
         return None
     if allowed == '*':
         return '*'
-    return origin if origin.rstrip('/') in allowed else None
+    # Tam eslesme: tarayicinin Origin basligi sema://host[:port] bicimindedir (sonda / yok);
+    # 'https://x/' veya 'http://' surumu listedeki 'https://x' ile eslesmez
+    return origin if origin in allowed else None
 
 
 def _is_api_path(path: str) -> bool:
@@ -690,7 +695,9 @@ def play(path):
         content_type = _web_content_type(name)
         if content_type:
             response.headers['Content-Type'] = content_type
-    if name.endswith('index.html'):
+    # index.html ve sunucu adresi (server-config.js) her acilista dogrulanir: adres
+    # degisince tarayici eski adresi onbellekten kullanmasin
+    if name.endswith('index.html') or name == 'server-config.js':
         response.headers['Cache-Control'] = 'no-cache'
     return response
 

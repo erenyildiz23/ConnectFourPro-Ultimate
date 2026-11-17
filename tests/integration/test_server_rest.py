@@ -257,6 +257,17 @@ class TestCors:
         assert not any(h in r.headers for h in CORS_HEADERS)
         assert 'Origin' in r.headers['Vary']
 
+    @pytest.mark.parametrize("origin", [ITCH + '/', 'http://html-classic.itch.zone',
+                                        'https://html-classic.itch.zone.evil.example', 'https://itch.zone'])
+    def test_only_exact_origin_matches(self, http, server, no_database, monkeypatch, origin):
+        monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', [ITCH])
+        assert 'Access-Control-Allow-Origin' not in http.get('/health', headers={'Origin': origin}).headers
+        assert 'Access-Control-Allow-Origin' not in preflight(http, origin=origin).headers
+
+    def test_socketio_never_allows_credentials(self, server):
+        """Socket.IO el sikismasi da kimlik bilgisi (cerez) izni vermez; `*` ile birlikte tehlikeli olurdu."""
+        assert server.socketio.server.eio.cors_credentials is False
+
     def test_no_origin_header_gets_no_allow_origin(self, http, server, no_database, monkeypatch):
         monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', '*')
         assert 'Access-Control-Allow-Origin' not in http.get('/health').headers
