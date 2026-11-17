@@ -423,7 +423,7 @@ namespace ConnectFourPro.UI
             {
                 _lines[i] = UIKit.Label(Root, "", 21, Theme.White, 0, 125 + i * 42, 900, 40);
                 P(_lines[i], 0, 230 + i * 52, 510, 48);
-                FitInPortrait(_lines[i], 14, 21);
+                FitInPortrait(_lines[i], 18, 21);
             }
             P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, 655, 180, 50), 0, 800, 240, 56);
         }
@@ -477,6 +477,7 @@ namespace ConnectFourPro.UI
                 {
                     _cells[i, c] = UIKit.Label(Root, "", 20, Theme.White, xs[c], 120 + i * 48, 250, 40, TextAnchor.MiddleLeft);
                     P(_cells[i, c], pxs[c], 235 + i * 78 + pdy[c], 240, 34);
+                    FitInPortrait(_cells[i, c], 18, 20);
                 }
             P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, 655, 180, 50), 0, 850, 240, 56);
         }

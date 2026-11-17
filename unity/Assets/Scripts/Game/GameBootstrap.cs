@@ -8,6 +8,7 @@
 // eklenmemisse bile oyun baslarken otomatik olusturulur (bkz. AutoCreate).
 
 using System.Collections.Generic;
+using System.Linq;
 using ConnectFourPro.Net;
 using ConnectFourPro.UI;
 using UnityEngine;
@@ -136,7 +137,8 @@ namespace ConnectFourPro.Game
         {
             _orientation = o;
             Responsive.Apply(o, _scaler);
-            foreach (var v in _views.Values)
+            // GameView 3 durumda kayitli; her gorunum yalnizca bir kez
+            foreach (var v in _views.Values.Distinct())
                 v.OnLayoutChanged(o);
         }
 
