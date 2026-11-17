@@ -46,6 +46,10 @@ class TestCorsOrigins:
         assert config.parse_cors_origins(" https://a.example/ ,http://localhost:5000") == [
             "https://a.example", "http://localhost:5000"]
 
+    def test_origins_are_lowercased_like_browser_origin_headers(self):
+        assert config.parse_cors_origins("https://Html-Classic.Itch.Zone, HTTPS://A.example:8443/") == [
+            "https://html-classic.itch.zone", "https://a.example:8443"]
+
     def test_server_defaults_to_same_origin(self):
         import server
         assert config.CORS_ALLOWED_ORIGINS is None

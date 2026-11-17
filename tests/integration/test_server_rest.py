@@ -214,3 +214,106 @@ class TestQueries:
     def test_health(self, http, database):
         body = http.get('/health').get_json()
         assert body == {'status': 'healthy', 'database': True, 'active_games': 0, 'connected_users': 0}
+
+
+ITCH = 'https://html-classic.itch.zone'
+OTHER = 'https://evil.example'
+CORS_HEADERS = ('Access-Control-Allow-Origin', 'Access-Control-Allow-Methods',
+                'Access-Control-Allow-Headers')
+
+
+def preflight(http, path='/login', origin=ITCH):
+    return http.open(path, method='OPTIONS', headers={
+        'Origin': origin,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+    })
+
+
+class TestCors:
+    """CORS_ALLOWED_ORIGINS REST API'ye de uygulanir (itch.io gibi baska origin'ler)."""
+
+    def test_unset_sends_no_headers(self, http, server, no_database, monkeypatch):
+        monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', None)
+        r = http.get('/health', headers={'Origin': ITCH})
+        assert r.status_code == 200
+        assert not any(h in r.headers for h in CORS_HEADERS)
+        assert 'Origin' not in r.headers.get('Vary', '')
+        r = preflight(http)
+        assert 'Access-Control-Allow-Origin' not in r.headers
+
+    def test_list_echoes_only_allowed_origin(self, http, server, no_database, monkeypatch):
+        monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', [ITCH, 'http://localhost:8123'])
+        r = http.get('/health', headers={'Origin': ITCH})
+        assert r.headers['Access-Control-Allow-Origin'] == ITCH
+        assert 'POST' in r.headers['Access-Control-Allow-Methods']
+        allow_headers = r.headers['Access-Control-Allow-Headers']
+        assert 'Content-Type' in allow_headers and 'Authorization' in allow_headers
+        assert 'Origin' in r.headers['Vary']
+        assert 'Access-Control-Allow-Credentials' not in r.headers
+
+        r = http.get('/health', headers={'Origin': OTHER})
+        assert r.status_code == 200
+        assert not any(h in r.headers for h in CORS_HEADERS)
+        assert 'Origin' in r.headers['Vary']
+
+    @pytest.mark.parametrize("origin", [ITCH + '/', 'http://html-classic.itch.zone',
+                                        'https://html-classic.itch.zone.evil.example', 'https://itch.zone'])
+    def test_only_exact_origin_matches(self, http, server, no_database, monkeypatch, origin):
+        monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', [ITCH])
+        assert 'Access-Control-Allow-Origin' not in http.get('/health', headers={'Origin': origin}).headers
+        assert 'Access-Control-Allow-Origin' not in preflight(http, origin=origin).headers
+
+    def test_socketio_never_allows_credentials(self, server):
+        """Socket.IO el sikismasi da kimlik bilgisi (cerez) izni vermez; `*` ile birlikte tehlikeli olurdu."""
+        assert server.socketio.server.eio.cors_credentials is False
+
+    def test_no_origin_header_gets_no_allow_origin(self, http, server, no_database, monkeypatch):
+        monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', '*')
+        assert 'Access-Control-Allow-Origin' not in http.get('/health').headers
+
+    def test_wildcard(self, http, server, no_database, monkeypatch):
+        monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', '*')
+        r = http.get('/leaderboard', headers={'Origin': OTHER})
+        assert r.headers['Access-Control-Allow-Origin'] == '*'
+        assert 'Access-Control-Allow-Credentials' not in r.headers
+
+    def test_preflight(self, http, server, no_database, monkeypatch):
+        monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', [ITCH])
+        monkeypatch.setattr(server.config, 'AUTH_IP_MAX_REQUESTS', 1)
+        for _ in range(3):   # on istekler IP sinirina sayilmaz
+            r = preflight(http)
+            assert r.status_code == 204
+            assert r.headers['Access-Control-Allow-Origin'] == ITCH
+            assert 'POST' in r.headers['Access-Control-Allow-Methods']
+            assert 'Content-Type' in r.headers['Access-Control-Allow-Headers']
+            assert int(r.headers['Access-Control-Max-Age']) > 0
+        r = preflight(http, origin=OTHER)
+        assert 'Access-Control-Allow-Origin' not in r.headers
+        assert http.post('/login', json={}, headers={'Origin': ITCH}).status_code == 400
+
+    def test_error_responses_carry_headers(self, http, server, no_database, monkeypatch):
+        monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', [ITCH])
+        monkeypatch.setattr(server.config, 'AUTH_IP_MAX_REQUESTS', 1)
+        h = {'Origin': ITCH}
+        assert http.post('/login', json={}, headers=h).headers['Access-Control-Allow-Origin'] == ITCH  # 400
+        r = http.post('/login', json={}, headers=h)
+        assert r.status_code == 429
+        assert r.headers['Access-Control-Allow-Origin'] == ITCH
+        assert 'Retry-After' in r.headers['Access-Control-Expose-Headers']
+        r = http.get('/no-such-endpoint', headers=h)
+        assert r.status_code == 404 and r.headers['Access-Control-Allow-Origin'] == ITCH
+
+    @pytest.mark.db
+    def test_unauthorized_login_carries_headers(self, http, server, database, monkeypatch):
+        monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', [ITCH])
+        signup(http)
+        r = http.post('/login', json={'username': 'alice', 'password': 'wrong'}, headers={'Origin': ITCH})
+        assert r.status_code == 401 and r.headers['Access-Control-Allow-Origin'] == ITCH
+
+    def test_play_files_are_not_touched(self, http, server, monkeypatch, tmp_path):
+        monkeypatch.setattr(server.config, 'CORS_ALLOWED_ORIGINS', '*')
+        monkeypatch.setattr(server.config, 'WEB_BUILD_DIR', str(tmp_path))
+        (tmp_path / 'index.html').write_text('<html></html>')
+        r = http.get('/play/', headers={'Origin': OTHER})
+        assert r.status_code == 200 and 'Access-Control-Allow-Origin' not in r.headers

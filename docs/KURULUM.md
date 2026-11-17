@@ -396,7 +396,63 @@ Herkesin tarayıcıdan oynayabilmesi için sunucunun internette, HTTPS arkasınd
 
 Ayarlar `render.yaml` içindedir: `DB_POOL_SIZE=5` (ücretsiz veritabanının bağlantı sınırı için) ve `GUNICORN_THREADS=60`. Sunucu, yönetilen veritabanlarının boşta kapattığı bağlantıları kendisi yeniler (`DB_PING_AFTER_SECONDS`).
 
-**itch.io:** itch.io yalnızca statik dosya barındırır; odalar, giriş ve sıralama için yine bu sunucu gerekir. En basit yol, itch.io sayfasından `https://ADRESINIZ.onrender.com/play/` adresine bağlantı vermektir.
+**itch.io:** Oyunu itch.io'da tarayıcıda oynanan çok oyunculu bir oyun olarak yayınlamak için bkz. bölüm 14. Bu sunucu orada da gereklidir (odalar, giriş, sıralama).
+
+## 14. itch.io'da yayınlama
+
+itch.io yalnızca statik dosya barındırır: Unity WebGL build'i bir zip olarak yüklenir ve itch.io'nun kendi CDN adresinden (HTTPS) bir iframe içinde açılır. Oyun sunucusu bölüm 13'teki gibi başka yerde (Render) çalışmaya devam eder. Bu durumda oyun sayfası ile sunucu **farklı origin'lerdedir**, bu yüzden üç şey gerekir:
+
+- **Build'e gömülü sunucu adresi.** WebGL şablonundaki `server-config.js` dosyası `window.CF4_SERVER_URL` değerini tanımlar. Depoda bu değer boştur, yani oyun sayfanın kendi adresini kullanır (`/play/` için doğru davranış). itch.io zip'i üretilirken bu dosya sunucunuzun adresiyle yeniden yazılır. Dosya oyun koduyla birlikte yayınlandığı için ona oyun kadar güvenilir; `?server=` parametresinin aksine release build'de de geçerlidir.
+- **Sunucuda CORS.** Sunucu, itch.io sayfasının REST (`/login`, `/leaderboard` …) ve Socket.IO isteklerini kabul etmelidir: `CORS_ALLOWED_ORIGINS`.
+- **Statik sunucuya uygun build.** Varsayılan build Gzip ile sıkıştırılır ve Decompression Fallback kapalıdır. Bu build, `.gz` dosyalarını `Content-Encoding: gzip` başlığıyla gönderen bir sunucu ister; Flask'in `/play/` rotası bunu yapar. itch.io'nun [HTML5 belgelerine](https://itch.io/docs/creators/html5) göre itch.io da içeriği gzip olan dosyalara bu başlığı ekler (`.br` dosyalarına `br`), yani varsayılan build orada da açılmalıdır. Yine de itch.io build'i **Decompression Fallback açık** alınır: dosyalar `.unityweb` uzantılı olur ve tarayıcı başlığı uygulamazsa Unity'nin yükleyicisi dosyaları JavaScript ile açar. Böylece zip, itch.io CDN'inin ayarı değişse de ya da başlık göndermeyen başka bir statik sunucuda da çalışır; bedeli biraz daha büyük yükleyici ve WebAssembly akışlı derlemenin kapanmasıdır ([Unity belgesi](https://docs.unity3d.com/Manual/webgl-deploying.html)). Varsayılan build (e2e testi, Docker imajı, `/play/`) değişmez.
+
+**Sunucu adresinin önceliği** (`unity/Assets/Scripts/Net/ServerConfig.cs`):
+
+1. `?server=ADRES`, yalnızca sayfa `localhost` / `127.0.0.1` / `[::1]` adresinden sunuluyorsa veya development build'de geçerlidir (yerel geliştirme).
+2. `server-config.js` içindeki adres. Mutlak bir `https://host[:port]` adresi olmalıdır; yol, sorgu ve kullanıcı bilgisi içeremez. Sayfa `https` iken `http` bir adres reddedilir, çünkü tarayıcı karışık içeriği (mixed content) zaten engeller. Geçersiz adreste tarayıcı konsoluna `[CF4] CF4_SERVER_URL ...` uyarısı yazılır ve 3. adıma geçilir.
+3. Sayfanın kendi adresi.
+
+Böylece itch.io sayfasına eklenen bir `?server=https://saldirgan` parametresi hiçbir etki yaratmaz.
+
+### 14.1 Adımlar
+
+1. **Sunucuyu yayına alın** (bölüm 13). `https://ADRESINIZ.onrender.com/health` → `"database": true` görünmelidir.
+2. **Sunucuda `CORS_ALLOWED_ORIGINS` ayarlayın.** Render → servis → **Environment** → `CORS_ALLOWED_ORIGINS` → kaydedin. Servis yeniden başlar. Değer için iki seçenek vardır:
+   - **Liste (önerilen):** itch.io HTML5 oyunlarını yalnızca iki CDN adresinden sunar: varsayılan `https://html-classic.itch.zone` ve isteğe bağlı `https://html.itch.zone` ([itch.io duyurusu, 2023](https://itch.io/post/8952630/view-in-topic)). Oyunun `/play/` adresinden de oynanabilmesi için sunucunun kendi adresini de ekleyin, çünkü liste verildiğinde Socket.IO yalnızca listedeki origin'leri kabul eder:
+     `CORS_ALLOWED_ORIGINS=https://html-classic.itch.zone,https://html.itch.zone,https://ADRESINIZ.onrender.com`
+     Origin'ler tam eşleşir: sonda `/` ve yol yoktur, `http`/`https` farklıdır. itch.io ileride başka bir `*.itch.zone` adresi kullanırsa oyun "Sunucuya bağlanılamadı" der ve konsoldaki CORS hatasında yeni origin görünür; onu listeye ekleyin.
+   - **`*`:** Her origin kabul edilir; itch.io adres değiştirse de çalışır. Sunucu çerez kullanmadığı (oturum token'ı JSON gövdesinde ve socket mesajlarında açıkça gönderilir) ve `Access-Control-Allow-Credentials` göndermediği için başka bir site tarayıcınızdaki oturumu kullanamaz. Ancak herhangi bir site ziyaretçilerinin tarayıcısından sunucunuza giriş denemesi ve socket bağlantısı açtırabilir (giriş sınırları `LOGIN_MAX_FAILURES`, `AUTH_IP_MAX_REQUESTS` yine geçerlidir). Listeyi tercih edin.
+3. **GitHub'da sunucu adresini tanımlayın.** Repo → **Settings → Secrets and variables → Actions → Variables** sekmesi → **New repository variable**: Ad `CONNECT4_PUBLIC_SERVER_URL`, değer `https://ADRESINIZ.onrender.com` (sonda `/` yok). Bu bir *secret* değil, *variable*'dır: adres zaten oyunun içinde herkese açıktır. Unity secret'ları da tanımlı olmalıdır (bölüm 11.5).
+4. **itch.io zip'ini üretin.** `main`'de **Unity WebGL** iş akışı başarıyla bitince (build ve tarayıcı e2e testi geçti) **itch.io WebGL** iş akışı kendiliğinden başlar; hemen denemek için **Actions → itch.io WebGL → Run workflow** (`main` dalı) da kullanılabilir. Bu iş Decompression Fallback açık ikinci bir build alır, `scripts/make_itch_zip.py` ile zip'i üretir ve **Artifacts → `itch-webgl`** olarak yükler. İndirdiğiniz dosyayı açın; içinden çıkan `itch-webgl.zip` itch.io'ya yüklenecek dosyadır (GitHub artifact'leri bir zip daha sarar). Variable tanımlı değilse iş sessizce atlanır. Ayrı bir iş akışı olduğu için buradaki bir hata Docker imajını (bölüm 13) etkilemez.
+
+   *Yerelde (Unity kuruluysa):* Unity'yi `-cf4DecompressionFallback` argümanıyla (veya `CONNECT4_WEBGL_DECOMPRESSION_FALLBACK=1` ortam değişkeniyle) build alın, sonra:
+
+   ```bash
+   CONNECT4_WEBGL_DECOMPRESSION_FALLBACK=1 ./run.sh build-web    # Windows cmd: set CONNECT4_WEBGL_DECOMPRESSION_FALLBACK=1 && run.bat build-web
+   python scripts/make_itch_zip.py unity/Build/WebGL --server https://ADRESINIZ.onrender.com --out itch-webgl.zip
+   ```
+
+   Betik yalnızca standart kütüphaneyi kullanır. Adresi doğrular (mutlak, `https`, sonda `/` yok, kullanıcı/yol/sorgu yok), build klasörünü değiştirmeden bir kopyasını zip'e yazar ve `server-config.js`'i adresinizle doldurur. `index.html` zip'in kökündedir ve itch.io sınırları (1000 dosya, 500 MB, dosya başına 200 MB, 240 karakter yol) denetlenir. Decompression Fallback kapalı (`.gz`) bir build verirseniz hata verir. `--allow-precompressed` bu denetimi atlar; yalnızca itch.io'nun dosyaları `Content-Encoding: gzip` ile sunduğunu kendiniz doğruladıysanız kullanın. Bu build'den sonra `/play/` için tekrar normal build alın (`run build-web`).
+5. **itch.io'da proje oluşturun.** https://itch.io/game/new:
+   - **Kind of project:** `HTML`.
+   - **Uploads → Upload files:** `itch-webgl.zip` → yükleme bitince **This file will be played in the browser** kutusunu işaretleyin.
+   - **Embed options:** *Viewport dimensions* `1280 × 720` (oyun 16:9 çizilir ve pencereye sığar). **Mobile friendly** işaretleyin, *Orientation*: `Landscape` (dikey telefonda oyun zaten yan çevirmeyi önerir). **Fullscreen button** işaretleyin. *Automatically start on page load* yerine *Click to launch* seçeneği, mobil kullanıcıların oyunu kendi isteğiyle yüklemesini sağlar (build birkaç MB'tır).
+   - Fiyat: HTML oyunlarda yalnızca bağış alınabilir.
+   - **Visibility:** test bitene kadar `Draft` (veya `Restricted`) bırakın, sonra **Save**.
+6. **Test edin.** Sayfayı açın, F12 → Console: `[App] Hazir (sunucu: https://ADRESINIZ.onrender.com)` görünmelidir. Hesapla giriş yapın, liderlik tablosunu açın, iki ayrı tarayıcıdan (biri gizli pencere) online bir maç oynayın. Render'ın ücretsiz planında sunucu uykudaysa ilk bağlantı yaklaşık bir dakika sürebilir; önce `/health` adresini açarak sunucuyu uyandırabilirsiniz. Her şey çalışınca **Visibility → Public** yapın.
+
+**Güncelleme:** Yeni bir sürüm için 4. adımı tekrarlayın ve itch.io'da eski dosyayı silip yenisini yükleyin (veya aşağıdaki otomatik gönderimi kullanın).
+
+### 14.2 butler ile otomatik gönderim (isteğe bağlı)
+
+İki ayar birlikte tanımlıysa **itch.io WebGL** iş akışı zip'i her seferinde itch.io'nun komut satırı aracı **butler** ile kendiliğinden yükler:
+
+| Ad | Tür | Değer |
+|---|---|---|
+| `BUTLER_API_KEY` | **secret** | itch.io → Settings → API keys → *Generate new API key* |
+| `ITCH_TARGET` | variable | `kullanici/oyun:kanal`, ör. `kullanici/connect-four-pro:html5` (oyun sayfasının adresi: `kullanici.itch.io/connect-four-pro`) |
+
+butler sürümü ve SHA-256 özeti iş akışında sabittir; anahtar yalnızca gönderim adımına verilir ve loglara yazılmaz. İlk gönderimden sonra itch.io'da *Edit game* sayfasında kanalın **This file will be played in the browser** işaretini bir kez kontrol edin. Ayarlardan biri eksikse gönderim adımı atlanır ve zip yine artifact olarak indirilebilir. Anahtar bir loga sızarsa itch.io'da hemen iptal edin.
 
 ## Sorun giderme
 
@@ -414,7 +470,10 @@ Ayarlar `render.yaml` içindedir: `DB_POOL_SIZE=5` (ücretsiz veritabanının ba
 | `Address already in use` / port 5000 dolu | Başka bir program 5000'i kullanıyor: `set CONNECT4_PORT=5001` ile sunucuyu başlatın, istemciyi `python gui_app.py localhost:5001` ile açın |
 | Diğer bilgisayar bağlanamıyor | Güvenlik duvarında 5000 numaralı TCP portunu açın; iki bilgisayarın aynı ağda olduğunu kontrol edin |
 | `/play/` adresi `WebGL build bulunamadi` diyor | Önce `run build-web` ile build alın (bölüm 11.3) |
-| Tarayıcıda oyun "Unable to parse Build/....gz" hatası veriyor | Build'i Python sunucusu dışında (ör. `python -m http.server`) sunuyorsunuz; gzip dosyaları için `Content-Encoding: gzip` gerekir. `run web` kullanın |
+| Tarayıcıda oyun "Unable to parse Build/....gz" hatası veriyor | Build'i Python sunucusu dışında (ör. `python -m http.server`) sunuyorsunuz; gzip dosyaları için `Content-Encoding: gzip` gerekir. `run web` kullanın. itch.io gibi statik sunucular için Decompression Fallback açık build alın (bölüm 14) |
+| itch.io'da konsolda "blocked by CORS policy" / giriş "Sunucuya bağlanılamadı" | Sunucuda `CORS_ALLOWED_ORIGINS` ayarlı değil veya listede hatadaki origin yok (bölüm 14.1, 2. adım). Origin tam eşleşmelidir: sonda `/` olmadan |
+| itch.io'da oyun kendi sayfasına (`html-classic.itch.zone`) bağlanmaya çalışıyor | Zip `make_itch_zip.py` ile üretilmemiş veya konsolda `[CF4] CF4_SERVER_URL ...` uyarısı var: adres `https://` ile başlamalı (bölüm 14) |
+| Actions'ta "itch.io WebGL" işi atlandı | Yalnızca `main`'de, Unity secret'ları ve `CONNECT4_PUBLIC_SERVER_URL` *variable*'ı tanımlıysa çalışır (bölüm 14.1, 3. adım) |
 | Actions'ta "Unity WebGL" işi "atlandı" diyor | Secret'lar eksik (bölüm 11.5) |
 | Actions'ta Unity lisans hatası | E-posta/şifre doğru olmalı; 2 adımlı doğrulama kapalı olmalı; `UNITY_LICENSE` kullanıyorsanız dosyanın tamamı kopyalanmalı |
 | Seri lisansta "activation limit" / `Code 20111` hatası | id.unity.com → Subscriptions → aboneliğiniz → eski aktivasyonları kaldırın (CI normalde her işin sonunda iade eder) |

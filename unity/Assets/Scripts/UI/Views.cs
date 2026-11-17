@@ -443,8 +443,9 @@ namespace ConnectFourPro.UI
             _again = UIKit.Button(Root, "Tekrar Oyna", Theme.Green, app.PlayAgain, px, 530, 180, 48);
             _again.gameObject.SetActive(false);
             // AI oyununda "Geri Al" (452-492): "Tekrar Oyna"nin (506-554) ustunde; isabet
-            // satirlari yalnizca online oyunda dolu, burada bos
-            _undo = UIKit.Button(Root, "Geri Al", Theme.Panel, app.UndoAIMove, px, 472, 180, 40, 18);
+            // satirlari yalnizca online oyunda dolu, burada bos. Dolgu panelden (Theme.Panel)
+            // farkli olmali: ayni renkte buton panelin icinde kaybolur, yalnizca yazi gorunur
+            _undo = UIKit.Button(Root, "Geri Al", Theme.InputBackground, app.UndoAIMove, px, 472, 180, 40, 18);
             _undo.gameObject.SetActive(false);
             // Biten online oyunda "Rovans": ayni yerde, "Tekrar Oyna" yalnizca AI oyununda gorunur
             _rematch = UIKit.Button(Root, "Rövanş", Theme.Green, app.RequestRematch, px, 530, 180, 48, 18);
@@ -516,11 +517,13 @@ namespace ConnectFourPro.UI
 
         private void SetPlayer(int i, string name, int? elo, int piece)
         {
+            // Isim iki tarafta da ayni (en fazla 14 karakter, misafir adi tam sigar);
+            // "(Sen)" etiketi isim satirina sigmadigi icin alttaki ELO satirinda durur.
+            _names[i].text = name != null && name.Length > 14 ? name.Substring(0, 14) : name;
+            string eloText = elo.HasValue ? "ELO: " + elo.Value : "";
             if (App.IsLocalPiece(piece))
-                _names[i].text = (name != null && name.Length > 9 ? name.Substring(0, 9) : name) + " (Sen)";
-            else
-                _names[i].text = name != null && name.Length > 14 ? name.Substring(0, 14) : name;
-            _elos[i].text = elo.HasValue ? "ELO: " + elo.Value : "";
+                eloText = eloText.Length > 0 ? "(Sen)  " + eloText : "(Sen)";
+            _elos[i].text = eloText;
             _turns[i].enabled = App.Game.CurrentPlayer == piece && !App.Game.GameOver;
             int? secs = App.TurnSecondsLeft;
             if (_turns[i].enabled && secs.HasValue)

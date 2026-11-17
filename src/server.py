@@ -44,8 +44,12 @@ log = config.get_logger("server")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.SECRET_KEY
-# cors_allowed_origins=None: tarayicidan sadece ayni origin (bkz. config.CORS_ALLOWED_ORIGINS)
-socketio = SocketIO(app, cors_allowed_origins=config.CORS_ALLOWED_ORIGINS, async_mode='threading')
+# cors_allowed_origins=None: tarayicidan sadece ayni origin (bkz. config.CORS_ALLOWED_ORIGINS);
+# ayni ayar REST API'nin CORS basliklarini da belirler (bkz. _cors_headers)
+# cors_credentials=False: kimlik cerezle degil mesajdaki token'la tasinir. engineio'nun varsayilani
+# (True) Access-Control-Allow-Credentials gonderir; `*` ile bu, her siteye kimlik bilgili erisim olurdu
+socketio = SocketIO(app, cors_allowed_origins=config.CORS_ALLOWED_ORIGINS, cors_credentials=False,
+                    async_mode='threading')
 
 # Werkzeug istek loglari cok gurultulu
 config.get_logger("werkzeug").setLevel("ERROR")
@@ -459,6 +463,72 @@ def start_cleanup_thread() -> None:
 
 
 # =============================================================================
+# REST API: CORS
+# =============================================================================
+# Oyun baska bir origin'den (ornegin itch.io) sunuldugunda tarayici REST
+# yanitlarini ancak Access-Control-Allow-Origin ile okur. Ayar Socket.IO ile
+# ortaktir (config.CORS_ALLOWED_ORIGINS); bos ise hicbir CORS basligi eklenmez
+# (bugunku ayni-origin davranisi). Cerez kullanilmaz (token JSON govdesinde
+# gider), bu yuzden Allow-Credentials gonderilmez. /play/ dosyalari ve
+# /socket.io (python-engineio kendi CORS'unu yapar) bu kuraldan etkilenmez.
+
+_CORS_ALLOW_METHODS = 'GET, POST, OPTIONS'
+_CORS_ALLOW_HEADERS = 'Content-Type, Authorization'
+_CORS_MAX_AGE = '600'
+
+
+def _cors_origin_for(origin: Optional[str]) -> Optional[str]:
+    """Istegin Origin'ine verilecek Access-Control-Allow-Origin degeri (yoksa None)."""
+    allowed = config.CORS_ALLOWED_ORIGINS
+    if not allowed or not origin:
+        return None
+    if allowed == '*':
+        return '*'
+    # Tam eslesme: tarayicinin Origin basligi sema://host[:port] bicimindedir (sonda / yok);
+    # 'https://x/' veya 'http://' surumu listedeki 'https://x' ile eslesmez
+    return origin if origin in allowed else None
+
+
+def _is_api_path(path: str) -> bool:
+    return not (path == '/play' or path.startswith('/play/') or path.startswith('/socket.io'))
+
+
+def _apply_cors(response, allow_origin: str):
+    response.headers['Access-Control-Allow-Origin'] = allow_origin
+    response.headers['Access-Control-Allow-Methods'] = _CORS_ALLOW_METHODS
+    response.headers['Access-Control-Allow-Headers'] = _CORS_ALLOW_HEADERS
+    # 429 yanitindaki bekleme suresi istemci kodundan okunabilsin
+    response.headers['Access-Control-Expose-Headers'] = 'Retry-After'
+    return response
+
+
+@app.before_request
+def _cors_preflight():
+    """Izinli origin'den gelen OPTIONS on istegini rota/kisitlayiciya girmeden yanitlar."""
+    if request.method != 'OPTIONS' or not _is_api_path(request.path):
+        return None
+    allow_origin = _cors_origin_for(request.headers.get('Origin'))
+    if not allow_origin or not request.headers.get('Access-Control-Request-Method'):
+        return None
+    response = app.response_class(status=204)
+    response.headers['Access-Control-Max-Age'] = _CORS_MAX_AGE
+    return response   # basliklar _cors_headers'ta eklenir
+
+
+@app.after_request
+def _cors_headers(response):
+    """API yanitlarina (4xx/5xx/429 dahil) CORS basliklarini ekler."""
+    if not config.CORS_ALLOWED_ORIGINS or not _is_api_path(request.path):
+        return response
+    # Yanit origin'e gore degistigi icin onbellekler ayri saklamali
+    response.vary.add('Origin')
+    allow_origin = _cors_origin_for(request.headers.get('Origin'))
+    if allow_origin:
+        _apply_cors(response, allow_origin)
+    return response
+
+
+# =============================================================================
 # REST API
 # =============================================================================
 
@@ -570,7 +640,8 @@ def health():
 # =============================================================================
 # UNITY WEBGL ISTEMCISI
 # =============================================================================
-# Oyun ayni origin'den sunuldugu icin REST ve Socket.IO icin CORS gerekmez.
+# Oyun buradan sunuldugunda ayni origin'dir: REST ve Socket.IO icin CORS gerekmez
+# (baska origin'den, ornegin itch.io'dan sunulan build icin bkz. REST API: CORS).
 # Unity build'i Gzip ile sikistirilir (Decompression Fallback kapali); tarayicinin
 # dosyalari kendisi acabilmesi icin .gz dosyalari Content-Encoding: gzip ve asil
 # dosya turunun Content-Type'i ile gonderilir.
@@ -624,7 +695,9 @@ def play(path):
         content_type = _web_content_type(name)
         if content_type:
             response.headers['Content-Type'] = content_type
-    if name.endswith('index.html'):
+    # index.html ve sunucu adresi (server-config.js) her acilista dogrulanir: adres
+    # degisince tarayici eski adresi onbellekten kullanmasin
+    if name.endswith('index.html') or name == 'server-config.js':
         response.headers['Cache-Control'] = 'no-cache'
     return response
 

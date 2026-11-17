@@ -10,6 +10,8 @@
 //
 // Komut satiri (Unity CLI):
 //   unity build unity --target WebGL --execute-method ConnectFourPro.EditorTools.ProjectSetup.BuildWebGL
+//   itch.io gibi statik sunucular icin Unity'ye ek olarak -cf4DecompressionFallback verin
+//   (bkz. WebOptimizer.DecompressionFallbackRequested, docs/KURULUM.md -> 14)
 
 using System.IO;
 using System.Linq;
@@ -90,7 +92,27 @@ namespace ConnectFourPro.EditorTools
             if (options.scenes.Length == 0)
                 options.scenes = new[] { ScenePath };
 
-            BuildReport report = BuildPipeline.BuildPlayer(options);
+            // Statik sunucu (itch.io) build'i: fallback yalnizca bu build icin acilir,
+            // sonra kapatilip kaydedilir (ProjectSettings.asset kapali kalir)
+            bool fallback = WebOptimizer.DecompressionFallbackRequested();
+            BuildReport report;
+            try
+            {
+                if (fallback)
+                {
+                    PlayerSettings.WebGL.decompressionFallback = true;
+                    Debug.Log("[ProjectSetup] Decompression Fallback bu build icin acik");
+                }
+                report = BuildPipeline.BuildPlayer(options);
+            }
+            finally
+            {
+                if (fallback)
+                {
+                    PlayerSettings.WebGL.decompressionFallback = false;
+                    AssetDatabase.SaveAssets();
+                }
+            }
             var summary = report.summary;
             bool ok = summary.result == BuildResult.Succeeded;
             Debug.Log($"[ProjectSetup] WebGL build: {summary.result}, {summary.totalSize / (1024f * 1024f):0.0} MB, " +
