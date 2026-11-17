@@ -14,6 +14,7 @@
   <ItemGroup>
     <Compile Include="../../../unity/Assets/Scripts/Game/AppController.cs" Link="Game/AppController.cs" />
     <Compile Include="../../../unity/Assets/Scripts/Game/AIRunner.cs" Link="Game/AIRunner.cs" />
+    <Compile Include="../../../unity/Assets/Scripts/Game/ScreenLayout.cs" Link="Game/ScreenLayout.cs" />
     <Compile Include="../../../unity/Assets/Scripts/Net/GameSocket.cs" Link="Net/GameSocket.cs" />
     <Compile Include="../../../unity/Assets/Scripts/Net/ISocketTransport.cs" Link="Net/ISocketTransport.cs" />
     <Compile Include="../../../unity/Assets/Scripts/Net/ServerConfig.cs" Link="Net/ServerConfig.cs" />
