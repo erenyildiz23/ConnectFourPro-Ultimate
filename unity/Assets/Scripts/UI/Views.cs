@@ -238,33 +238,69 @@ namespace ConnectFourPro.UI
     public sealed class LobbyView : View
     {
         private const int MaxRows = 8;
+        // Dikeyde sigan satir sayisi (satir yuksekligi 60, adim 64)
+        private const int PortraitMaxRows = 8;
         private readonly RectTransform _rows;
         private readonly Text _empty;
+        private readonly List<Text> _landscapeHeader = new List<Text>();
+        private readonly List<Text> _portraitHeader = new List<Text>();
         private int _shownVersion = -1;
 
         public LobbyView(AppController app, Transform parent) : base(app, parent, "Lobby")
         {
-            Title("ONLİNE LOBİ", 45);
-            UIKit.Button(Root, "+ Yeni Oyun", Theme.Button, app.CreateOnlineGame, -470, 110, 180, 48);
-            UIKit.Button(Root, "Yenile", Theme.Button, () =>
+            P(Title("ONLİNE LOBİ", 45), 0, 150, 510, 60);
+            P(UIKit.Button(Root, "+ Yeni Oyun", Theme.Button, app.CreateOnlineGame, -470, 110, 180, 48), -160, 220, 170, 52);
+            P(UIKit.Button(Root, "Yenile", Theme.Button, () =>
             {
                 app.RefreshActiveGames();
                 app.SetStatus("Yenilendi");
-            }, -320, 110, 100, 48);
-            UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 500, 110, 120, 48);
+            }, -320, 110, 100, 48), 10, 220, 130, 52);
+            P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 500, 110, 120, 48), 180, 220, 120, 52);
 
             var header = UIKit.Panel(Root, "Header", Theme.Panel);
             UIKit.Place(header.rectTransform, 0, 170, 1180, 40);
+            P(header, 0, 275, 510, 40);
             float[] cols = { -480, -260, -20, 220, 470 };
             string[] titles = { "ODA", "OYUNCU 1", "OYUNCU 2", "DURUM", "İŞLEM" };
             for (int i = 0; i < cols.Length; i++)
-                UIKit.Label(Root, titles[i], 18, Theme.White, cols[i], 170, 220, 40, TextAnchor.MiddleCenter, FontStyle.Bold);
+                _landscapeHeader.Add(UIKit.Label(Root, titles[i], 18, Theme.White, cols[i], 170, 220, 40, TextAnchor.MiddleCenter, FontStyle.Bold));
+
+            // Dikte 3 sutun: ODA / OYUNCULAR / ISLEM; yatayda gizli
+            float[] pcols = { -185, -15, 185 };
+            string[] ptitles = { "ODA", "OYUNCULAR", "İŞLEM" };
+            for (int i = 0; i < pcols.Length; i++)
+            {
+                var t = UIKit.Label(Root, ptitles[i], 18, Theme.White, pcols[i], 170, 220, 40, TextAnchor.MiddleCenter, FontStyle.Bold);
+                P(t, pcols[i], 275, i == 1 ? 190 : 120, 40);
+                _portraitHeader.Add(t);
+            }
 
             _rows = UIKit.Stretch(Root, "Rows");
             _empty = UIKit.Label(Root, "Aktif oyun yok. Yeni bir oyun oluşturun!", 24, Theme.Gray, 0, 320);
+            P(_empty, 0, 400, 460, 80);
+            SetHeaders(Responsive.Current);
+        }
+
+        private void SetHeaders(LayoutOrientation o)
+        {
+            bool portrait = o == LayoutOrientation.Portrait;
+            foreach (var t in _landscapeHeader)
+                t.gameObject.SetActive(!portrait);
+            foreach (var t in _portraitHeader)
+                t.gameObject.SetActive(portrait);
         }
 
         public override void OnShow() => _shownVersion = -1;
+
+        public override void OnLayoutChanged(LayoutOrientation o)
+        {
+            base.OnLayoutChanged(o);
+            SetHeaders(o);
+            // Satirlar yone gore farkli kuruldugu icin yeniden kurulur
+            _shownVersion = -1;
+            if (Visible)
+                Refresh();
+        }
 
         public override void Refresh()
         {
@@ -274,10 +310,38 @@ namespace ConnectFourPro.UI
             for (int i = _rows.childCount - 1; i >= 0; i--)
                 Object.Destroy(_rows.GetChild(i).gameObject);
 
+            bool portrait = Responsive.Current == LayoutOrientation.Portrait;
             var games = App.ActiveGames;
             _empty.enabled = games.Count == 0;
-            for (int i = 0; i < games.Count && i < MaxRows; i++)
-                BuildRow(games[i], i);
+            int max = portrait ? PortraitMaxRows : MaxRows;
+            for (int i = 0; i < games.Count && i < max; i++)
+            {
+                if (portrait)
+                    BuildPortraitRow(games[i], i);
+                else
+                    BuildRow(games[i], i);
+            }
+        }
+
+        // Dik satir: yukseklik 60; oyuncular iki satir, islem dugmesi >= 48 yuksek
+        private void BuildPortraitRow(ActiveGame g, int index)
+        {
+            float y = 335 + index * 64;
+            var bg = UIKit.Image(_rows, "Row " + g.RoomId, index % 2 == 0 ? Theme.Panel : Theme.Background);
+            UIKit.Place(bg.rectTransform, 0, y, 510, 60);
+            UIKit.Label(_rows, g.RoomId, 20, Theme.Hover, -185, y, 130, 56, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.Label(_rows, $"{Short(g.P1)} ({g.P1Elo})", 18, Theme.Red, -15, y - 15, 190, 28);
+            string room = g.RoomId;
+            if (g.Waiting)
+            {
+                UIKit.Label(_rows, "Bekleniyor...", 18, Theme.Waiting, -15, y + 15, 190, 28);
+                UIKit.Button(_rows, "Katıl", Theme.Green, () => App.JoinOnlineGame(room), 185, y, 110, 48, 18);
+            }
+            else
+            {
+                UIKit.Label(_rows, $"{Short(g.P2)} ({g.P2Elo})", 18, Theme.Yellow, -15, y + 15, 190, 28);
+                UIKit.Button(_rows, "İzle", Theme.Hover, () => App.SpectateGame(room), 185, y, 110, 48, 18);
+            }
         }
 
         private void BuildRow(ActiveGame g, int index)
@@ -345,16 +409,29 @@ namespace ConnectFourPro.UI
     // -------------------------------------------------------------------------
     public sealed class LeaderboardView : View
     {
+        // Dikeyde gosterilen satir sayisi (adim 52: 10 satir 230..698 araligina sigar)
+        private const int PortraitRows = 10;
         private readonly Text _message;
         private readonly Text[] _lines = new Text[10];
 
         public LeaderboardView(AppController app, Transform parent) : base(app, parent, "Leaderboard")
         {
-            Title("LİDERLİK TABLOSU", 55);
+            P(Title("LİDERLİK TABLOSU", 55), 0, 150, 510, 60);
             _message = UIKit.Label(Root, "", 24, Theme.Gray, 0, 250);
+            P(_message, 0, 400, 480, 80);
             for (int i = 0; i < _lines.Length; i++)
+            {
                 _lines[i] = UIKit.Label(Root, "", 21, Theme.White, 0, 125 + i * 42, 900, 40);
-            UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, 655, 180, 50);
+                P(_lines[i], 0, 230 + i * 52, 510, 48);
+                FitInPortrait(_lines[i], 14, 21);
+            }
+            P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, 655, 180, 50), 0, 800, 240, 56);
+        }
+
+        public override void OnLayoutChanged(LayoutOrientation o)
+        {
+            base.OnLayoutChanged(o);
+            Refresh();
         }
 
         public override void Refresh()
@@ -363,9 +440,10 @@ namespace ConnectFourPro.UI
             _message.text = App.LeaderboardError ? "Sunucuya bağlanılamadı"
                           : data == null ? "Yükleniyor..."
                           : data.Count == 0 ? "Henüz kayıtlı oyuncu yok" : "";
+            int limit = Responsive.Current == LayoutOrientation.Portrait ? PortraitRows : _lines.Length;
             for (int i = 0; i < _lines.Length; i++)
             {
-                if (data != null && i < data.Count)
+                if (data != null && i < data.Count && i < limit)
                 {
                     var p = data[i];
                     _lines[i].text = $"{i + 1}. {p.Username}  -  ELO: {p.Rating}  (G:{p.Wins} M:{p.Losses})";
@@ -380,18 +458,33 @@ namespace ConnectFourPro.UI
     // -------------------------------------------------------------------------
     public sealed class HistoryView : View
     {
+        // Dikeyde her kayit iki satir (adim 78); sigan kayit sayisi
+        private const int PortraitRows = 8;
         private readonly Text _message;
         private readonly Text[,] _cells = new Text[10, 4];
 
         public HistoryView(AppController app, Transform parent) : base(app, parent, "History")
         {
-            Title("MAÇ GEÇMİŞİ", 55);
+            P(Title("MAÇ GEÇMİŞİ", 55), 0, 150, 510, 60);
             _message = UIKit.Label(Root, "", 24, Theme.Gray, 0, 250, 1000);
+            P(_message, 0, 400, 480, 80);
             float[] xs = { -390, -150, 110, 380 };
+            // Dik: ust satir tarih + rakip, alt satir sonuc + hamle sayisi
+            float[] pxs = { -130, 135, -130, 135 };
+            float[] pdy = { -20, -20, 18, 18 };
             for (int i = 0; i < 10; i++)
                 for (int c = 0; c < 4; c++)
+                {
                     _cells[i, c] = UIKit.Label(Root, "", 20, Theme.White, xs[c], 120 + i * 48, 250, 40, TextAnchor.MiddleLeft);
-            UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, 655, 180, 50);
+                    P(_cells[i, c], pxs[c], 235 + i * 78 + pdy[c], 240, 34);
+                }
+            P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, 655, 180, 50), 0, 850, 240, 56);
+        }
+
+        public override void OnLayoutChanged(LayoutOrientation o)
+        {
+            base.OnLayoutChanged(o);
+            Refresh();
         }
 
         public override void Refresh()
@@ -401,9 +494,10 @@ namespace ConnectFourPro.UI
                           : App.HistoryError ? "Sunucuya bağlanılamadı"
                           : data == null ? "Yükleniyor..."
                           : data.Count == 0 ? "Henüz online maç oynamadınız." : "";
+            int limit = Responsive.Current == LayoutOrientation.Portrait ? PortraitRows : 10;
             for (int i = 0; i < 10; i++)
             {
-                bool has = !App.IsGuest && data != null && i < data.Count;
+                bool has = !App.IsGuest && data != null && i < data.Count && i < limit;
                 if (!has)
                 {
                     for (int c = 0; c < 4; c++)
