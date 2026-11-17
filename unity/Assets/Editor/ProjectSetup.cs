@@ -10,6 +10,8 @@
 //
 // Komut satiri (Unity CLI):
 //   unity build unity --target WebGL --execute-method ConnectFourPro.EditorTools.ProjectSetup.BuildWebGL
+//   itch.io gibi statik sunucular icin Unity'ye ek olarak -cf4DecompressionFallback verin
+//   (bkz. WebOptimizer.DecompressionFallbackRequested, docs/KURULUM.md -> 14)
 
 using System.IO;
 using System.Linq;

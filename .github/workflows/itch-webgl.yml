@@ -1,0 +1,195 @@
+name: itch.io WebGL
+
+# itch.io'ya yuklenecek zip'i uretir (docs/KURULUM.md -> 14).
+#
+# "Unity WebGL" is akisi main'de basariyla bitince (build + tarayici e2e testi gecti)
+# calisir; elle de baslatilabilir (Actions -> itch.io WebGL -> Run workflow, main).
+# Ayri is akisidir: burada bir hata olsa da Docker imaji (docker-image.yml, "Unity
+# WebGL"in sonucuna bakar) gecikmez veya engellenmez.
+#
+# Ayarlar (Settings > Secrets and variables > Actions):
+#   CONNECT4_PUBLIC_SERVER_URL  VARIABLE (secret degil): oyun sunucusu, https://..., sonda / yok.
+#                               Tanimli degilse is sessizce atlanir.
+#   Unity secret'lari           unity-webgl.yml ile ayni (UNITY_EMAIL, UNITY_PASSWORD ve
+#                               UNITY_SERIAL veya UNITY_LICENSE)
+#   BUTLER_API_KEY (secret) + ITCH_TARGET (variable, kullanici/oyun:kanal): istege bagli;
+#                               ikisi de varsa zip butler ile itch.io'ya gonderilir.
+#
+# itch.io .gz dosyalarina Content-Encoding koyacagi garanti olmayan statik bir sunucu
+# oldugundan burada Decompression Fallback acik ikinci bir build alinir
+# (-cf4DecompressionFallback, bkz. unity/Assets/Editor/WebOptimizer.cs). e2e testinin ve
+# Docker imajinin kullandigi webgl-build artifact'i degismez.
+
+on:
+  workflow_run:
+    workflows: ["Unity WebGL"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: itch-webgl
+  cancel-in-progress: true
+
+env:
+  UNITY_VERSION: 6000.3.27f1
+
+jobs:
+  itch:
+    if: >-
+      vars.CONNECT4_PUBLIC_SERVER_URL != '' && (
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+         && github.event.workflow_run.event != 'pull_request'
+         && github.event.workflow_run.head_repository.full_name == github.repository)
+      )
+    runs-on: ubuntu-24.04   # ubuntu-latest Ubuntu 26ya geciyor; GameCI imajlari icin sabit
+    timeout-minutes: 90
+    steps:
+      - name: Check Unity secrets
+        id: license
+        env:
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          # Degerler asla yazilmaz; "Unity WebGL" secret'siz atlandiysa burada da atlanir
+          if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ] || { [ -z "$UNITY_SERIAL" ] && [ -z "$UNITY_LICENSE" ]; }; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Unity secret'lari eksik; itch.io build'i atlandi (docs/KURULUM.md -> 11.5)."
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.license.outputs.ok == 'true'
+        with:
+          # Testleri gecen commit (workflow_run'da varsayilan, main'in en son hali olurdu)
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-python@v5
+        if: steps.license.outputs.ok == 'true'
+        with:
+          python-version: "3.12"
+
+      # Unity'yi bosuna calistirmamak icin adres once dogrulanir (stdlib, bagimlilik yok)
+      - name: Validate server URL
+        if: steps.license.outputs.ok == 'true'
+        env:
+          SERVER_URL: ${{ vars.CONNECT4_PUBLIC_SERVER_URL }}
+        run: |
+          python -c 'import os, sys; sys.path.insert(0, "scripts"); import make_itch_zip as m; m.validate_server_url(os.environ["SERVER_URL"])' \
+            || { echo "::error::CONNECT4_PUBLIC_SERVER_URL gecersiz: https://host[:port] olmali, sonda / yok (docs/KURULUM.md -> 14)"; exit 1; }
+
+      # Unity Docker imaji buyuk; runner'da yer ac
+      - name: Free disk space
+        if: steps.license.outputs.ok == 'true'
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          swap-storage: false
+
+      - name: Cache Library
+        if: steps.license.outputs.ok == 'true'
+        uses: actions/cache@v4
+        with:
+          path: unity/Library
+          key: Library-WebGL-${{ env.UNITY_VERSION }}-${{ hashFiles('unity/Assets/**', 'unity/Packages/**', 'unity/ProjectSettings/**') }}
+          restore-keys: |
+            Library-WebGL-${{ env.UNITY_VERSION }}-
+
+      - name: Build WebGL (Decompression Fallback)
+        if: steps.license.outputs.ok == 'true'
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: unity
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: WebGL
+          buildMethod: ConnectFourPro.EditorTools.ProjectSetup.BuildWebGL
+          # WebOptimizer.DecompressionFallbackRequested() bu argumani okur
+          customParameters: -cf4DecompressionFallback
+          versioning: None
+          allowDirtyBuild: true
+
+      - name: Check build output
+        if: steps.license.outputs.ok == 'true'
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" unity
+          ls -la unity/Build/WebGL unity/Build/WebGL/Build
+          test -f unity/Build/WebGL/index.html
+          test -f unity/Build/WebGL/server-config.js
+          # Fallback acik build: .unityweb, .gz yok
+          ls unity/Build/WebGL/Build/*.wasm.unityweb
+          ! ls unity/Build/WebGL/Build/*.gz 2>/dev/null
+
+      - name: Make itch.io zip
+        if: steps.license.outputs.ok == 'true'
+        env:
+          SERVER_URL: ${{ vars.CONNECT4_PUBLIC_SERVER_URL }}
+        run: python scripts/make_itch_zip.py unity/Build/WebGL --server "$SERVER_URL" --out itch/itch-webgl.zip
+
+      # Indirilen artifact'i GitHub bir zip daha sarar: icinden itch-webgl.zip cikar
+      - uses: actions/upload-artifact@v4
+        if: steps.license.outputs.ok == 'true'
+        with:
+          name: itch-webgl
+          path: itch/itch-webgl.zip
+          retention-days: 30
+
+      - name: Check butler settings
+        id: butler
+        if: steps.license.outputs.ok == 'true'
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          ITCH_TARGET: ${{ vars.ITCH_TARGET }}
+        run: |
+          # Anahtarin degeri asla yazilmaz; yalnizca tanimli olup olmadigi
+          if [ -z "$BUTLER_API_KEY" ] || [ -z "$ITCH_TARGET" ]; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::BUTLER_API_KEY (secret) ve ITCH_TARGET (variable) birlikte tanimli degil; itch.io'ya gonderim atlandi. Zip: itch-webgl artifact'i"
+          elif ! printf '%s' "$ITCH_TARGET" | grep -Eq '^[a-z0-9_-]+/[a-z0-9_-]+:[a-z0-9-]+$'; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::error::ITCH_TARGET kullanici/oyun:kanal biciminde olmali (ornek: kullanici/connect-four-pro:html5)"
+            exit 1
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Sabit surum + SHA-256 (.claude/skills/itch-publish/references/butler-ci.md); anahtar bu adimda yok
+      - name: Install butler
+        if: steps.butler.outputs.ok == 'true'
+        run: |
+          set -euo pipefail
+          BUTLER_VERSION=15.32.0
+          BUTLER_SHA256=5db7b053fc9b578b86ffaf3520a12b952eb95c9225171cc5720dfbc9fe4574b3
+          mkdir -p "$RUNNER_TEMP/butler"
+          cd "$RUNNER_TEMP/butler"
+          curl -fL -o butler.zip "https://github.com/itchio/butler/releases/download/v${BUTLER_VERSION}/butler-linux-amd64.zip"
+          printf '%s  %s\n' "$BUTLER_SHA256" butler.zip | sha256sum -c -
+          unzip -jq butler.zip   # zip dosyalari linux-amd64/ altinda tutar
+          chmod +x butler
+          ./butler -V
+
+      - name: Push to itch.io
+        if: steps.butler.outputs.ok == 'true'
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          ITCH_TARGET: ${{ vars.ITCH_TARGET }}
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/butler/butler" push itch/itch-webgl.zip "$ITCH_TARGET" \
+            --userversion "$GITHUB_RUN_NUMBER" --if-changed

@@ -10,6 +10,12 @@
 //   * Sikistirma Gzip: oyun LAN'da http:// uzerinden de oynanir; Brotli yalnizca
 //     HTTPS/localhost'ta calisir. Flask'in /play rotasi Content-Encoding: gzip gonderir,
 //     bu yuzden Decompression Fallback kapali.
+//   * Istisna: itch.io gibi .gz dosyalarina Content-Encoding basligi koyacagi garanti
+//     olmayan statik sunucular icin Decompression Fallback acik build alinir
+//     (dosyalar .unityweb olur, gerekirse loader JS ile acar). Acmak icin Unity'ye
+//     -cf4DecompressionFallback komut satiri argumani veya
+//     CONNECT4_WEBGL_DECOMPRESSION_FALLBACK=1 ortam degiskeni verilir. Varsayilan build
+//     (CI e2e, Docker imaji, /play) bundan etkilenmez.
 //   * Istisnalar "Explicitly Thrown Only": kod try/catch kullanir (JSON, AI iptali).
 //   * Kod optimizasyonu (Disk Size LTO) Library/ altinda saklanir ve repoya gecmez;
 //     WebGLBuild.Build() bunu her build'de yeniden uygular.
@@ -24,6 +30,18 @@ namespace ConnectFourPro.EditorTools
     public static class WebOptimizer
     {
         public const string TemplateName = "PROJECT:ConnectFour";
+        public const string FallbackArgument = "-cf4DecompressionFallback";
+        public const string FallbackEnvironment = "CONNECT4_WEBGL_DECOMPRESSION_FALLBACK";
+
+        /// <summary>Statik sunucu (itch.io) build'i icin Decompression Fallback istendi mi?</summary>
+        public static bool DecompressionFallbackRequested()
+        {
+            foreach (var arg in System.Environment.GetCommandLineArgs())
+                if (string.Equals(arg, FallbackArgument, System.StringComparison.OrdinalIgnoreCase))
+                    return true;
+            var env = System.Environment.GetEnvironmentVariable(FallbackEnvironment);
+            return env == "1" || string.Equals(env, "true", System.StringComparison.OrdinalIgnoreCase);
+        }
 
         [MenuItem("Tools/Apply Web Release Settings")]
         public static void Apply()
@@ -38,7 +56,7 @@ namespace ConnectFourPro.EditorTools
 
             PlayerSettings.WebGL.template = TemplateName;
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
-            PlayerSettings.WebGL.decompressionFallback = false;
+            PlayerSettings.WebGL.decompressionFallback = DecompressionFallbackRequested();
             PlayerSettings.WebGL.dataCaching = true;
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
             PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.Off;

@@ -23,7 +23,7 @@ Yeditepe Üniversitesi bitirme projesi. Python/Pygame sürümü: [ConnectFourPro
 ## ✨ Özellikler
 
 **Oyun**
-- **Unity 6 / C# WebGL istemcisi:** kurulum gerektirmez, tarayıcıdan `http://SUNUCU:5000/play/` ile açılır; aynı ağdaki telefon/tablet de bağlanabilir
+- **Unity 6 / C# WebGL istemcisi:** kurulum gerektirmez, tarayıcıdan `http://SUNUCU:5000/play/` ile açılır; aynı ağdaki telefon/tablet de bağlanabilir. Aynı build itch.io'da da çok oyunculu olarak yayınlanabilir; sunucu başka yerde çalışır ([docs/KURULUM.md bölüm 14](docs/KURULUM.md#14-itchioda-yayınlama))
 - Animasyonlu taş düşüşü, kazanan dörtlü vurgusu, son oynanan taşın halkası, fare üstündeki sütunda taşın ineceği yerin önizlemesi, ekran başlığında sonuç (KAZANDIN! / KAYBETTİN / BERABERE) (Unity ve Pygame istemcilerinde)
 - Yapay zekaya karşı 3 zorluk: Kolay (D2), Orta (D4), Zor (D8). Kolay, arama bittikten sonra zamanın yaklaşık %40'ında rastgele bir hamle oynar (kendi kazanan hamlesini kaçırmaz; ayrıntı: [docs/AI.md](docs/AI.md)). Pygame istemcisinde ilk hamleyi kimin yapacağı seçilir, "Yeni Oyun" ilk hamleyi değiştirir, "Geri Al" son hamleni ve AI'nın cevabını geri alır
 - Online çok oyunculu: oda oluştur / katıl, lobi, seyirci modu
@@ -75,7 +75,7 @@ ConnectFourPro-Ultimate/
 │   ├── AI.md                 # Oyun teorisi, AI v1 sorunları, v2 tasarımı
 │   ├── KURULUM.md            # Adım adım kurulum ve çalıştırma
 │   └── diagrams/             # UML (PlantUML + PNG)
-├── scripts/                  # Kurulum yardımcıları, export_ai_vectors.py (C# altın vektörleri)
+├── scripts/                  # Kurulum yardımcıları, export_ai_vectors.py (C# altın vektörleri), make_itch_zip.py (itch.io zip'i)
 ├── Dockerfile / docker-compose.yml  # Sunucu + PostgreSQL (docs/KURULUM.md bölüm 12)
 ├── render.yaml               # İnternette ücretsiz yayın: Render + Supabase (docs/KURULUM.md bölüm 13)
 ├── setup.bat / setup.sh      # Tek komutla kurulum
@@ -137,7 +137,7 @@ set DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4        # Windows
 | `SECRET_KEY` | rastgele | Oturum token'larını imzalar (ayarlanmazsa sunucu yeniden başlayınca herkes tekrar giriş yapar) |
 | `SESSION_MAX_AGE` | `604800` | Oturum token'ının geçerlilik süresi (saniye) |
 | `MOVE_TIME_SECONDS` / `MOVE_TIME_GRACE_SECONDS` | `0` / `2` | Hamle başına süre; dolarsa sırası gelen hükmen kaybeder (`detail: timeout`). `0` = kapalı. Her iki istemci de kalan süreyi gösterir (son 10 sn uyarı rengi). Rakibin bağlantısı kopukken süre işlemez |
-| `CORS_ALLOWED_ORIGINS` | boş | Socket.IO'ya tarayıcıdan bağlanabilecek origin'ler (virgüllü liste veya `*`). Boşsa yalnızca sunucunun kendi adresi; liste verirseniz kendi adresinizi de ekleyin |
+| `CORS_ALLOWED_ORIGINS` | boş | Tarayıcıdan Socket.IO'ya bağlanabilecek ve REST API'yi okuyabilecek origin'ler (virgüllü liste veya `*`). Boşsa yalnızca sunucunun kendi adresi ve REST yanıtlarında CORS başlığı yok; liste verirseniz kendi adresinizi de ekleyin. Oyun itch.io'dan sunulacaksa gerekir (`*` önerilir, bkz. [bölüm 14](docs/KURULUM.md#14-itchioda-yayınlama)) |
 | `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_SECONDS` | `5` / `300` | Bir kullanıcı adı için bu sürede izin verilen hatalı giriş sayısı; aşılırsa `/login` `429` döner (`0` = kapalı) |
 | `AUTH_IP_MAX_REQUESTS` / `AUTH_IP_WINDOW_SECONDS` | `300` / `60` | Tek IP'den bu sürede kabul edilen `/login` + `/signup` isteği (`0` = kapalı) |
 | `CONNECT4_HOST` / `CONNECT4_PORT` | `0.0.0.0` / `5000` | Sunucunun dinlediği adres |
@@ -163,7 +163,7 @@ python gui_app.py                                 # Pygame istemcisi (localhost:
 python gui_app.py https://abc123.ngrok-free.app   # uzak sunucuya bağlan
 ```
 
-Tarayıcı istemcisi oyunu sunan sunucuya bağlanır; başka bir sunucuda oynamak için o sunucunun adresini açın (`http://192.168.1.20:5000/play/`). `?server=` parametresi yalnızca sayfa `localhost`'tan sunulurken (yerel geliştirme) dikkate alınır ve hedef sunucuda `CORS_ALLOWED_ORIGINS` ayarı gerektirir.
+Tarayıcı istemcisi oyunu sunan sunucuya bağlanır; başka bir sunucuda oynamak için o sunucunun adresini açın (`http://192.168.1.20:5000/play/`). Oyun başka bir siteden (itch.io) sunulacaksa sunucu adresi build'deki `server-config.js` dosyasına yazılır (`scripts/make_itch_zip.py`, bkz. [bölüm 14](docs/KURULUM.md#14-itchioda-yayınlama)). `?server=` parametresi yalnızca sayfa `localhost`'tan sunulurken (yerel geliştirme) dikkate alınır ve hedef sunucuda `CORS_ALLOWED_ORIGINS` ayarı gerektirir.
 AI'ya karşı oynamak için hesap gerekmez: "Misafir Olarak Devam" → "Yapay Zekâya Karşı" (AI tarayıcıda çalışır).
 
 **Kontroller**
@@ -227,7 +227,7 @@ CONNECT4_TEST_SERVER=http://localhost:5000 dotnet test tests/csharp   # + Socket
 └────────────────────┘
 ```
 
-- **Unity istemcisi:** Tüm geri çağrılar Unity ana thread'inde çalışır. AI hamlesi ve hamle analizi `AIRunner` ile her karede ~8 ms'lik dilimlerle yürütülür. Oyun sunucuyla aynı origin'den açıldığı için CORS gerekmez. Ayrıntı: [unity/README.md](unity/README.md)
+- **Unity istemcisi:** Tüm geri çağrılar Unity ana thread'inde çalışır. AI hamlesi ve hamle analizi `AIRunner` ile her karede ~8 ms'lik dilimlerle yürütülür. Oyun `/play/` adresinden sunucuyla aynı origin'den açıldığında CORS gerekmez; itch.io'dan sunulduğunda sunucu adresi `server-config.js`'ten okunur ve sunucu `CORS_ALLOWED_ORIGINS` ile REST ve Socket.IO için CORS başlıkları gönderir. Ayrıntı: [unity/README.md](unity/README.md)
 
 - **İstemci thread modeli:** Oyun durumunu yalnızca Pygame ana thread'i değiştirir. Socket.IO olayları ve HTTP cevapları bir kuyruğa alınır, AI ve analiz aramaları ayrı thread'lerde çalışır ve iptal edilebilir.
 - **Sıra güvenliği:** python-socketio istemcisi her mesajı ayrı thread'de işler, olaylar sırasız gelebilir. İstemci gelen hamleleri hamle geçmişinin uzunluğuna göre uygular, yeni ELO'yu da `game_over` mesajından okur.

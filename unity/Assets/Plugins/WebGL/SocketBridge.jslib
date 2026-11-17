@@ -73,6 +73,21 @@ mergeInto(LibraryManager.library, {
     return buffer;
   },
 
+  // server-config.js'teki window.CF4_SERVER_URL (dosya yoksa veya bossa ''); dogrulamayi ve
+  // onceligi ServerConfig.cs yapar
+  CF4_ConfiguredServer: function () {
+    var value = '';
+    try {
+      if (typeof window.CF4_SERVER_URL === 'string') value = window.CF4_SERVER_URL;
+    } catch (e) {
+      value = '';
+    }
+    var size = lengthBytesUTF8(value) + 1;
+    var buffer = _malloc(size);
+    stringToUTF8(value, buffer, size);
+    return buffer;
+  },
+
   // ?server=http://... sorgu parametresi; kabul edilip edilmeyecegine ServerConfig.cs karar verir
   CF4_QueryParam: function (namePtr) {
     var name = UTF8ToString(namePtr);
