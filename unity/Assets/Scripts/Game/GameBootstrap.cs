@@ -124,6 +124,7 @@ namespace ConnectFourPro.Game
             var server = UIKit.Label(root, "Sunucu: " + _app.ServerUrl, 13, new Color(1, 1, 1, 0.25f), 0, 12, 1200, 20,
                                      TextAnchor.MiddleRight);
             // Dikey: durum cubugu biraz yuksek (uzun metin sarar), sunucu etiketi 540 genislige sigar
+            // Genislik 0 dogru: cubuk yatayda anchor ile gerilir (sizeDelta.x = kenar payi)
             Responsive.Portrait(sb, 0, 0, 0, 72);
             Responsive.Portrait(server.rectTransform, 0, 12, 520, 24);
 

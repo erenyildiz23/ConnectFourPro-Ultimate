@@ -42,7 +42,42 @@ namespace ConnectFourPro.UI
         private static readonly List<ScaleEntry> Scales = new List<ScaleEntry>();
         private static readonly List<FontEntry> Fonts = new List<FontEntry>();
 
+        // Son temizlikten sonraki sayilar; liste bunun 2 kati (en az 256) olunca yeniden temizlenir
+        private static int _placesLimit = MinPruneLimit, _scalesLimit = MinPruneLimit, _fontsLimit = MinPruneLimit;
+        private const int MinPruneLimit = 256;
+
         public static LayoutOrientation Current { get; private set; } = LayoutOrientation.Landscape;
+
+        // Editor'de domain reload kapaliyken oyun oturumlari arasinda eski durum kalmasin
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetState()
+        {
+            Places.Clear();
+            Scales.Clear();
+            Fonts.Clear();
+            _placesLimit = _scalesLimit = _fontsLimit = MinPruneLimit;
+            Current = LayoutOrientation.Landscape;
+        }
+
+        // Yok edilmis (Unity null) kayitlari yon degisimini beklemeden temizler (amortize O(1))
+        private static void PruneIfLarge()
+        {
+            if (Places.Count > _placesLimit)
+            {
+                Places.RemoveAll(e => e.Rt == null);
+                _placesLimit = Mathf.Max(MinPruneLimit, Places.Count * 2);
+            }
+            if (Scales.Count > _scalesLimit)
+            {
+                Scales.RemoveAll(e => e.Rt == null);
+                _scalesLimit = Mathf.Max(MinPruneLimit, Scales.Count * 2);
+            }
+            if (Fonts.Count > _fontsLimit)
+            {
+                Fonts.RemoveAll(e => e.Text == null);
+                _fontsLimit = Mathf.Max(MinPruneLimit, Fonts.Count * 2);
+            }
+        }
 
         /// <summary>
         /// Ogenin dikey konumunu kaydeder (y yukaridan asagi, Place ile ayni).
@@ -50,6 +85,7 @@ namespace ConnectFourPro.UI
         /// </summary>
         public static RectTransform Portrait(RectTransform rt, float x, float y, float w, float h)
         {
+            PruneIfLarge();
             var entry = Places.Find(e => e.Rt == rt);
             if (entry == null)
             {
@@ -71,6 +107,7 @@ namespace ConnectFourPro.UI
         /// <summary>Dikeyde localScale (tahta icin 0.9). Yatay olcek cagri anindaki degerdir.</summary>
         public static void PortraitScale(RectTransform rt, float scale)
         {
+            PruneIfLarge();
             var entry = Scales.Find(e => e.Rt == rt);
             if (entry == null)
             {
@@ -85,6 +122,7 @@ namespace ConnectFourPro.UI
         /// <summary>Yazinin yatay boyutunu saklar; dikeyde en az 18'e cikarilir.</summary>
         public static void TrackFont(Text t)
         {
+            PruneIfLarge();
             Fonts.Add(new FontEntry { Text = t, LandscapeSize = t.fontSize });
             if (Current == LayoutOrientation.Portrait)
                 t.fontSize = ScreenLayout.FontSize(t.fontSize, Current);
