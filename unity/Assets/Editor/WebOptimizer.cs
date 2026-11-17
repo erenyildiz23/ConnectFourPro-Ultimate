@@ -14,7 +14,8 @@
 //     olmayan statik sunucular icin Decompression Fallback acik build alinir
 //     (dosyalar .unityweb olur, gerekirse loader JS ile acar). Acmak icin Unity'ye
 //     -cf4DecompressionFallback komut satiri argumani veya
-//     CONNECT4_WEBGL_DECOMPRESSION_FALLBACK=1 ortam degiskeni verilir. Varsayilan build
+//     CONNECT4_WEBGL_DECOMPRESSION_FALLBACK=1 ortam degiskeni verilir. Ayar yalnizca o
+//     build suresince acilir ve diske kapali olarak yazilir; varsayilan build
 //     (CI e2e, Docker imaji, /play) bundan etkilenmez.
 //   * Istisnalar "Explicitly Thrown Only": kod try/catch kullanir (JSON, AI iptali).
 //   * Kod optimizasyonu (Disk Size LTO) Library/ altinda saklanir ve repoya gecmez;
@@ -56,7 +57,9 @@ namespace ConnectFourPro.EditorTools
 
             PlayerSettings.WebGL.template = TemplateName;
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
-            PlayerSettings.WebGL.decompressionFallback = DecompressionFallbackRequested();
+            // Projede kayitli deger her zaman kapali; statik sunucu build'i bunu yalnizca
+            // build suresince acar (ProjectSetup.Build), boylece ProjectSettings.asset degismez
+            PlayerSettings.WebGL.decompressionFallback = false;
             PlayerSettings.WebGL.dataCaching = true;
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
             PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.Off;

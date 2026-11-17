@@ -141,6 +141,28 @@ namespace ConnectFourPro.Tests
             Assert.That(ServerConfig.ResolveWeb(null, "http://localhost:8123", false, "http://192.168.1.10:5000"),
                         Is.EqualTo("http://192.168.1.10:5000"));
 
+        // Sayfanin origin'i bilinmiyorsa (bos, file:// -> "null") sayfanin https olup
+        // olmadigi da bilinmez: http adres yalnizca bu bilgisayari gosteriyorsa kabul edilir
+        // (scripts/make_itch_zip.py ile ayni kural).
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("null")]
+        public void HttpBakedUrlWithUnknownPageOriginIsRefused(string origin)
+        {
+            Assert.That(ServerConfig.ParseConfiguredServer("http://connect4.example.com", origin, out string warning),
+                        Is.Null);
+            Assert.That(warning, Does.Contain("https"));
+        }
+
+        [TestCase(null)]
+        [TestCase("null")]
+        public void HttpLoopbackBakedUrlWithUnknownPageOriginIsAllowed(string origin)
+        {
+            Assert.That(ServerConfig.ParseConfiguredServer("http://localhost:5000", origin, out string warning),
+                        Is.EqualTo("http://localhost:5000"));
+            Assert.That(warning, Is.Null);
+        }
+
         [TestCase("https://connect4.example.com/", "https://connect4.example.com")]
         [TestCase("  https://Connect4.Example.com:8443  ", "https://connect4.example.com:8443")]
         [TestCase("HTTPS://connect4.example.com", "https://connect4.example.com")]

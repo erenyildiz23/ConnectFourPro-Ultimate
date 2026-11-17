@@ -11,7 +11,8 @@
 //   2. server-config.js'teki window.CF4_SERVER_URL: build ile birlikte yayinlanan dosya
 //      (oyun koduyla ayni guvende), bu yuzden release build'de de gecerlidir. Oyun baska
 //      bir siteden (itch.io) sunulup sunucu baska yerde calistiginda kullanilir. Mutlak
-//      http(s) adresi olmali; sayfa https iken http adres reddedilir (mixed content).
+//      http(s) adresi olmali; sayfa https iken http adres reddedilir (mixed content),
+//      sayfanin adresi bilinmiyorsa http yalnizca loopback adreste kabul edilir.
 //   3. Sayfanin kendi adresi: oyun Flask'in /play rotasindan sunulur (ayni origin).
 // Editor/masaustu: CONNECT4_SERVER ortam degiskeni, yoksa http://localhost:5000
 // (Python istemcisiyle ayni kural, bkz. src/config.py).
@@ -97,12 +98,23 @@ namespace ConnectFourPro.Net
                 warning = "CF4_SERVER_URL http, sayfa https: tarayici engeller (mixed content); https adres kullanin: " + value;
                 return null;
             }
+            // Sayfanin origin'i bilinmiyorsa (bos veya file:// icin "null") http adres
+            // yalnizca bu bilgisayari gosteriyorsa kabul edilir (make_itch_zip.py ile ayni kural)
+            if (uri.Scheme == Uri.UriSchemeHttp && !IsHttpPage(pageOrigin) && !uri.IsLoopback)
+            {
+                warning = "CF4_SERVER_URL http ve sayfanin adresi bilinmiyor; https adres kullanin: " + value;
+                return null;
+            }
             return uri.GetLeftPart(UriPartial.Authority);
         }
 
         private static bool IsHttpsPage(string pageOrigin) =>
             !string.IsNullOrEmpty(pageOrigin)
             && pageOrigin.TrimStart().StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsHttpPage(string pageOrigin) =>
+            !string.IsNullOrEmpty(pageOrigin)
+            && pageOrigin.TrimStart().StartsWith("http://", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>WebGL'de sunucu adresi: izin varsa ?server=, yoksa sayfanin adresi.</summary>
         public static string ResolveWeb(string query, string pageOrigin, bool developmentBuild) =>
@@ -131,10 +143,14 @@ namespace ConnectFourPro.Net
             string origin = CF4_PageOrigin();
             string configured = CF4_ConfiguredServer();
             bool development = UnityEngine.Debug.isDebugBuild;
-            if (!string.IsNullOrWhiteSpace(query) && !AllowQueryOverride(origin, development))
+            bool hasQuery = !string.IsNullOrWhiteSpace(query);
+            bool queryUsed = hasQuery && AllowQueryOverride(origin, development);
+            if (hasQuery && !queryUsed)
                 UnityEngine.Debug.LogWarning("[CF4] ?server= yok sayildi: yalnizca localhost'tan sunulan sayfada gecerlidir");
+            // Gecerli ?server= varsa server-config.js zaten kullanilmaz; uyari yalnizca
+            // CF4_SERVER_URL'in yerine sayfanin adresi gectiginde anlamlidir
             ParseConfiguredServer(configured, origin, out string warning);
-            if (warning != null)
+            if (warning != null && !queryUsed)
                 UnityEngine.Debug.LogWarning("[CF4] " + warning + " (sayfanin adresi kullaniliyor)");
             return ResolveWeb(query, origin, development, configured);
 #else

@@ -517,11 +517,13 @@ namespace ConnectFourPro.UI
 
         private void SetPlayer(int i, string name, int? elo, int piece)
         {
+            // Isim iki tarafta da ayni (en fazla 14 karakter, misafir adi tam sigar);
+            // "(Sen)" etiketi isim satirina sigmadigi icin alttaki ELO satirinda durur.
+            _names[i].text = name != null && name.Length > 14 ? name.Substring(0, 14) : name;
+            string eloText = elo.HasValue ? "ELO: " + elo.Value : "";
             if (App.IsLocalPiece(piece))
-                _names[i].text = (name != null && name.Length > 9 ? name.Substring(0, 9) : name) + " (Sen)";
-            else
-                _names[i].text = name != null && name.Length > 14 ? name.Substring(0, 14) : name;
-            _elos[i].text = elo.HasValue ? "ELO: " + elo.Value : "";
+                eloText = eloText.Length > 0 ? "(Sen)  " + eloText : "(Sen)";
+            _elos[i].text = eloText;
             _turns[i].enabled = App.Game.CurrentPlayer == piece && !App.Game.GameOver;
             int? secs = App.TurnSecondsLeft;
             if (_turns[i].enabled && secs.HasValue)
