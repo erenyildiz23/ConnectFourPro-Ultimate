@@ -65,6 +65,17 @@ class TestServerUrl:
             itch.validate_server_url("http://localhost:5000")
         assert itch.validate_server_url("http://localhost:5000", allow_http=True) == "http://localhost:5000"
 
+    @pytest.mark.parametrize("url", ["http://127.0.0.1:5000", "http://[::1]:5000", "http://localhost"])
+    def test_http_loopback_with_flag(self, url):
+        assert itch.validate_server_url(url, allow_http=True) == url
+
+    @pytest.mark.parametrize("url", ["http://connect4.example.com", "http://192.168.1.10:5000",
+                                     "http://localhost.evil.example", "http://10.0.0.1"])
+    def test_http_never_for_remote_hosts(self, url):
+        """--allow-http yalnizca yerel deneme icin: internetteki sunucuya sifre duz metin gitmez."""
+        with pytest.raises(itch.PackError, match="localhost"):
+            itch.validate_server_url(url, allow_http=True)
+
     def test_config_js_is_safe_literal(self):
         assert baked_url(itch.server_config_js(SERVER)) == SERVER
 
@@ -104,6 +115,13 @@ class TestZip:
         assert not (tmp_path / "itch.zip").exists()
         itch.make_zip(str(build), SERVER, str(tmp_path / "itch.zip"), allow_precompressed=True)
         assert (tmp_path / "itch.zip").exists()
+
+    def test_fake_gzip_is_refused_even_when_precompressed_allowed(self, tmp_path):
+        build = fake_build(tmp_path / "WebGL", fallback=False)
+        (build / "Build" / "WebGL.data.gz").write_bytes(b"not gzip")
+        with pytest.raises(itch.PackError, match="gzip degil"):
+            itch.make_zip(str(build), SERVER, str(tmp_path / "itch.zip"), allow_precompressed=True)
+        assert not (tmp_path / "itch.zip").exists()
 
     def test_old_template_is_refused(self, tmp_path):
         build = fake_build(tmp_path / "WebGL", template=False)

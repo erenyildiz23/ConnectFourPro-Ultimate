@@ -13,14 +13,16 @@ verilen sunucu adresiyle yeniden yazar (window.CF4_SERVER_URL; bkz.
 unity/Assets/Scripts/Net/ServerConfig.cs). Build klasoru degistirilmez.
 
 Denetimler:
-  * Adres: mutlak https://host[:port] (http yalnizca --allow-http ile); sonda /,
+  * Adres: mutlak https://host[:port]; http yalnizca --allow-http ile ve yalnizca
+    localhost / 127.x / [::1] icin (yerel deneme). Sonda /,
     kullanici/sifre, yol, sorgu ve # olamaz.
   * Build: kokte index.html ve Build/ klasoru; index.html server-config.js'i yuklemeli
     (eski sablonla alinan build'de adres yok sayilirdi).
   * Sikistirma: .gz/.br dosyalari tarayicinin acabilmesi icin Content-Encoding basligi
     ister; statik sunucunun bunu gonderecegi garanti degildir. Bu yuzden varsayilan
     olarak Decompression Fallback acik build (.unityweb) beklenir; --allow-precompressed
-    ile bu denetim atlanir.
+    ile bu denetim atlanir; o zaman .gz dosyalarinin gercekten gzip oldugu denetlenir
+    (itch.io Content-Encoding: gzip basligini dosya icerigine bakarak koyar).
   * itch.io HTML5 sinirlari: en fazla 1000 dosya, toplam 500 MB, dosya basina 200 MB,
     yol uzunlugu 240 karakter. Sembolik baglanti kabul edilmez.
 
@@ -29,6 +31,7 @@ disindan hicbir sey eklenmez. Yalnizca standart kutuphane kullanilir.
 """
 
 import argparse
+import ipaddress
 import json
 import os
 import sys
@@ -43,10 +46,20 @@ MAX_TOTAL_BYTES = 500 * 1024 * 1024
 MAX_FILE_BYTES = 200 * 1024 * 1024
 MAX_PATH_LENGTH = 240
 PRECOMPRESSED_SUFFIXES = ('.gz', '.br')
+GZIP_MAGIC = b'\x1f\x8b'
 
 
 class PackError(Exception):
     """Kullaniciya gosterilecek hata (cikis kodu 2)."""
+
+
+def _is_loopback_host(host: str) -> bool:
+    if host == 'localhost':
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def validate_server_url(url: str, allow_http: bool = False) -> str:
@@ -75,6 +88,9 @@ def validate_server_url(url: str, allow_http: bool = False) -> str:
         raise PackError(f"Gecersiz port: {url}") from exc
     if not parts.hostname or (port is not None and not 0 < port < 65536):
         raise PackError(f"Gecersiz sunucu adresi: {url}")
+    # --allow-http yalnizca yerel deneme icindir: internetteki bir sunucuya sifre duz metin gitmesin
+    if parts.scheme == 'http' and not _is_loopback_host(parts.hostname):
+        raise PackError(f"http yalnizca localhost / 127.x / [::1] icin kabul edilir; https kullanin: {url}")
     return url
 
 
@@ -125,6 +141,12 @@ def check_build(build_dir: str, files: List[Tuple[str, str]], allow_precompresse
             "Bu dosyalar Content-Encoding basligi gerektirir; statik sunucunun bunu gonderecegi garanti "
             "degildir. itch.io build'ini -cf4DecompressionFallback ile alin (CI'daki itch-webgl artifact'i "
             "boyledir) veya sunucunun basligi gonderdigini dogruladiysaniz --allow-precompressed kullanin.")
+    for arc in precompressed:
+        if arc.lower().endswith('.gz'):
+            with open(os.path.join(build_dir, arc), 'rb') as f:
+                if f.read(2) != GZIP_MAGIC:
+                    raise PackError(f"{arc} .gz uzantili ama gzip degil: itch.io Content-Encoding basligini "
+                                    "icerige bakarak koyar, bu dosya tarayicida acilmaz")
     if len(files) + (CONFIG_NAME not in names) > MAX_FILES:
         raise PackError(f"itch.io en fazla {MAX_FILES} dosya kabul eder ({len(files)} dosya var)")
     total = 0
