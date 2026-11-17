@@ -15,8 +15,10 @@
                     width: min(100vw, calc(100dvh * 16 / 9)); height: min(100dvh, calc(100vw * 9 / 16));
                     background: var(--bg); outline: none; display: block;
                     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-    /* Dik tutulan ekranda 9:16 sahne (yatay kuralin aynisi; dvh yedegiyle) */
-    @media (orientation: portrait) {
+    /* Dik tutulan ekranda 9:16 sahne (yatay kuralin aynisi; dvh yedegiyle). Kare pencere
+       yatay sayilir (ScreenLayout.For: yalnizca yukseklik > genislik dik), bu yuzden
+       orientation: portrait degil, kesin olarak daha uzun olma sarti kullanilir */
+    @media (max-aspect-ratio: 9999/10000) {
       #unity-canvas { width: min(100vw, calc(100vh * 9 / 16)); height: min(100vh, calc(100vw * 16 / 9));
                       width: min(100vw, calc(100dvh * 9 / 16)); height: min(100dvh, calc(100vw * 16 / 9)); }
     }

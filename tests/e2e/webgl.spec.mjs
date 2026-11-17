@@ -271,22 +271,21 @@ try {
   await pp.close();
 
   // ------------------------------------------- 7. Kare pencere (Review Focus 5)
-  // 800x800: yatay/dik karari canvas'in cizim boyutundan gelir (ScreenLayout.For: yukseklik >
-  // genislik ise dik). Canvas kutusu olculur, CanvasScaler olcegi (esleme 0.5)
-  // sqrt((cw/ref_w)*(ch/ref_h)) ile hesaplanir ve o duzenin misafir dugmesine tiklanir.
+  // 800x800: kare pencere yatay sayilir (index.html: yalnizca yukseklik > genislik dik;
+  // ScreenLayout.For ayni kural). Canvas 16:9 (800x450) olmali; CanvasScaler olcegi (esleme 0.5)
+  // sqrt((cw/1280)*(ch/720)) ile hesaplanir ve yatay misafir dugmesine tiklanir.
   const sp2 = await openGame('Kare', { width: 800, height: 800 });
   const sbox = await sp2.evaluate(() => {
     const r = document.getElementById('unity-canvas').getBoundingClientRect();
     return { x: r.left, y: r.top, w: r.width, h: r.height };
   });
-  const sPortrait = sbox.h > sbox.w;
-  const ref = sPortrait ? { w: 540, h: 960 } : { w: 1280, h: 720 };
-  const sScale = Math.sqrt((sbox.w / ref.w) * (sbox.h / ref.h));
-  const sGuest = sPortrait ? { x: 0, y: 660 } : { x: 0, y: 540 };
-  const sPos = { x: sbox.x + sbox.w / 2 + sGuest.x * sScale, y: sbox.y + sGuest.y * sScale };
-  console.log(`kare pencere: canvas ${sbox.w}x${sbox.h} @(${sbox.x},${sbox.y}), duzen ${sPortrait ? 'dik' : 'yatay'}, olcek ${sScale.toFixed(3)}`);
+  check(sbox.w > sbox.h && Math.round(sbox.w) === 800 && Math.round(sbox.h) === 450,
+        `kare pencerede canvas yatay 16:9 (${sbox.w}x${sbox.h})`);
+  const sScale = Math.sqrt((sbox.w / 1280) * (sbox.h / 720));
+  const sPos = { x: sbox.x + sbox.w / 2 + 0 * sScale, y: sbox.y + 540 * sScale };
+  console.log(`kare pencere: canvas ${sbox.w}x${sbox.h} @(${sbox.x},${sbox.y}), olcek ${sScale.toFixed(3)}`);
   await shot(sp2, '19-kare-giris.png');
-  check(await guestLogin(sp2, sPos), `kare pencere (800x800): ${sPortrait ? 'dik' : 'yatay'} duzende misafir girisi calisti`);
+  check(await guestLogin(sp2, sPos), 'kare pencere (800x800): yatay duzende misafir girisi calisti');
   await shot(sp2, '20-kare-menu.png');
   await sp2.close();
 } catch (e) {
