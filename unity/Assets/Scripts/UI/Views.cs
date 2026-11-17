@@ -551,14 +551,24 @@ namespace ConnectFourPro.UI
         public GameView(AppController app, Transform parent) : base(app, parent, "Game")
         {
             _title = UIKit.Label(Root, "", 38, Theme.Red, 0, 42, 1000, 56, TextAnchor.MiddleCenter, FontStyle.Bold);
+            // Dikey: baslik 510'a sigar (uzun sonuc basliklari kuculur), "Sunucu" etiketinin altinda
+            P(_title, 0, 38, 510, 44);
+            FitInPortrait(_title, 28, 38);
 
             Board = BoardView.Create(Root, -250, 375, () => App.Game, app.CanHumanMove, () => App.HumanPiece);
             Board.ColumnClicked += app.HandleColumnClick;
+            // Dikey: tahta 0.9 olcekle ortada. Merkez y=345: hover diski (merkez 0.6 hucre ustte) basligin
+            // altinda kalir; tahta cercevesi y 573'te biter, bilgi paneli 582'de baslar
+            P(Board, 0, 345, 560, 480);
+            Responsive.PortraitScale((RectTransform)Board.transform, 0.9f);
 
             const float px = 400;   // bilgi paneli merkezi
             var panel = UIKit.Panel(Root, "InfoPanel", Theme.Panel);
             UIKit.Place(panel.rectTransform, px, 375, 320, 480);
+            // Dikey: panel tahtanin altindan durum cubugunun ustune (y 582..880), 510 genis
+            P(panel, 0, 731, 510, 298);
             _panelTitle = UIKit.Label(Root, "", 24, Theme.White, px, 165, 300, 34, TextAnchor.MiddleCenter, FontStyle.Bold);
+            P(_panelTitle, 0, 600, 400, 28);
 
             for (int i = 0; i < 2; i++)
             {
@@ -570,25 +580,43 @@ namespace ConnectFourPro.UI
                 _turns[i] = UIKit.Label(Root, "< SIRA", 18, Theme.Green, px + 110, y, 90, 30, TextAnchor.MiddleCenter, FontStyle.Bold);
                 // Hamle suresi: "< SIRA"nin hemen altinda (y+13..y+35; sonraki satir y+46'da baslar)
                 _clocks[i] = UIKit.Label(Root, "", 16, Theme.Gray, px + 110, y + 24, 80, 22, TextAnchor.MiddleCenter, FontStyle.Bold);
+
+                // Dikey: oyuncu satiri 52 aralikli; SIRA ve sure sagda ust uste
+                float ry = 645 + i * 52;
+                P(disc, -225, ry, 34, 34);
+                P(_names[i], -65, ry - 10, 260, 28);
+                P(_elos[i], -65, ry + 14, 260, 24);
+                P(_turns[i], 200, ry - 10, 100, 30);
+                P(_clocks[i], 200, ry + 14, 90, 24);
             }
 
             _room = UIKit.Label(Root, "", 24, Theme.Hover, px, 385, 300, 34, TextAnchor.MiddleCenter, FontStyle.Bold);
             _moves = UIKit.Label(Root, "", 19, Theme.Gray, px, 422, 300, 28);
             _accuracyTitle = UIKit.Label(Root, "Hamle analizi (isabet)", 15, Theme.Gray, px, 458, 300, 24);
             _accuracy = UIKit.Label(Root, "", 20, Theme.White, px, 484, 300, 28);
+            // Dikey: oda ve hamle tek satirda, isabet iki satir
+            P(_room, -130, 747, 240, 32);
+            P(_moves, 130, 747, 240, 32);
+            P(_accuracyTitle, 0, 772, 400, 24);
+            P(_accuracy, 0, 798, 500, 28);
             // AI oyununda "Yeni Oyun" / bitince "Tekrar Oyna" (panel y 135-615 icinde)
             _again = UIKit.Button(Root, "Tekrar Oyna", Theme.Green, app.PlayAgain, px, 530, 180, 48);
             _again.gameObject.SetActive(false);
+            P(_again, 0, 842, 160, 52);
             // AI oyununda "Geri Al" (452-492): "Tekrar Oyna"nin (506-554) ustunde; isabet
             // satirlari yalnizca online oyunda dolu, burada bos. Dolgu panelden (Theme.Panel)
             // farkli olmali: ayni renkte buton panelin icinde kaybolur, yalnizca yazi gorunur
             _undo = UIKit.Button(Root, "Geri Al", Theme.InputBackground, app.UndoAIMove, px, 472, 180, 40, 18);
             _undo.gameObject.SetActive(false);
+            P(_undo, -170, 842, 160, 52);
             // Biten online oyunda "Rovans": ayni yerde, "Tekrar Oyna" yalnizca AI oyununda gorunur
             _rematch = UIKit.Button(Root, "Rövanş", Theme.Green, app.RequestRematch, px, 530, 180, 48, 18);
             _rematch.gameObject.SetActive(false);
+            P(_rematch, 0, 842, 160, 52);
             _menu = UIKit.Button(Root, "Menü", Theme.Button, app.RequestBack, px, 590, 180, 48);
             _menuLabel = _menu.GetComponentInChildren<Text>();
+            // Dikey: Geri Al | Yeni Oyun / Rovans | Menu tek satirda, en alt kenar y=868 (< 888)
+            P(_menu, 170, 842, 160, 52);
         }
 
         public override void OnShow() => UIKit.ClearSelection();
