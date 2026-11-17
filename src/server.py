@@ -203,6 +203,34 @@ def resolve_player(data: Any) -> Tuple[Optional[str], Optional[Dict[str, Any]], 
     return user_id, guest_info(user_id), False, None
 
 
+# Socket hata mesajlari: 'msg' eski istemciler (pygame) icin Turkce ASCII kalir;
+# 'code' sabittir, Unity istemcisi metni secili dilde kendisi gosterir.
+ERROR_CODES = {
+    'Oturum gecersiz, tekrar giris yapin': 'session_invalid',
+    'Gecersiz kullanici': 'invalid_user',
+    'Bu kullanici adi kayitli, giris yapin': 'name_registered',
+    'Bu misafir adi kullanimda': 'guest_name_taken',
+    'Gecersiz istek': 'invalid_request',
+    'Oda bulunamadi': 'room_not_found',
+    'Kendi oyununuza katilamazsiniz': 'own_game',
+    'Bu oyuna zaten bagli durumdasiniz': 'already_connected',
+    'Yeniden baglanma anahtari gecersiz': 'bad_resume_token',
+    'Baska bir baglantidan oyuna girildi': 'replaced_by_other_connection',
+    'Rakip bekleniyor!': 'waiting_opponent',
+    'Bu oyunda hamle yapma yetkiniz yok!': 'not_a_player',
+    'Gecersiz hamle!': 'invalid_move',
+    'Oyun bitti': 'game_over',
+    'Sira sizde degil!': 'not_your_turn',
+    'Sadece oyuncular rovans isteyebilir': 'rematch_players_only',
+    'Oyun devam ediyor': 'game_in_progress',
+}
+
+
+def _emit_error(msg: str, **kwargs: Any) -> None:
+    """Hata olayini msg + sabit code ile gonderir."""
+    emit('error', {'msg': msg, 'code': ERROR_CODES.get(msg, 'error')}, **kwargs)
+
+
 def validate_credentials(data: Any) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """(username, password, hata_mesaji) dondurur."""
     if not isinstance(data, dict):
@@ -755,7 +783,7 @@ def on_disconnect():
 def on_create_game(data):
     user_id, user_info, authenticated, error = resolve_player(data)
     if error:
-        emit('error', {'msg': error})
+        _emit_error(error)
         return
 
     with GAMES_LOCK:
@@ -763,7 +791,7 @@ def on_create_game(data):
         # Misafir adi kanit olmadigindan baska baglantinin odasina dokunulmaz.
         existing = get_user_waiting_game(user_id, authenticated)
         if existing and not authenticated and GAMES[existing]['p1_sid'] != request.sid:
-            emit('error', {'msg': 'Bu misafir adi kullanimda'})
+            _emit_error('Bu misafir adi kullanimda')
             return
         if existing:
             GAMES.pop(existing, None)
@@ -788,17 +816,17 @@ def on_create_game(data):
 def on_join_game(data):
     room_id = (_clean_str(data, 'room_id', 10) or '').upper()
     if not _ROOM_ID_RE.match(room_id):
-        emit('error', {'msg': 'Gecersiz istek'})
+        _emit_error('Gecersiz istek')
         return
     user_id, user_info, authenticated, error = resolve_player(data)
     if error:
-        emit('error', {'msg': 'Gecersiz istek' if error == 'Gecersiz kullanici' else error})
+        _emit_error('Gecersiz istek' if error == 'Gecersiz kullanici' else error)
         return
 
     with GAMES_LOCK:
         room = GAMES.get(room_id)
         if room is None:
-            emit('error', {'msg': 'Oda bulunamadi'})
+            _emit_error('Oda bulunamadi')
             return
         game: ConnectFourGame = room['game']
         CONNECTED_USERS[request.sid] = user_id
@@ -813,12 +841,12 @@ def on_join_game(data):
         if own_piece is not None:
             key = _seat_key(own_piece)
             if room['p2_uid'] is None:
-                emit('error', {'msg': 'Kendi oyununuza katilamazsiniz'})
+                _emit_error('Kendi oyununuza katilamazsiniz')
                 return
             old_sid = _sid_of(room, own_piece)
             # Bir baglanti iki koltugu birden tutamaz
             if _sid_of(room, other_player(own_piece)) == request.sid:
-                emit('error', {'msg': 'Bu oyuna zaten bagli durumdasiniz'})
+                _emit_error('Bu oyuna zaten bagli durumdasiniz')
                 return
             # Misafirin adi kanit degildir; koltugu sadece anahtarin sahibi geri alir.
             given = data.get('rejoin_token') if isinstance(data, dict) else None
@@ -829,15 +857,15 @@ def on_join_game(data):
             # (sizan bir oturum token'i canli oyuncuyu atamasin); kopuk koltuk icin token yeter
             proof = token_ok if seat_alive else (authenticated or token_ok)
             if seat_alive and not proof:
-                emit('error', {'msg': 'Bu oyuna zaten bagli durumdasiniz'})
+                _emit_error('Bu oyuna zaten bagli durumdasiniz')
                 return
             if not proof:
-                emit('error', {'msg': 'Yeniden baglanma anahtari gecersiz'})
+                _emit_error('Yeniden baglanma anahtari gecersiz')
                 return
             if seat_alive and old_sid:
                 # Sunucu eski soketin oldugunu henuz fark etmedi (ping zaman asimi): kanitli
                 # yeni baglanti koltugu devralir, eski soket odadan cikarilir
-                emit('error', {'msg': 'Baska bir baglantidan oyuna girildi'}, to=old_sid)
+                _emit_error('Baska bir baglantidan oyuna girildi', to=old_sid)
                 leave_room(room_id, sid=old_sid)
             was_disconnected = own_piece in room['disconnected']
             room['disconnected'].pop(own_piece, None)
@@ -905,32 +933,32 @@ def on_make_move(data):
     with GAMES_LOCK:
         room = GAMES.get(room_id)
         if room is None:
-            emit('error', {'msg': 'Oda bulunamadi'})
+            _emit_error('Oda bulunamadi')
             return
         game: ConnectFourGame = room['game']
 
         if room['p2_uid'] is None:
-            emit('error', {'msg': 'Rakip bekleniyor!'})
+            _emit_error('Rakip bekleniyor!')
             return
         # Hamleyi gonderen baglanti gercekten o tasin sahibi mi?
         if player_piece not in (PLAYER1_PIECE, PLAYER2_PIECE) or request.sid != _sid_of(room, player_piece):
-            emit('error', {'msg': 'Bu oyunda hamle yapma yetkiniz yok!'})
+            _emit_error('Bu oyunda hamle yapma yetkiniz yok!')
             return
         if not isinstance(col, int) or isinstance(col, bool):
-            emit('error', {'msg': 'Gecersiz hamle!'})
+            _emit_error('Gecersiz hamle!')
             return
         if game.game_over:
-            emit('error', {'msg': 'Oyun bitti'})
+            _emit_error('Oyun bitti')
             return
         if game.current_player != player_piece:
-            emit('error', {'msg': 'Sira sizde degil!'})
+            _emit_error('Sira sizde degil!')
             return
         if _deadline_passed(room) and not _clock_paused(room):
             # Izleyici gorevi henuz calismamis olsa bile gec gelen hamle gecersizdir
             _finish_game(room_id, room, reason='forfeit', forfeit_loser=player_piece, detail='timeout')
             return
         if not game.make_move(col):
-            emit('error', {'msg': 'Gecersiz hamle!'})
+            _emit_error('Gecersiz hamle!')
             return
 
         room['last_move_at'] = time.time()
@@ -989,14 +1017,14 @@ def on_rematch_request(data=None):
     with GAMES_LOCK:
         room = GAMES.get(room_id)
         if room is None:
-            emit('error', {'msg': 'Oda bulunamadi'})
+            _emit_error('Oda bulunamadi')
             return
         piece = _piece_of(room, request.sid)
         if piece is None:
-            emit('error', {'msg': 'Sadece oyuncular rovans isteyebilir'})
+            _emit_error('Sadece oyuncular rovans isteyebilir')
             return
         if not room['game'].game_over:
-            emit('error', {'msg': 'Oyun devam ediyor'})
+            _emit_error('Oyun devam ediyor')
             return
         if piece in room['disconnected']:
             return   # Kopmus baglantinin gecikmis istegi: hayalet koltukla rovans baslamasin

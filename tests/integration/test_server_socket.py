@@ -1049,3 +1049,40 @@ class TestIdentity:
         b.emit('create_game', {'user_id': 'Misafir_000001'})
         assert b.wait_for('error')['msg'] == 'Bu misafir adi kullanimda'
         assert list(server.GAMES) == [room_id]
+
+
+class TestErrorCodes:
+    """Hata olaylari sabit 'code' tasir (Unity istemcisi metni secili dilde gosterir)."""
+
+    def test_every_literal_error_message_has_a_code(self, server):
+        import inspect
+        import re
+        source = inspect.getsource(server)
+        literals = set(re.findall(r"_emit_error\('([^']+)'", source))
+        literals |= set(re.findall(r"return None, None, False, '([^']+)'", source))
+        assert literals, "kaynakta hata mesaji bulunamadi"
+        assert literals <= set(server.ERROR_CODES)
+
+    def test_codes_are_unique_snake_case(self, server):
+        codes = list(server.ERROR_CODES.values())
+        assert len(codes) == len(set(codes))
+        assert all(c.isascii() and c == c.lower() and ' ' not in c for c in codes)
+
+    @pytest.mark.parametrize("room_id, code", [("ZZZZZ", "room_not_found"), ("bad!", "invalid_request")])
+    def test_join_error_carries_code_and_old_msg(self, sio, room_id, code):
+        b = sio()
+        b.emit('join_game', {'room_id': room_id, 'user_id': 'bob'})
+        err = b.wait_for('error')
+        assert err['code'] == code
+        assert err['msg'] in ('Oda bulunamadi', 'Gecersiz istek')
+
+    def test_not_your_turn_code(self, sio):
+        room_id, a, b = start_match(sio)
+        b.emit('make_move', {'room_id': room_id, 'col': 3, 'player_piece': 2})
+        assert b.wait_for('error')['code'] == 'not_your_turn'
+
+    def test_unity_client_knows_every_code(self, server):
+        import pathlib
+        loc = (pathlib.Path(__file__).resolve().parents[2] / 'unity/Assets/Scripts/Game/Loc.cs').read_text(encoding='utf-8')
+        for msg, code in server.ERROR_CODES.items():
+            assert f'["{code}"] = "{msg}"' in loc, code

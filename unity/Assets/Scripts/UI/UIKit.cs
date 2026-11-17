@@ -12,6 +12,7 @@
 // karakterleri (ç ğ ı İ ö ş ü) icerir ve ek kurulum gerektirmez.
 
 using System;
+using ConnectFourPro.Game;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
@@ -235,7 +236,7 @@ namespace ConnectFourPro.UI
             var rt = Rect(parent, "Text");
             var t = rt.gameObject.AddComponent<Text>();
             t.font = Font;
-            t.text = text;
+            LocalizedTexts.Set(t, text);
             t.fontSize = size;
             t.fontStyle = style;
             t.color = color;
@@ -291,7 +292,7 @@ namespace ConnectFourPro.UI
         }
 
         public static void SetLabel(Button button, string label) =>
-            button.GetComponentInChildren<Text>().text = label;
+            button.GetComponentInChildren<Text>().text = Loc.T(label);
 
         public static InputField Input(Transform parent, string placeholder, bool password,
                                        float x, float y, float w, float h, int characterLimit)
