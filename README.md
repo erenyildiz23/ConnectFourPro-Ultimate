@@ -137,7 +137,7 @@ set DATABASE_URL=postgresql://postgres:SIFRE@localhost/connect4        # Windows
 | `SECRET_KEY` | rastgele | Oturum token'larını imzalar (ayarlanmazsa sunucu yeniden başlayınca herkes tekrar giriş yapar) |
 | `SESSION_MAX_AGE` | `604800` | Oturum token'ının geçerlilik süresi (saniye) |
 | `MOVE_TIME_SECONDS` / `MOVE_TIME_GRACE_SECONDS` | `0` / `2` | Hamle başına süre; dolarsa sırası gelen hükmen kaybeder (`detail: timeout`). `0` = kapalı. Her iki istemci de kalan süreyi gösterir (son 10 sn uyarı rengi). Rakibin bağlantısı kopukken süre işlemez |
-| `CORS_ALLOWED_ORIGINS` | boş | Tarayıcıdan Socket.IO'ya bağlanabilecek ve REST API'yi okuyabilecek origin'ler (virgüllü liste veya `*`). Boşsa yalnızca sunucunun kendi adresi ve REST yanıtlarında CORS başlığı yok; liste verirseniz kendi adresinizi de ekleyin. Oyun itch.io'dan sunulacaksa gerekir (`*` önerilir, bkz. [bölüm 14](docs/KURULUM.md#14-itchioda-yayınlama)) |
+| `CORS_ALLOWED_ORIGINS` | boş | Tarayıcıdan Socket.IO'ya bağlanabilecek ve REST API'yi okuyabilecek origin'ler (virgüllü liste veya `*`). Boşsa yalnızca sunucunun kendi adresi ve REST yanıtlarında CORS başlığı yok; liste verirseniz kendi adresinizi de ekleyin. Origin'ler tam eşleşir. Oyun itch.io'dan sunulacaksa gerekir: itch.io'nun iki CDN adresi ve sunucunun kendi adresi (bkz. [bölüm 14](docs/KURULUM.md#14-itchioda-yayınlama)) |
 | `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_SECONDS` | `5` / `300` | Bir kullanıcı adı için bu sürede izin verilen hatalı giriş sayısı; aşılırsa `/login` `429` döner (`0` = kapalı) |
 | `AUTH_IP_MAX_REQUESTS` / `AUTH_IP_WINDOW_SECONDS` | `300` / `60` | Tek IP'den bu sürede kabul edilen `/login` + `/signup` isteği (`0` = kapalı) |
 | `CONNECT4_HOST` / `CONNECT4_PORT` | `0.0.0.0` / `5000` | Sunucunun dinlediği adres |
