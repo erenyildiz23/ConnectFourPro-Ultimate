@@ -13,9 +13,11 @@ Ornek degerler icin `.env.example` dosyasina bakin.
                             o zaman sunucu yeniden baslayinca herkes tekrar giris yapar)
     SESSION_MAX_AGE         Oturum token'inin gecerlilik suresi (saniye)
     CONNECT4_HOST / _PORT   Sunucunun dinledigi adres
-    CORS_ALLOWED_ORIGINS    Socket.IO'ya tarayicidan baglanabilecek origin'ler (virgulle
-                            ayrilmis liste veya `*`). Bos ise sadece sunucunun kendi
-                            origin'i (/play); liste verilirse kendi adresinizi de ekleyin
+    CORS_ALLOWED_ORIGINS    Tarayicidan Socket.IO'ya baglanabilecek ve REST API'yi
+                            okuyabilecek origin'ler (virgulle ayrilmis liste veya `*`).
+                            Bos ise sadece sunucunun kendi origin'i (/play) ve REST'te
+                            CORS basligi yok; liste verilirse kendi adresinizi de ekleyin
+                            (oyunu itch.io gibi baska bir siteden sunmak icin gerekli)
     LOGIN_MAX_FAILURES      Bir kullanici adi icin LOGIN_LOCKOUT_SECONDS icinde izin
     LOGIN_LOCKOUT_SECONDS   verilen hatali giris sayisi; asilirsa /login 429 dondurur
     AUTH_IP_MAX_REQUESTS    Tek IP'den AUTH_IP_WINDOW_SECONDS icinde kabul edilen

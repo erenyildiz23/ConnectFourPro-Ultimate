@@ -20,3 +20,5 @@ services:
         value: "60"
       - key: LOG_LEVEL
         value: INFO
+      - key: CORS_ALLOWED_ORIGINS  # oyun itch.io'dan sunulacaksa "*" (docs/KURULUM.md -> 14);
+        sync: false                # bos = yalnizca bu sunucunun /play/ sayfasi
