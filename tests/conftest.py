@@ -87,6 +87,13 @@ def database(_db_reachable):
     with db.get_db_cursor() as c:
         c.execute("TRUNCATE games, users RESTART IDENTITY CASCADE")
     yield db
+    # Sonda da bosalt: havuz test veritabaninda kalir; sonraki (database istemeyen) testler
+    # burada kayit olan kullanicilari gormesin. Ornegin socket testlerindeki misafir 'alice',
+    # kayitli 'alice' kalirsa "Bu kullanici adi kayitli" hatasiyla reddedilir.
+    _switch_db(TEST_DATABASE_URL)
+    with db.get_db_cursor() as c:
+        if c is not None:
+            c.execute("TRUNCATE games, users RESTART IDENTITY CASCADE")
     _switch_db(TEST_DATABASE_URL)
 
 
