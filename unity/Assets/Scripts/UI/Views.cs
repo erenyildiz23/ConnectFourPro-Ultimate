@@ -443,8 +443,9 @@ namespace ConnectFourPro.UI
             _again = UIKit.Button(Root, "Tekrar Oyna", Theme.Green, app.PlayAgain, px, 530, 180, 48);
             _again.gameObject.SetActive(false);
             // AI oyununda "Geri Al" (452-492): "Tekrar Oyna"nin (506-554) ustunde; isabet
-            // satirlari yalnizca online oyunda dolu, burada bos
-            _undo = UIKit.Button(Root, "Geri Al", Theme.Panel, app.UndoAIMove, px, 472, 180, 40, 18);
+            // satirlari yalnizca online oyunda dolu, burada bos. Dolgu panelden (Theme.Panel)
+            // farkli olmali: ayni renkte buton panelin icinde kaybolur, yalnizca yazi gorunur
+            _undo = UIKit.Button(Root, "Geri Al", Theme.InputBackground, app.UndoAIMove, px, 472, 180, 40, 18);
             _undo.gameObject.SetActive(false);
             // Biten online oyunda "Rovans": ayni yerde, "Tekrar Oyna" yalnizca AI oyununda gorunur
             _rematch = UIKit.Button(Root, "Rövanş", Theme.Green, app.RequestRematch, px, 530, 180, 48, 18);
