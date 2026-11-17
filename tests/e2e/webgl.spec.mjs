@@ -50,8 +50,8 @@ const browser = await chromium.launch({
 });
 const consoleErrors = [];
 
-async function openGame(name) {
-  const context = await browser.newContext({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
+async function openGame(name, viewport = { width: WIDTH, height: HEIGHT }) {
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
   const page = await context.newPage();
   page.name = name;
   page.logs = [];
@@ -121,9 +121,9 @@ async function waitLog(page, re, timeout = 15000) {
   return false;
 }
 
-async function guestLogin(page) {
+async function guestLogin(page, pos = UI.guest) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    await click(page, UI.guest, 300);
+    await click(page, pos, 300);
     if (await waitLog(page, /\[App\] Oturum acildi: Misafir_/, 5000)) return true;
   }
   return false;
@@ -225,6 +225,70 @@ try {
   check(countOf(board, 'R') === 4, 'seyirci oyunun sonunu canli gordu');
   games = await activeGames();
   check(!games.some(g => g.status === 'PLAYING'), 'biten oyun lobiden kalkti');
+
+  // ------------------------------------------------- 6. Dik (portrait) ekran
+  // 540x960 pencere, deviceScaleFactor 1: canvas 9:16 ve CanvasScaler olcegi tam 1, yani
+  // sayfa pikseli = (270 + x, y) (UI/Views.cs'deki P(...) koordinatlari, y ogenin merkezi).
+  // Tahta (UI/BoardView.cs dik): hucre 72 px, merkez x = 270; hucre merkezi
+  // x = 54 + 72*sutun, y = 525 - 72*satir (satir 0 altta).
+  const atP = (x, y) => ({ x: 270 + x, y });
+  const PUI = { guest: atP(0, 660), menuAI: atP(0, 340), easy: atP(0, 320) };
+  const pCell = (col, row) => ({ x: 54 + 72 * col, y: 525 - 72 * row });
+  const readPortraitBoard = png => {
+    const b = [];
+    for (let row = 0; row < 6; row++) {
+      b.push([]);
+      for (let col = 0; col < 7; col++) {
+        const c = colorAt(png, pCell(col, row));
+        b[row].push(near(c, COLORS.red) ? 'R' : near(c, COLORS.yellow) ? 'Y' : near(c, COLORS.empty) ? '.' : '?');
+      }
+    }
+    return b;
+  };
+
+  const pp = await openGame('Dik', { width: 540, height: 960 });
+  const box = await pp.evaluate(() => {
+    const r = document.getElementById('unity-canvas').getBoundingClientRect();
+    return { w: r.width, h: r.height };
+  });
+  check(Math.round(box.w) === 540 && Math.round(box.h) === 960, `dik pencerede canvas 9:16 (${box.w}x${box.h})`);
+  await shot(pp, '15-dik-giris.png');
+  check(await guestLogin(pp, PUI.guest), 'dik: misafir girisi (dik konum)');
+  await shot(pp, '16-dik-menu.png');
+  await click(pp, PUI.menuAI);
+  await click(pp, PUI.easy, 1500);
+  let pboard = readPortraitBoard(await shot(pp, '17-dik-bos-tahta.png'));
+  check(countOf(pboard, '.') === 42, 'dik: AI maci bos tahtayla basladi\n' + boardText(pboard));
+  await click(pp, atP(0, 345), 1500);                   // sutun 3, tahtanin ustunde herhangi bir yer
+  const pdeadline = Date.now() + 15000;
+  while (Date.now() < pdeadline) {
+    pboard = readPortraitBoard(await shot(pp, '18-dik-ilk-hamle.png'));
+    if (countOf(pboard, 'Y') === 1) break;
+    await sleep(500);
+  }
+  check(pboard[0][3] === 'R', 'dik: oyuncunun tasi 3. sutunun dibine dustu (dik hucre merkezinden okundu)\n' + boardText(pboard));
+  check(countOf(pboard, 'Y') === 1, 'dik: AI cevap verdi (1 sari tas)');
+  await pp.close();
+
+  // ------------------------------------------- 7. Kare pencere (Review Focus 5)
+  // 800x800: yatay/dik karari canvas'in cizim boyutundan gelir (ScreenLayout.For: yukseklik >
+  // genislik ise dik). Canvas kutusu olculur, CanvasScaler olcegi (esleme 0.5)
+  // sqrt((cw/ref_w)*(ch/ref_h)) ile hesaplanir ve o duzenin misafir dugmesine tiklanir.
+  const sp2 = await openGame('Kare', { width: 800, height: 800 });
+  const sbox = await sp2.evaluate(() => {
+    const r = document.getElementById('unity-canvas').getBoundingClientRect();
+    return { x: r.left, y: r.top, w: r.width, h: r.height };
+  });
+  const sPortrait = sbox.h > sbox.w;
+  const ref = sPortrait ? { w: 540, h: 960 } : { w: 1280, h: 720 };
+  const sScale = Math.sqrt((sbox.w / ref.w) * (sbox.h / ref.h));
+  const sGuest = sPortrait ? { x: 0, y: 660 } : { x: 0, y: 540 };
+  const sPos = { x: sbox.x + sbox.w / 2 + sGuest.x * sScale, y: sbox.y + sGuest.y * sScale };
+  console.log(`kare pencere: canvas ${sbox.w}x${sbox.h} @(${sbox.x},${sbox.y}), duzen ${sPortrait ? 'dik' : 'yatay'}, olcek ${sScale.toFixed(3)}`);
+  await shot(sp2, '19-kare-giris.png');
+  check(await guestLogin(sp2, sPos), `kare pencere (800x800): ${sPortrait ? 'dik' : 'yatay'} duzende misafir girisi calisti`);
+  await shot(sp2, '20-kare-menu.png');
+  await sp2.close();
 } catch (e) {
   check(false, 'beklenmeyen hata: ' + (e && e.stack || e));
 } finally {
