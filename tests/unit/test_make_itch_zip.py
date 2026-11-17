@@ -55,6 +55,8 @@ class TestServerUrl:
         " https://connect4.example.com", "https://connect4.example.com\n",
         'https://a.example.com";alert(1);//', "https://host:99999", "https://", "HTTPS://connect4.example.com",
         "javascript:alert(1)",
+        "https://connect4.example.com:", "https://-bad.example.com", "https://ho_st.example.com",
+        "https://bad-.example.com", "https://a..example.com",
     ])
     def test_invalid(self, url):
         with pytest.raises(itch.PackError):
@@ -99,6 +101,13 @@ class TestZip:
             assert zf.read("socket.io.min.js") == b"/* io */"
         # kaynak build degismez
         assert (build / "server-config.js").read_text(encoding="utf-8") == 'window.CF4_SERVER_URL = "";\n'
+
+    def test_config_entry_is_readable_after_unzip(self, tmp_path):
+        build = fake_build(tmp_path / "WebGL")
+        out = tmp_path / "itch.zip"
+        itch.make_zip(str(build), SERVER, str(out))
+        with zipfile.ZipFile(out) as zf:
+            assert (zf.getinfo("server-config.js").external_attr >> 16) & 0o444 == 0o444
 
     def test_missing_config_file_is_added(self, tmp_path):
         build = fake_build(tmp_path / "WebGL")

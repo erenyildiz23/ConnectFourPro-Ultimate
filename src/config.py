@@ -79,7 +79,8 @@ def parse_cors_origins(value: Optional[str]) -> Union[None, str, List[str]]:
     CORS_ALLOWED_ORIGINS degerini flask-socketio'nun bekledigi bicime cevirir:
     bos -> None (sadece ayni origin), `*` -> '*' (herkes), aksi halde origin listesi.
     """
-    origins = [o.strip().rstrip('/') for o in (value or '').split(',') if o.strip()]
+    # Tarayici Origin'i sema ve host'u kucuk harfle gonderir; elle yazilan 'https://Oyun.example' de eslessin
+    origins = [o.strip().rstrip('/').lower() for o in (value or '').split(',') if o.strip()]
     if not origins:
         return None
     return '*' if '*' in origins else origins

@@ -94,7 +94,6 @@ def database(_db_reachable):
     with db.get_db_cursor() as c:
         if c is not None:
             c.execute("TRUNCATE games, users RESTART IDENTITY CASCADE")
-    _switch_db(TEST_DATABASE_URL)
 
 
 @pytest.fixture

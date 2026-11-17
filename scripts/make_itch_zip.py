@@ -33,6 +33,7 @@ disindan hicbir sey eklenmez. Yalnizca standart kutuphane kullanilir.
 import argparse
 import ipaddress
 import json
+import re
 import os
 import sys
 import time
@@ -47,6 +48,8 @@ MAX_FILE_BYTES = 200 * 1024 * 1024
 MAX_PATH_LENGTH = 240
 PRECOMPRESSED_SUFFIXES = ('.gz', '.br')
 GZIP_MAGIC = b'\x1f\x8b'
+# DNS etiketi: harf/rakam/-, - ile baslamaz/bitmez (alt cizgi gecersiz)
+_HOST_LABEL = re.compile(r'^(?!-)[a-z0-9-]{1,63}(?<!-)$', re.IGNORECASE)
 
 
 class PackError(Exception):
@@ -60,6 +63,16 @@ def _is_loopback_host(host: str) -> bool:
         return ipaddress.ip_address(host).is_loopback
     except ValueError:
         return False
+
+
+def _valid_host(host: str) -> bool:
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        pass
+    labels = host.split('.')
+    return len(host) <= 253 and all(_HOST_LABEL.match(label) for label in labels)
 
 
 def validate_server_url(url: str, allow_http: bool = False) -> str:
@@ -88,6 +101,10 @@ def validate_server_url(url: str, allow_http: bool = False) -> str:
         raise PackError(f"Gecersiz port: {url}") from exc
     if not parts.hostname or (port is not None and not 0 < port < 65536):
         raise PackError(f"Gecersiz sunucu adresi: {url}")
+    if parts.netloc.endswith(':'):
+        raise PackError(f"Port bos: {url}")
+    if not _valid_host(parts.hostname):
+        raise PackError(f"Gecersiz sunucu adi: {parts.hostname}")
     # --allow-http yalnizca yerel deneme icindir: internetteki bir sunucuya sifre duz metin gitmesin
     if parts.scheme == 'http' and not _is_loopback_host(parts.hostname):
         raise PackError(f"http yalnizca localhost / 127.x / [::1] icin kabul edilir; https kullanin: {url}")
@@ -184,8 +201,9 @@ def make_zip(build_dir: str, server_url: str, out_path: str,
                     continue
                 zf.write(path, arc)
                 written.append(arc)
-            zf.writestr(zipfile.ZipInfo(CONFIG_NAME, date_time=time.localtime()[:6]),
-                        server_config_js(url), compress_type=zipfile.ZIP_DEFLATED)
+            info = zipfile.ZipInfo(CONFIG_NAME, date_time=time.localtime()[:6])
+            info.external_attr = 0o644 << 16   # yoksa unzip dosyayi 0000 izniyle acar
+            zf.writestr(info, server_config_js(url), compress_type=zipfile.ZIP_DEFLATED)
             written.append(CONFIG_NAME)
         os.replace(tmp, out_real)
     finally:
