@@ -67,6 +67,9 @@ namespace ConnectFourPro.Game
         public const int UsernameMaxLength = 20;
         public const int PasswordMinLength = 8;
         public const int ReconnectGraceDefault = 30;
+        /// <summary>Hazir sohbet: balonun ekranda kalma suresi ve yerel gonderim araligi (sunucuyla ayni).</summary>
+        public const float ChatBubbleSeconds = 3f;
+        public const float ChatCooldownSeconds = 2f;
         /// <summary>Yerel oyuncunun kendi sirasinda son bu kadar saniye uyari rengiyle gosterilir.</summary>
         public const int TurnWarningSeconds = 10;
         /// <summary>AI oyununda bos tahtada ilk ipucu (ilk hamleden sonra siradan mesajlar).</summary>
@@ -160,6 +163,10 @@ namespace ConnectFourPro.Game
         // Rovans: sunucu destekliyor mu (game_over/game_joined 'detail'/'result' tasir) ve durum
         private bool _rematchSupported;
         public RematchState Rematch { get; private set; }
+        // Hazir sohbet: son gelen mesajin balonu ve bitis zamani, son gonderim zamani
+        private (int piece, int msgId)? _chatBubble;
+        private float _chatBubbleUntil;
+        private float _lastChatSentAt = -100f;
         // Hamle suresi: sunucunun son bildirdigi kalan saniye ve geldigi yerel zaman (null: sure yok)
         private int? _turnSecondsLeft;
         private float _turnClockAt;
@@ -229,6 +236,7 @@ namespace ConnectFourPro.Game
             if (Screen == screen)
                 return;
             Screen = screen;
+            ClearChatBubble();
             ScreenChanged?.Invoke(screen);
         }
 
@@ -259,6 +267,8 @@ namespace ConnectFourPro.Game
                 _replayClock = now;
             }
             TickConnectionCountdowns();
+            if (_chatBubble != null && Time.unscaledTime >= _chatBubbleUntil)
+                ClearChatBubble();
         }
 
         public bool LeaveConfirmPending => Time.unscaledTime < _leaveConfirmUntil;
@@ -991,6 +1001,7 @@ namespace ConnectFourPro.Game
             ClearTurnClock();
             _rematchSupported = false;
             Rematch = RematchState.None;
+            ClearChatBubble();
         }
 
         /// <summary>Sunucunun sonucu geldi (son tasin animasyonu henuz bitmemis olabilir).</summary>
@@ -1015,6 +1026,7 @@ namespace ConnectFourPro.Game
                 case SocketEvents.RematchStarted: OnRematchStarted(data); break;
                 case SocketEvents.QuickMatchWaiting: OnQuickMatchWaiting(); break;
                 case SocketEvents.QuickMatchCancelled: OnQuickMatchCancelled(); break;
+                case SocketEvents.ChatMessage: OnChatMessage(data); break;
             }
         }
 
@@ -1579,6 +1591,50 @@ namespace ConnectFourPro.Game
                 return w == MyPiece ? ("KAZANDIN!", StatusTone.Good) : ("KAYBETTİN", StatusTone.Bad);
             }
         }
+
+        // =====================================================================
+        // Hazir sohbet
+        // =====================================================================
+
+        /// <summary>Koltuktaki oyuncu online oyun ekraninda (mac bittikten sonra da) mesaj gonderebilir.</summary>
+        public bool CanChat =>
+            Screen == AppScreen.PlayingOnline && !IsSpectator && RoomId != null && _socket.IsConnected;
+
+        /// <summary>
+        /// Gosterilen balon: gonderenin tasi (1/2) ve mesaj numarasi; ChatBubbleSeconds sonra null.
+        /// Kendi mesajimiz da sunucunun yankisiyla gelir (yerelde ayrica gosterilmez).
+        /// </summary>
+        public (int piece, int msgId)? ChatBubble =>
+            _chatBubble != null && Time.unscaledTime < _chatBubbleUntil ? _chatBubble : null;
+
+        public void SendQuickChat(int msgId)
+        {
+            if (!CanChat || !QuickChat.IsValid(msgId))
+                return;
+            float now = Time.unscaledTime;
+            if (now - _lastChatSentAt < ChatCooldownSeconds)
+                return;   // sunucu da 2 sn icindeki ikinci mesaji sessizce atar
+            if (_socket.SendQuickChat(msgId))
+                _lastChatSentAt = now;
+        }
+
+        private void OnChatMessage(JsonObject data)
+        {
+            if (Screen != AppScreen.PlayingOnline && Screen != AppScreen.Spectating)
+                return;
+            if (data.GetString("room_id", RoomId) != RoomId)
+                return;
+            int? msgId = data.GetNullableInt("msg_id");
+            int piece = data.GetInt("from_piece");
+            if (msgId == null || !QuickChat.IsValid(msgId.Value)
+                || (piece != Board.Player1 && piece != Board.Player2))
+                return;
+            _chatBubble = (piece, msgId.Value);
+            _chatBubbleUntil = Time.unscaledTime + ChatBubbleSeconds;
+            Debug.Log($"[App] Sohbet: oyuncu {piece} mesaj {msgId.Value}");   // tests/e2e bu satiri bekler
+        }
+
+        private void ClearChatBubble() => _chatBubble = null;
 
         public void ResetToMenu() => LeaveSession(AppScreen.Menu);
 

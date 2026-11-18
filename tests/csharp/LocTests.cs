@@ -74,12 +74,29 @@ namespace ConnectFourPro.Tests
         [TestCase("Rakip arama sona erdi.", "The search has ended.")]
         [TestCase("Bağlantı koptu, arama iptal edildi.", "Connection lost, search cancelled.")]
         [TestCase("Hata: Zaten bir oyundasiniz", "Error: You are already in a game")]
+        [TestCase("İyi oyun!", "Good game!")]
+        [TestCase("Bol şans!", "Good luck!")]
+        [TestCase("Güzel hamle!", "Nice move!")]
+        [TestCase("Hay aksi!", "Oops!")]
+        [TestCase("Düşünüyorum...", "Thinking...")]
+        [TestCase("Teşekkürler!", "Thanks!")]
+        [TestCase("Rövanş?", "Rematch?")]
+        [TestCase("Selam!", "Hi!")]
+        [TestCase("Sohbet", "Chat")]
         [TestCase("Misafir_123456", "Misafir_123456")]
         [TestCase("", "")]
         public void TranslatesToEnglish(string tr, string en)
         {
             Loc.Current = Lang.En;
             Assert.That(Loc.T(tr), Is.EqualTo(en));
+        }
+
+        [Test]
+        public void EveryQuickChatMessageIsTranslated()
+        {
+            Assert.That(QuickChat.Messages.Length, Is.EqualTo(8));
+            foreach (var m in QuickChat.Messages)
+                Assert.That(Loc.Table.ContainsKey(m), m);
         }
 
         [Test]

@@ -63,6 +63,12 @@ GAMES_LOCK = threading.RLock()
 # ilk giren P1 olur. Ayni kimlik (uid, auth) ve ayni soket kuyrukta en fazla bir kez bulunur.
 QUICK_QUEUE: List[Dict[str, Any]] = []
 
+# Hazir sohbet: gecerli mesaj kimlikleri 0..QUICK_CHAT_COUNT-1; soket basina en az
+# CHAT_MIN_INTERVAL saniye arayla. LAST_CHAT_AT: sid -> son kabul edilen mesajin zamani
+QUICK_CHAT_COUNT = 8
+CHAT_MIN_INTERVAL = 2.0
+LAST_CHAT_AT: Dict[str, float] = {}
+
 # Geriye donuk uyumluluk (testler/benchmark'lar bu adlari kullanabilir)
 WAITING_TIMEOUT = config.WAITING_TIMEOUT
 INACTIVE_TIMEOUT = config.INACTIVE_TIMEOUT
@@ -781,6 +787,7 @@ def _seat_left_finished(room_id: str, room: dict, piece: int) -> None:
 def on_disconnect():
     sid = request.sid
     CONNECTED_USERS.pop(sid, None)
+    LAST_CHAT_AT.pop(sid, None)
     log.debug("Ayrildi: %s", sid)
 
     with GAMES_LOCK:
@@ -1045,6 +1052,31 @@ def on_quick_match_cancel(data=None):
     with GAMES_LOCK:
         _quick_remove_locked(request.sid)
     emit('quick_match_cancelled', {})
+
+
+@socketio.on('chat_quick')
+def on_chat_quick(data):
+    """Hazir sohbet mesaji: sadece odadaki oyuncular gonderir; gecersiz istek sessizce yok sayilir."""
+    room_id = (_clean_str(data, 'room_id', 10) or '').upper()
+    msg_id = data.get('msg_id') if isinstance(data, dict) else None
+    # bool, int'in alt sinifi: True/False mesaj kimligi sayilmaz
+    if not isinstance(msg_id, int) or isinstance(msg_id, bool) or not 0 <= msg_id < QUICK_CHAT_COUNT:
+        return
+    sid = request.sid
+    with GAMES_LOCK:
+        room = GAMES.get(room_id)
+        if room is None:
+            return
+        piece = _piece_of(room, sid)
+        if piece is None:
+            return
+        now = time.time()
+        last = LAST_CHAT_AT.get(sid)
+        if last is not None and now - last < CHAT_MIN_INTERVAL:
+            return
+        LAST_CHAT_AT[sid] = now
+    socketio.emit('chat_message', {'room_id': room_id, 'from_piece': piece, 'msg_id': msg_id},
+                  to=room_id)
 
 
 @socketio.on('make_move')

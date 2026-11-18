@@ -339,6 +339,17 @@ namespace ConnectFourPro.Game
             ["Rakip arama sona erdi."] = "The search has ended.",
             ["Bağlantı koptu, arama iptal edildi."] = "Connection lost, search cancelled.",
 
+            // --- Hazir sohbet (Game/QuickChat.cs; numara sirasiyla)
+            ["Sohbet"] = "Chat",
+            ["İyi oyun!"] = "Good game!",
+            ["Bol şans!"] = "Good luck!",
+            ["Güzel hamle!"] = "Nice move!",
+            ["Hay aksi!"] = "Oops!",
+            ["Düşünüyorum..."] = "Thinking...",
+            ["Teşekkürler!"] = "Thanks!",
+            ["Rövanş?"] = "Rematch?",
+            ["Selam!"] = "Hi!",
+
             // --- Sunucu hata mesajlari (src/server.py; ASCII Turkce)
             ["Oturum gecersiz, tekrar giris yapin"] = "Session expired, please log in again",
             ["Gecersiz kullanici"] = "Invalid user",

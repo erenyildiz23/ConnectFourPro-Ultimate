@@ -578,6 +578,14 @@ namespace ConnectFourPro.UI
         private readonly Button _undo;
         private readonly Button _rematch;
         private readonly Button _replay;
+        // Hazir sohbet: ac/kapa dugmesi, 8 mesajlik panel, oyuncu satiri basina bir balon
+        private readonly Button _chat;
+        private readonly List<GameObject> _chatPanel = new List<GameObject>();
+        private bool _chatOpen;
+        private readonly GameObject[][] _bubbles = new GameObject[2][];
+        private readonly Text[] _bubbleTexts = new Text[2];
+        private readonly RectTransform[] _bubbleTails = new RectTransform[2];
+        private readonly bool[] _bubbleShown = new bool[2];
 
         public BoardView Board { get; }
 
@@ -655,9 +663,85 @@ namespace ConnectFourPro.UI
             _menuLabel = _menu.GetComponentInChildren<Text>();
             // Dikey: Geri Al | Yeni Oyun / Rovans | Menu tek satirda, en alt kenar y=868 (< 888)
             P(_menu, 170, 842, 160, 52);
+
+            // Hazir sohbet. Varsayilan yazi tipi (LegacyRuntime) emoji icermez ve WebGL'de
+            // sistem yazi tipine dusulmez: dugme simge yerine "Sohbet" yazar.
+            // Yatay: tahta (sag kenar x=30) ile bilgi paneli (sol kenar x=240) arasindaki
+            // bosluk, "Menu" ile ayni satirda. Dikey: panel basliginin saginda (baslik ortada).
+            _chat = UIKit.Button(Root, "Sohbet", Theme.Hover, ToggleChatPanel, 135, 590, 120, 48, 18);
+            _chat.gameObject.SetActive(false);
+            P(_chat, 195, 600, 110, 36);
+
+            // Balonlar: yatayda ayni boslukta oyuncu satirinin hizasinda (kuyruk saga, tasa dogru);
+            // dikeyde ismin saginda (kuyruk sola). Tiklamalari engellemez (raycastTarget kapali).
+            for (int i = 0; i < 2; i++)
+            {
+                float y = 225 + i * 70;
+                float ry = 645 + i * 52;
+                var body = UIKit.Image(Root, "Bubble " + i, Theme.White, UIKit.Rounded);
+                body.raycastTarget = false;
+                UIKit.Place(body.rectTransform, 140, y, 180, 40);
+                P(body, 70, ry, 170, 40);
+                var tail = UIKit.Image(Root, "BubbleTail " + i, Theme.White, UIKit.Triangle);
+                tail.raycastTarget = false;
+                UIKit.Place(tail.rectTransform, 236, y, 12, 16);
+                P(tail, -21, ry, 12, 16);
+                _bubbleTails[i] = tail.rectTransform;
+                _bubbleTexts[i] = UIKit.Label(Root, "", 18, Theme.Background, 140, y, 172, 36,
+                                              TextAnchor.MiddleCenter, FontStyle.Bold);
+                P(_bubbleTexts[i], 70, ry, 164, 36);
+                _bubbles[i] = new[] { body.gameObject, tail.gameObject, _bubbleTexts[i].gameObject };
+                foreach (var go in _bubbles[i])
+                    go.SetActive(false);
+            }
+
+            // 8 mesajlik panel (iki sutun, dort satir). Yatay: bilgi panelinin ustunde (y 235..469);
+            // dikey: tahtanin alt kisminda (y 344..578; panel basligi ve Sohbet dugmesi acik kalir).
+            // Arka plan tahtanin tiklamalarini da tutar.
+            var chatBg = UIKit.Panel(Root, "ChatPanel", Theme.Background);
+            UIKit.Place(chatBg.rectTransform, 400, 352, 316, 234);
+            P(chatBg, 0, 461, 510, 234);
+            _chatPanel.Add(chatBg.gameObject);
+            for (int k = 0; k < QuickChat.Messages.Length; k++)
+            {
+                int id = k;
+                int col = k % 2, row = k / 2;
+                var b = UIKit.Button(Root, QuickChat.Messages[k], Theme.InputBackground, () => PickChat(id),
+                                     col == 0 ? 322 : 478, 270 + row * 55, 148, 48, 17);
+                P(b, col == 0 ? -125 : 125, 379 + row * 55, 240, 48);
+                _chatPanel.Add(b.gameObject);
+            }
+            SetChatOpen(false);
         }
 
-        public override void OnShow() => UIKit.ClearSelection();
+        private void SetChatOpen(bool open)
+        {
+            _chatOpen = open;
+            foreach (var go in _chatPanel)
+                go.SetActive(open);
+        }
+
+        private void ToggleChatPanel() => SetChatOpen(!_chatOpen);
+
+        private void PickChat(int id)
+        {
+            SetChatOpen(false);
+            App.SendQuickChat(id);
+        }
+
+        public override void OnShow()
+        {
+            UIKit.ClearSelection();
+            SetChatOpen(false);
+        }
+
+        public override void OnLayoutChanged(LayoutOrientation o)
+        {
+            base.OnLayoutChanged(o);
+            // Kuyruk isme dogru: yatayda isim balonun saginda, dikeyde solunda
+            foreach (var t in _bubbleTails)
+                t.localScale = new Vector3(o == LayoutOrientation.Portrait ? -1 : 1, 1, 1);
+        }
 
         public override void Refresh()
         {
@@ -712,6 +796,25 @@ namespace ConnectFourPro.UI
             bool replay = app.CanReplayLastGame && !Board.IsAnimating;
             if (_replay.gameObject.activeSelf != replay)
                 _replay.gameObject.SetActive(replay);
+
+            // Sohbet: yalnizca koltuktaki oyuncu (seyircide ve AI oyununda dugme yok)
+            bool chat = app.CanChat;
+            if (_chat.gameObject.activeSelf != chat)
+                _chat.gameObject.SetActive(chat);
+            if (!chat && _chatOpen)
+                SetChatOpen(false);
+            var bubble = app.ChatBubble;
+            for (int i = 0; i < 2; i++)
+            {
+                bool show = bubble.HasValue && bubble.Value.piece == i + 1;
+                if (show)
+                    _bubbleTexts[i].text = Loc.T(QuickChat.Messages[bubble.Value.msgId]);
+                if (_bubbleShown[i] == show)
+                    continue;
+                _bubbleShown[i] = show;
+                foreach (var go in _bubbles[i])
+                    go.SetActive(show);
+            }
         }
 
         private Color HeadlineColor(StatusTone tone)
