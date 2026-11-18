@@ -462,6 +462,7 @@ namespace ConnectFourPro.UI
         private const int PortraitRows = 8;
         private readonly Text _message;
         private readonly Text[,] _cells = new Text[10, 4];
+        private readonly Button[] _watch = new Button[10];
 
         public HistoryView(AppController app, Transform parent) : base(app, parent, "History")
         {
@@ -469,17 +470,31 @@ namespace ConnectFourPro.UI
             _message = UIKit.Label(Root, "", 24, Theme.Gray, 0, 250, 1000);
             P(_message, 0, 400, 480, 80);
             float[] xs = { -390, -150, 110, 380 };
-            // Dik: ust satir tarih + rakip, alt satir sonuc + hamle sayisi
-            float[] pxs = { -130, 135, -130, 135 };
+            // Dik: ust satir tarih + rakip, alt satir sonuc + hamle sayisi; sagda "Izle" dugmesi
+            float[] pxs = { -150, 60, -150, 60 };
             float[] pdy = { -20, -20, 18, 18 };
             for (int i = 0; i < 10; i++)
+            {
                 for (int c = 0; c < 4; c++)
                 {
                     _cells[i, c] = UIKit.Label(Root, "", 20, Theme.White, xs[c], 120 + i * 48, 250, 40, TextAnchor.MiddleLeft);
-                    P(_cells[i, c], pxs[c], 235 + i * 78 + pdy[c], 240, 34);
+                    P(_cells[i, c], pxs[c], 235 + i * 78 + pdy[c], 200, 34);
                     FitInPortrait(_cells[i, c], 18, 20);
                 }
+                // Yatay: hamle sayisinin sagi (510..610); dik: satirin sagi (165..261)
+                int row = i;
+                _watch[i] = UIKit.Button(Root, "İzle", Theme.Hover, () => Watch(row), 560, 120 + i * 48, 100, 38, 18);
+                P(_watch[i], 213, 235 + i * 78, 96, 48);
+                _watch[i].gameObject.SetActive(false);
+            }
             P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 0, 655, 180, 50), 0, 850, 240, 56);
+        }
+
+        private void Watch(int row)
+        {
+            var data = App.HistoryData;
+            if (data != null && row < data.Count)
+                App.OpenReplay(data[row]);
         }
 
         public override void OnLayoutChanged(LayoutOrientation o)
@@ -499,6 +514,9 @@ namespace ConnectFourPro.UI
             for (int i = 0; i < 10; i++)
             {
                 bool has = !App.IsGuest && data != null && i < data.Count && i < limit;
+                bool watch = has && data[i].Moves.Count > 0;   // bozuk / bos hamle listesi izlenemez
+                if (_watch[i].gameObject.activeSelf != watch)
+                    _watch[i].gameObject.SetActive(watch);
                 if (!has)
                 {
                     for (int c = 0; c < 4; c++)
@@ -546,6 +564,7 @@ namespace ConnectFourPro.UI
         private readonly Button _again;
         private readonly Button _undo;
         private readonly Button _rematch;
+        private readonly Button _replay;
 
         public BoardView Board { get; }
 
@@ -614,6 +633,11 @@ namespace ConnectFourPro.UI
             _rematch = UIKit.Button(Root, "Rövanş", Theme.Green, app.RequestRematch, px, 530, 180, 48, 18);
             _rematch.gameObject.SetActive(false);
             P(_rematch, 0, 842, 160, 52);
+            // Biten online oyunda "Tekrari izle": ikinci oyuncu satiri (en alt 320) ile oda yazisi
+            // (368'de baslar) arasinda. Dik: "Geri Al"in yeri (o yalnizca AI oyununda gorunur)
+            _replay = UIKit.Button(Root, "Tekrarı izle", Theme.Hover, app.OpenReplayOfLastGame, px, 345, 220, 34, 18);
+            _replay.gameObject.SetActive(false);
+            P(_replay, -170, 842, 160, 52);
             _menu = UIKit.Button(Root, "Menü", Theme.Button, app.RequestBack, px, 590, 180, 48);
             _menuLabel = _menu.GetComponentInChildren<Text>();
             // Dikey: Geri Al | Yeni Oyun / Rovans | Menu tek satirda, en alt kenar y=868 (< 888)
@@ -671,6 +695,10 @@ namespace ConnectFourPro.UI
                 UIKit.SetLabel(_rematch, app.RematchLabel);
             if (_rematch.gameObject.activeSelf != rematch)
                 _rematch.gameObject.SetActive(rematch);
+            // Son tas dusmeden tekrar acilmaz (baslik gibi)
+            bool replay = app.CanReplayLastGame && !Board.IsAnimating;
+            if (_replay.gameObject.activeSelf != replay)
+                _replay.gameObject.SetActive(replay);
         }
 
         private Color HeadlineColor(StatusTone tone)
@@ -700,6 +728,211 @@ namespace ConnectFourPro.UI
             }
             else
                 _clocks[i].text = "";
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    /// <summary>
+    /// Mac tekrari: AppController.Replay'in durumunu kendi tahtasinda cizer. Tek adim
+    /// ileri gidilince tas dusme animasyonuyla gelir, diger atlamalar aninda cizilir.
+    /// </summary>
+    public sealed class ReplayView : View
+    {
+        private enum Icon { First, Prev, Next, Last, Play }
+
+        private readonly Text _title;
+        private readonly Text[] _names = new Text[2];
+        private readonly Text _counter;
+        private readonly GameObject _playIcon;
+        private readonly GameObject _pauseIcon;
+        private readonly BoardView _board;
+
+        // Tahtada cizilen durum (animasyon bitene kadar bir onceki hamle)
+        private GameState _shown;
+        private int _shownIndex;
+        private ReplayModel _shownReplay;
+        private string _loggedCounter;
+
+        public ReplayView(AppController app, Transform parent) : base(app, parent, "Replay")
+        {
+            _title = UIKit.Label(Root, "", 38, Theme.Yellow, 0, 42, 1000, 56, TextAnchor.MiddleCenter, FontStyle.Bold);
+            P(_title, 0, 38, 510, 44);
+            FitInPortrait(_title, 28, 38);
+
+            // Tahta oyun ekraniyla ayni yerde (tests/e2e ayni hucre merkezlerinden okur)
+            _board = BoardView.Create(Root, -250, 375, () => _shown, () => false, () => Core.Board.Player1);
+            P(_board, 0, 345, 560, 480);
+            Responsive.PortraitScale((RectTransform)_board.transform, 0.9f);
+
+            const float px = 400;
+            var panel = UIKit.Panel(Root, "InfoPanel", Theme.Panel);
+            UIKit.Place(panel.rectTransform, px, 375, 320, 480);
+            // Dikey: tahtanin altindan durum cubugunun ustune (582..880)
+            P(panel, 0, 731, 510, 298);
+            P(UIKit.Label(Root, "MAÇ TEKRARI", 24, Theme.White, px, 165, 300, 34, TextAnchor.MiddleCenter, FontStyle.Bold),
+              0, 600, 400, 28);
+
+            for (int i = 0; i < 2; i++)
+            {
+                float y = 225 + i * 60;
+                var disc = UIKit.Image(Root, "Disc " + i, Theme.PieceColor(i + 1), UIKit.Circle);
+                UIKit.Place(disc.rectTransform, px - 125, y, 34, 34);
+                _names[i] = UIKit.Label(Root, "", 21, Theme.White, px + 10, y, 220, 30, TextAnchor.MiddleLeft);
+                // Dikey: iki oyuncu yan yana
+                float dx = i == 0 ? -225 : 25;
+                P(disc, dx, 640, 30, 30);
+                P(_names[i], dx + 115, 640, 190, 30);
+                FitInPortrait(_names[i], 18, 21);
+            }
+
+            _counter = UIKit.Label(Root, "", 24, Theme.White, px, 360, 300, 34, TextAnchor.MiddleCenter, FontStyle.Bold);
+            P(_counter, 0, 685, 400, 34);
+
+            // Dugmeler: ilk, geri, oynat/durdur, ileri, son (tests/e2e "son"a (520, 430)'dan tiklar)
+            var row = new (Icon icon, UnityEngine.Events.UnityAction action)[]
+            {
+                (Icon.First, () => App.Replay?.First()),
+                (Icon.Prev, () => App.Replay?.Prev()),
+                (Icon.Play, () => App.Replay?.TogglePlay()),
+                (Icon.Next, () => App.Replay?.Next()),
+                (Icon.Last, () => App.Replay?.Last()),
+            };
+            for (int i = 0; i < row.Length; i++)
+            {
+                var color = row[i].icon == Icon.Play ? Theme.Green : Theme.InputBackground;
+                var b = UIKit.Button(Root, "", color, row[i].action, px + (i - 2) * 62, 430, 52, 48);
+                P(b, (i - 2) * 100, 745, 84, 52);
+                var made = AddIcon(b, row[i].icon, Theme.OnColor(color));
+                if (row[i].icon == Icon.Play)
+                {
+                    _playIcon = made;
+                    _pauseIcon = AddPause(b, Theme.OnColor(color));
+                }
+            }
+
+            P(UIKit.Button(Root, "Geri", Theme.Button, app.RequestBack, px, 590, 180, 48), 0, 830, 220, 52);
+        }
+
+        // Simge: dugmenin ortasinda, dugmeyle birlikte olceklenmeyen sabit boyutlu cizim
+        private static RectTransform IconRoot(Button b, string name)
+        {
+            var rt = UIKit.Rect(b.transform, name);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(28, 24);
+            rt.anchoredPosition = Vector2.zero;
+            return rt;
+        }
+
+        private static void Shape(RectTransform parent, Sprite sprite, Color color, float x, float w, float h, bool flip)
+        {
+            var img = UIKit.Image(parent, "Shape", color, sprite);
+            img.raycastTarget = false;
+            var rt = img.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(w, h);
+            rt.anchoredPosition = new Vector2(x, 0);
+            if (flip)
+                rt.localScale = new Vector3(-1, 1, 1);
+        }
+
+        private static GameObject AddIcon(Button b, Icon icon, Color color)
+        {
+            var rt = IconRoot(b, "Icon " + icon);
+            switch (icon)
+            {
+                case Icon.First:
+                    Shape(rt, null, color, -9, 4, 20, false);
+                    Shape(rt, UIKit.Triangle, color, 3, 16, 20, true);
+                    break;
+                case Icon.Prev:
+                    Shape(rt, UIKit.Triangle, color, -1, 18, 22, true);
+                    break;
+                case Icon.Next:
+                case Icon.Play:
+                    Shape(rt, UIKit.Triangle, color, 1, 18, 22, false);
+                    break;
+                case Icon.Last:
+                    Shape(rt, UIKit.Triangle, color, -3, 16, 20, false);
+                    Shape(rt, null, color, 9, 4, 20, false);
+                    break;
+            }
+            return rt.gameObject;
+        }
+
+        private static GameObject AddPause(Button b, Color color)
+        {
+            var rt = IconRoot(b, "Icon Pause");
+            Shape(rt, null, color, -5, 6, 20, false);
+            Shape(rt, null, color, 5, 6, 20, false);
+            rt.gameObject.SetActive(false);
+            return rt.gameObject;
+        }
+
+        public override void OnShow()
+        {
+            UIKit.ClearSelection();
+            _shownReplay = null;
+        }
+
+        public override void Refresh()
+        {
+            var r = App.Replay;
+            if (r == null)
+                return;
+            SyncBoard(r);
+
+            _title.text = Loc.T(r.ResultText);
+            SetName(0, r.P1);
+            SetName(1, r.P2);
+
+            string counter = $"Hamle {r.Index} / {r.Count}";
+            _counter.text = Loc.T(counter);
+            if (counter != _loggedCounter)
+            {
+                _loggedCounter = counter;
+                Debug.Log("[Replay] " + counter);   // tests/e2e sayaci bu satirdan okur
+            }
+
+            if (_playIcon.activeSelf == r.Playing)
+                _playIcon.SetActive(!r.Playing);
+            if (_pauseIcon.activeSelf != r.Playing)
+                _pauseIcon.SetActive(r.Playing);
+        }
+
+        private void SetName(int i, string name)
+        {
+            name = Loc.T(name ?? "");
+            _names[i].text = name.Length > 14 ? name.Substring(0, 14) : name;
+        }
+
+        private void SyncBoard(ReplayModel r)
+        {
+            if (r != _shownReplay)
+            {
+                _board.CancelAnimation();
+                _shownReplay = r;
+                _shownIndex = r.Index;
+                _shown = r.State;
+                _loggedCounter = null;
+                return;
+            }
+            if (r.Index == _shownIndex)
+                return;
+            if (r.Index == _shownIndex + 1)
+            {
+                // Onceki dusus bitmemisse once onu tamamla: _shown onceki hamleye gelir
+                _board.FinishAnimation();
+                var before = _shown;
+                var target = r.State;
+                int col = target.MoveHistory[r.Index - 1];
+                _board.AnimateDrop(col, before.NextRow(col), before.CurrentPlayer, () => _shown = target);
+            }
+            else
+            {
+                _board.CancelAnimation();
+                _shown = r.State;
+            }
+            _shownIndex = r.Index;
         }
     }
 }

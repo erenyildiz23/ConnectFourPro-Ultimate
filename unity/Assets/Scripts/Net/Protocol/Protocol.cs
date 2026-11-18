@@ -110,7 +110,9 @@ namespace ConnectFourPro.Net
         public string Winner;        // beraberlikte null
         public string Result;        // win / loss / draw
         public string EndReason;     // normal / forfeit
-        public int MoveCount;
+        /// <summary>Hamle sutunlari (0-6); bozuk ya da yoksa bos liste.</summary>
+        public List<int> Moves = new List<int>();
+        public int MoveCount => Moves.Count;
 
         public string OpponentOf(string me) => Player1 == me ? Player2 : Player1;
 
@@ -126,25 +128,44 @@ namespace ConnectFourPro.Net
             }
         }
 
+        // Sunucu hamleleri str(list) olarak saklar: "[3, 3, 2]" (gecerli JSON).
+        // Sayi olmayan ya da 0-6 disi bir deger tum listeyi gecersiz yapar.
+        private static List<int> ParseMoves(string text)
+        {
+            var moves = new List<int>();
+            if (string.IsNullOrEmpty(text))
+                return moves;
+            try
+            {
+                if (!(Json.Parse(text) is List<object> items))
+                    return moves;
+                foreach (object item in items)
+                {
+                    long col;
+                    if (item is long l)
+                        col = l;
+                    else if (item is double d && d == System.Math.Floor(d))
+                        col = (long)d;
+                    else
+                        return new List<int>();
+                    if (col < 0 || col > 6)
+                        return new List<int>();
+                    moves.Add((int)col);
+                }
+            }
+            catch (JsonException)
+            {
+                return new List<int>();
+            }
+            return moves;
+        }
+
         public static List<HistoryEntry> ListFrom(JsonObject response)
         {
             var result = new List<HistoryEntry>();
             foreach (JsonObject g in response.GetObjectList("games"))
             {
-                int moves = 0;
-                string movesText = g.GetString("moves");
-                if (!string.IsNullOrEmpty(movesText))
-                {
-                    // Sunucu hamleleri str(list) olarak saklar: "[3, 3, 2]" (gecerli JSON)
-                    try
-                    {
-                        moves = Json.Parse(movesText) is List<object> l ? l.Count : 0;
-                    }
-                    catch (JsonException)
-                    {
-                        moves = 0;
-                    }
-                }
+                List<int> moves = ParseMoves(g.GetString("moves"));
                 result.Add(new HistoryEntry
                 {
                     StartTime = g.GetString("start_time"),
@@ -153,7 +174,7 @@ namespace ConnectFourPro.Net
                     Winner = g.GetString("winner"),
                     Result = g.GetString("result"),
                     EndReason = g.GetString("end_reason"),
-                    MoveCount = moves,
+                    Moves = moves,
                 });
             }
             return result;

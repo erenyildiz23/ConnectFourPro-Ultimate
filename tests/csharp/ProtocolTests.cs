@@ -162,6 +162,39 @@ namespace ConnectFourPro.Tests
             Assert.That(list[0].OpponentOf("veli"), Is.EqualTo("ali"));
         }
 
+        private static HistoryEntry OneEntry(string movesJson)
+        {
+            return HistoryEntry.ListFrom(JsonObject.ParseObject(
+                "{\"games\": [{\"moves\": " + movesJson + ", \"player1\": \"a\", \"player2\": \"b\"}]}"))[0];
+        }
+
+        [Test]
+        public void HistoryEntryParsesMoveList()
+        {
+            var e = OneEntry("\"[3, 3, 4]\"");
+            Assert.That(e.Moves, Is.EqualTo(new[] { 3, 3, 4 }));
+            Assert.That(e.MoveCount, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void HistoryEntryBadMovesGivesEmptyList()
+        {
+            foreach (string json in new[] { "\"bozuk\"", "null" })
+            {
+                var e = OneEntry(json);
+                Assert.That(e.Moves, Is.Empty, json);
+                Assert.That(e.MoveCount, Is.EqualTo(0), json);
+            }
+        }
+
+        [Test]
+        public void HistoryEntryRejectsOutOfRangeColumns()
+        {
+            var e = OneEntry("\"[3, 9]\"");
+            Assert.That(e.Moves, Is.Empty);
+            Assert.That(e.MoveCount, Is.EqualTo(0));
+        }
+
         [Test]
         public void UserInfoDefaults()
         {
