@@ -51,7 +51,7 @@ değişmez. İstemcide her özellik `AppController`'da durum ve komut olarak,
 
 ---
 
-### Görev 1: Geçmiş kaydında hamle listesi (dal `feat/replay`)
+### Task 1: Geçmiş kaydında hamle listesi (dal `feat/replay`)
 
 **Dosyalar:**
 - Değiştir: `unity/Assets/Scripts/Net/Protocol/Protocol.cs` (`HistoryEntry`)
@@ -73,7 +73,7 @@ değişmez. İstemcide her özellik `AppController`'da durum ve komut olarak,
   aralık dışı bir değer varsa listeyi boşalt.
 - [ ] Testler → PASS. Commit.
 
-### Görev 2: Tekrar modeli
+### Task 2: Tekrar modeli
 
 **Dosyalar:**
 - Oluştur: `unity/Assets/Scripts/Game/ReplayModel.cs`
@@ -98,7 +98,7 @@ değişmez. İstemcide her özellik `AppController`'da durum ve komut olarak,
   - `TogglePlayAtEndRestartsFromZero`.
 - [ ] FAIL → uygula → PASS. Commit.
 
-### Görev 3: Tekrar ekranı ve girişleri
+### Task 3: Tekrar ekranı ve girişleri
 
 **Dosyalar:**
 - Değiştir: `unity/Assets/Scripts/Game/AppController.cs` (`AppScreen.Replay`,
@@ -134,7 +134,7 @@ değişmez. İstemcide her özellik `AppController`'da durum ve komut olarak,
 - [ ] `dotnet test` + Unity WebGL build + e2e → PASS. Commit, PR,
   CI yeşil, merge.
 
-### Görev 4: Hızlı eşleşme kuyruğu, sunucu (dal `feat/quick-match`)
+### Task 4: Hızlı eşleşme kuyruğu, sunucu (dal `feat/quick-match`)
 
 **Dosyalar:**
 - Değiştir: `src/server.py`
@@ -170,7 +170,7 @@ değişmez. İstemcide her özellik `AppController`'da durum ve komut olarak,
 - [ ] `pytest tests/integration/test_quick_match.py` → FAIL → uygula →
   PASS. Tüm `pytest` → PASS. Commit.
 
-### Görev 5: Hızlı eşleşme, istemci
+### Task 5: Hızlı eşleşme, istemci
 
 **Dosyalar:**
 - Değiştir: `Net/Protocol/Protocol.cs` (`SocketEvents.QuickMatchJoin`,
@@ -197,7 +197,7 @@ değişmez. İstemcide her özellik `AppController`'da durum ve komut olarak,
   oyun ekranına geçer. Build + e2e → PASS. Commit, PR, merge, Render'a
   deploy.
 
-### Görev 6: Hazır sohbet, sunucu (dal `feat/quick-chat`)
+### Task 6: Hazır sohbet, sunucu (dal `feat/quick-chat`)
 
 **Dosyalar:**
 - Değiştir: `src/server.py`
@@ -220,7 +220,7 @@ değişmez. İstemcide her özellik `AppController`'da durum ve komut olarak,
   - `test_unknown_room_ignored`
 - [ ] FAIL → uygula → PASS. Commit.
 
-### Görev 7: Hazır sohbet, istemci
+### Task 7: Hazır sohbet, istemci
 
 **Dosyalar:**
 - Oluştur: `Game/QuickChat.cs` (`public static readonly string[] Messages`
@@ -243,7 +243,7 @@ değişmez. İstemcide her özellik `AppController`'da durum ve komut olarak,
 - [ ] FAIL → uygula → PASS. E2E: A "İyi oyun!" gönderir, B'nin sayfasında
   balon görünür. Build + e2e → PASS. Commit, PR, merge, deploy.
 
-### Görev 8: Satranç saati, sunucu (dal `feat/clock`)
+### Task 8: Satranç saati, sunucu (dal `feat/clock`)
 
 **Dosyalar:**
 - Değiştir: `src/server.py`, `src/config.py`
@@ -285,7 +285,7 @@ değişmez. İstemcide her özellik `AppController`'da durum ve komut olarak,
   - `test_unknown_time_control_is_untimed`.
 - [ ] FAIL → uygula → PASS. Tüm `pytest` → PASS. Commit.
 
-### Görev 9: Satranç saati, istemci
+### Task 9: Satranç saati, istemci
 
 **Dosyalar:**
 - Oluştur: `Game/ClockFormat.cs` (`public static string Format(int seconds)`
@@ -314,7 +314,7 @@ değişmez. İstemcide her özellik `AppController`'da durum ve komut olarak,
   "3:00" görünür, hamleden sonra saat değişir. Build + e2e → PASS.
   Commit, PR, merge.
 
-### Görev 10: Yayın
+### Task 10: Yayın
 
 - [ ] Render'da "Deploy latest reference"; canlı sunucuda hızlı eşleşme,
   sohbet ve saat Socket.IO ile denenir.
