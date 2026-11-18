@@ -102,6 +102,7 @@ namespace ConnectFourPro.Game
             _views[AppScreen.Waiting] = new WaitingView(_app, root);
             _views[AppScreen.Leaderboard] = new LeaderboardView(_app, root);
             _views[AppScreen.History] = new HistoryView(_app, root);
+            _views[AppScreen.Replay] = new ReplayView(_app, root);
             _views[AppScreen.PlayingAI] = game;
             _views[AppScreen.PlayingOnline] = game;
             _views[AppScreen.Spectating] = game;
@@ -181,14 +182,27 @@ namespace ConnectFourPro.Game
                 ApplyOrientation(orientation);
 
             _app.Tick();
+            // Tekrar: sol / sag ok bir hamle geri / ileri, Bosluk oynat / durdur
+            var replay = _app.Screen == AppScreen.Replay ? _app.Replay : null;
+            if (replay != null)
+            {
+                if (Keys.LeftPressed())
+                    replay.Prev();
+                if (Keys.RightPressed())
+                    replay.Next();
+                if (Keys.SpacePressed())
+                    replay.TogglePlay();
+            }
             _active?.Refresh();
 
             // Esc: ekrandaki Geri/Iptal/Menu butonu gibi (canli online oyunda ilk basis onay ister)
             if (Keys.BackPressed() && _app.Screen != AppScreen.Login && _app.Screen != AppScreen.Menu)
                 _app.RequestBack();
 
+            // Biten online oyunun tekrarinda rovans mesajlari durum cubugunda gorunur
             bool inGame = _app.Screen == AppScreen.PlayingAI || _app.Screen == AppScreen.PlayingOnline
-                          || _app.Screen == AppScreen.Spectating;
+                          || _app.Screen == AppScreen.Spectating
+                          || (_app.Screen == AppScreen.Replay && _app.ReplayReturnScreen == AppScreen.PlayingOnline);
             _status.text = Loc.T(_app.Status);
             bool showLang = _app.Screen == AppScreen.Login || _app.Screen == AppScreen.Menu;
             if (_langButton.gameObject.activeSelf != showLang)

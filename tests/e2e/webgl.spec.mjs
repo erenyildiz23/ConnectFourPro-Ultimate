@@ -32,6 +32,7 @@ const UI = {
   easy: at(0, 200),
   lobbyCreate: at(-470, 110), lobbyRow0Action: at(470, 225),
   lang: at(560, 50),   // dil dugmesi (GameBootstrap; yalnizca giris ve menu)
+  replayOpen: at(400, 345), replayLast: at(520, 430),
 };
 const cellCenter = (col, row) => at(-250 - 280 + col * 80 + 40, 375 + 240 - row * 80 - 40);
 const COLORS = { red: [233, 69, 96], yellow: [241, 196, 15], empty: [10, 10, 21] };
@@ -240,6 +241,27 @@ try {
   check(countOf(board, 'R') === 4, 'seyirci oyunun sonunu canli gordu');
   games = await activeGames();
   check(!games.some(g => g.status === 'PLAYING'), 'biten oyun lobiden kalkti');
+
+  // ------------------------------------------------------- 5b. Mac tekrari
+  // Misafirlerin gecmisi tutulmaz: tekrar biten oyunun "Tekrari izle" dugmesiyle acilir
+  // (UI/Views.cs GameView: panelde (400, 345); ReplayView: tahta ayni yerde, son (520, 430)).
+  // Sayac kanvasa cizildigi icin ReplayView'in "[Replay] Hamle k / n" satirindan okunur.
+  await click(p1, UI.replayOpen, 1000);
+  check(await waitLog(p1, /\[App\] Tekrar acildi: 7 hamle/), 'P1 biten oyunun tekrarini acti (7 hamle)');
+  check(await waitLog(p1, /\[Replay\] Hamle 0 \/ 7/), 'tekrar sayaci: 0 / 7');
+  board = await waitForBoard(p1, b => countOf(b, '.') === 42, '14b-tekrar-bas.png');
+  check(countOf(board, '.') === 42, 'tekrar bos tahtadan basladi\n' + boardText(board));
+  await click(p1, UI.replayLast, 1000);
+  check(await waitLog(p1, /\[Replay\] Hamle 7 \/ 7/), 'son dugmesiyle sayac 7 / 7 oldu');
+  board = await waitForBoard(p1, b => countOf(b, 'R') === 4, '14c-tekrar-son.png');
+  check(board[0][3] === 'R' && board[3][3] === 'R' && countOf(board, 'R') === 4,
+        'tekrarin sonunda dikey dortlu gorunuyor\n' + boardText(board));
+  await p1.keyboard.down('ArrowLeft');
+  await sleep(150);
+  await p1.keyboard.up('ArrowLeft');
+  check(await waitLog(p1, /\[Replay\] Hamle 6 \/ 7/), 'sol ok bir hamle geri aldi (6 / 7)');
+  board = await waitForBoard(p1, b => countOf(b, 'R') === 3 && countOf(b, 'Y') === 3, '14d-tekrar-geri.png');
+  check(countOf(board, 'R') === 3 && countOf(board, 'Y') === 3, 'tahta 6. hamledeki durumda\n' + boardText(board));
 
   // ------------------------------------------------- 6. Dik (portrait) ekran
   // 540x960 pencere, deviceScaleFactor 1: canvas 9:16 ve CanvasScaler olcegi tam 1, yani
