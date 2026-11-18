@@ -89,6 +89,8 @@ namespace ConnectFourPro.Net
         public int P2Elo;
         public bool Waiting;
         public int MoveCount;
+        /// <summary>Sureli oda: "3+2"; suresiz oda ya da eski sunucu: null.</summary>
+        public string TimeControl;
 
         public static List<ActiveGame> ListFrom(object parsed)
         {
@@ -107,6 +109,7 @@ namespace ConnectFourPro.Net
                     P2Elo = o.GetInt("p2_elo"),
                     Waiting = o.GetString("status") == "WAITING",
                     MoveCount = o.GetInt("move_count"),
+                    TimeControl = o.GetString("time_control"),
                 });
             }
             return result;

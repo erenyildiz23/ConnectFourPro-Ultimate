@@ -72,6 +72,10 @@ namespace ConnectFourPro.Game
         public const float ChatCooldownSeconds = 2f;
         /// <summary>Yerel oyuncunun kendi sirasinda son bu kadar saniye uyari rengiyle gosterilir.</summary>
         public const int TurnWarningSeconds = 10;
+        /// <summary>Satranc saati bu kadar saniyenin altina inince kirmizi gosterilir.</summary>
+        public const int ClockWarningSeconds = 10;
+        /// <summary>Tek sure secenegi (sunucu TIME_CONTROLS).</summary>
+        public const string TimedControl = "3+2";
         /// <summary>AI oyununda bos tahtada ilk ipucu (ilk hamleden sonra siradan mesajlar).</summary>
         public const string CoachText = "Dört taşı yatay, dikey ya da çapraz diz. Kırmızı sensin - bir sütuna tıkla.";
         public const string UndoneText = "Hamle geri alındı. Senin sıran!";
@@ -154,6 +158,8 @@ namespace ConnectFourPro.Game
         // Rakip koptu: sunucunun verdigi bekleme suresinin bitis zamani (-1: yok)
         private float _opponentDeadline = -1f;
         private int _opponentShownSeconds = -1;
+        // Rakip koptugunda sunucu hizli macta ilk hamle penceresinin acik oldugunu bildirdi
+        private bool _disconnectFirstMovePending;
         // Oturum artik ilerleyemez (oda kapandi, geri donus reddedildi, baglanti donmedi)
         // ama Game.GameOver da degil: hamle engellenir, cikis onay istemez.
         private bool _sessionDead;
@@ -172,6 +178,15 @@ namespace ConnectFourPro.Game
         private float _turnClockAt;
         /// <summary>Sunucunun hamle suresi (sn); 0: kapali ya da eski sunucu.</summary>
         public int MoveTimeSeconds { get; private set; }
+        /// <summary>Satranc saati: "3+2"; suresiz oda, eski sunucu ya da online disi: null.</summary>
+        public string TimeControl { get; private set; }
+        // Satranc saati: koltuk basina son bilinen kalan sure (indeks = tas), isleyen koltuk
+        // (0: duruk), isleyen saatin geri saymaya basladigi yerel zaman (baslangic payi sonrasi)
+        // ve rakip kopunca durdurulan koltuk (rakip donunce yeniden isler)
+        private readonly double[] _clockLeft = new double[3];
+        private int _clockRunning;
+        private float _clockRunFrom;
+        private int _clockPausedPiece;
         public (string p1, int p1Elo, string p2, int p2Elo) SpectateNames { get; private set; } =
             ("Oyuncu 1", UserInfo.DefaultRating, "Oyuncu 2", UserInfo.DefaultRating);
 
@@ -300,6 +315,34 @@ namespace ConnectFourPro.Game
             Screen == AppScreen.PlayingOnline && !IsSpectator && Game.CurrentPlayer == MyPiece
             && TurnSecondsLeft is int s && s <= TurnWarningSeconds;
 
+        /// <summary>
+        /// Satranc saatinde koltugun kalan tam saniyesi (0'in altina inmez). Isleyen saat sunucu
+        /// olaylari arasinda yerelde geri sayar. Suresiz oda, eski sunucu ya da online disi: null.
+        /// </summary>
+        public int? ClockSeconds(int piece)
+        {
+            if (TimeControl == null || (piece != Board.Player1 && piece != Board.Player2)
+                || (Screen != AppScreen.PlayingOnline && Screen != AppScreen.Spectating))
+                return null;
+            return Math.Max(0, (int)Math.Ceiling(ClockLeft(piece)));
+        }
+
+        /// <summary>Koltugun saati 10 saniyenin altinda (kirmizi gosterilir).</summary>
+        public bool ClockWarning(int piece) => ClockSeconds(piece) is int s && s < ClockWarningSeconds;
+
+        /// <summary>Koltugun saati su an geri sayiyor (baslangic payinda ve duraklamada degil).</summary>
+        public bool ClockTicking(int piece) =>
+            ClockSeconds(piece) != null && _clockRunning == piece && !Game.GameOver
+            && Time.unscaledTime >= _clockRunFrom;
+
+        private double ClockLeft(int piece)
+        {
+            double left = _clockLeft[piece];
+            if (_clockRunning == piece && !Game.GameOver)
+                left -= Math.Max(0.0, Time.unscaledTime - _clockRunFrom);
+            return left;
+        }
+
         /// <summary>Sunucunun yolladigi hamle suresi alanlarini alir (eski sunucuda alan yok: sure yok).</summary>
         private void UpdateTurnClock(JsonObject data)
         {
@@ -307,12 +350,84 @@ namespace ConnectFourPro.Game
             _turnClockAt = Time.unscaledTime;
             if (data.Has("move_time"))
                 MoveTimeSeconds = data.GetInt("move_time");
+            UpdateChessClock(data);
+            // Sureli odada turn_seconds_left eski istemciler icin isleyen saati tasir;
+            // burada satranc saati gecerli, hamle basina sayac acilmaz (cift gosterim olmaz)
+            if (TimeControl != null)
+                _turnSecondsLeft = null;
+        }
+
+        /// <summary>
+        /// Satranc saati alanlari (_clock_fields): kalan sureler, isleyen koltuk ve baslangic
+        /// payi. Her saat tasiyan olayda yerel sayac sunucunun degerine duzeltilir.
+        /// </summary>
+        private void UpdateChessClock(JsonObject data)
+        {
+            int? p1 = data.GetNullableInt("clock_p1");
+            int? p2 = data.GetNullableInt("clock_p2");
+            string tc = data.GetString("time_control");
+            if (string.IsNullOrEmpty(tc) || p1 == null || p2 == null)
+            {
+                ClearChessClock();
+                return;
+            }
+            TimeControl = tc;
+            _clockPausedPiece = 0;
+            _clockLeft[Board.Player1] = p1.Value;
+            _clockLeft[Board.Player2] = p2.Value;
+            int running = data.GetInt("clock_running");
+            _clockRunning = running == Board.Player1 || running == Board.Player2 ? running : 0;
+            _clockRunFrom = Time.unscaledTime + Math.Max(0, data.GetInt("clock_delay"));
+            Debug.Log("[App] Saat " + tc + ": " + ClockFormat.Format(p1.Value) + " / "
+                      + ClockFormat.Format(p2.Value) + " (isleyen " + _clockRunning + ")");
+        }
+
+        /// <summary>Isleyen saatin harcadigi sureyi kalan sureye isler ve saati durdurur.</summary>
+        private void StopChessClock()
+        {
+            if (_clockRunning == 0)
+                return;
+            _clockLeft[_clockRunning] = ClockLeft(_clockRunning);
+            _clockRunFrom = Math.Max(Time.unscaledTime, _clockRunFrom);
+            _clockRunning = 0;
+        }
+
+        /// <summary>
+        /// Sunucu kopma sirasinda bir koltugun saatini durdurur. Eski sunucunun kopma/donus
+        /// olaylari saat alani tasimaz: istemci kendi sayacini durdurur, donuste kaldigi yerden
+        /// surdurur. Yeni sunucuda olaydaki saat alanlari ardindan sayaci esitler.
+        /// </summary>
+        private void PauseChessClock(int piece)
+        {
+            if (_clockRunning == 0 || _clockRunning != piece)
+                return;
+            StopChessClock();
+            _clockPausedPiece = piece;
+        }
+
+        private void ResumeChessClock()
+        {
+            if (_clockPausedPiece == 0 || Game.GameOver)
+                return;
+            _clockRunning = _clockPausedPiece;
+            _clockPausedPiece = 0;
+            // Baslangic payi icinde durdurulduysa kalan payi korunur (sunucu da korur)
+            _clockRunFrom = Math.Max(Time.unscaledTime, _clockRunFrom);
+        }
+
+        private void ClearChessClock()
+        {
+            TimeControl = null;
+            _clockLeft[Board.Player1] = _clockLeft[Board.Player2] = 0;
+            _clockRunning = 0;
+            _clockPausedPiece = 0;
         }
 
         private void ClearTurnClock()
         {
             _turnSecondsLeft = null;
             MoveTimeSeconds = 0;
+            ClearChessClock();
         }
 
         private void TickConnectionCountdowns()
@@ -345,7 +460,7 @@ namespace ConnectFourPro.Game
                 if (left != _opponentShownSeconds)
                 {
                     _opponentShownSeconds = left;
-                    SetStatus($"Rakibin bağlantısı koptu! {left} sn içinde dönmezse kazanırsın.", StatusTone.Bad);
+                    SetStatus(OpponentAwayText(left), StatusTone.Bad);
                 }
             }
         }
@@ -356,6 +471,7 @@ namespace ConnectFourPro.Game
             _lostShownSeconds = -1;
             _opponentDeadline = -1f;
             _opponentShownSeconds = -1;
+            _disconnectFirstMovePending = false;
             _sessionDead = false;
         }
 
@@ -840,7 +956,7 @@ namespace ConnectFourPro.Game
         // Online oyun
         // =====================================================================
 
-        public void CreateOnlineGame()
+        public void CreateOnlineGame(string timeControl = null)
         {
             if (_joinPending)
                 return;
@@ -848,8 +964,24 @@ namespace ConnectFourPro.Game
             RoomId = null;
             SetScreen(AppScreen.Waiting);
             SetStatus("");
-            _socket.CreateGame(Username, _authToken);
+            _socket.CreateGame(Username, _authToken, timeControl);
         }
+
+        /// <summary>Lobideki "Yeni Oyun"un kuracagi oda: null suresiz, "3+2" sureli.</summary>
+        public string LobbyTimeControl { get; private set; }
+
+        /// <summary>Lobideki sure secimi dugmesinin yazisi.</summary>
+        public string LobbyTimeControlLabel => LobbyTimeControl ?? "Süresiz";
+
+        /// <summary>Lobideki secimi Suresiz ile 3+2 arasinda degistirir.</summary>
+        public void ToggleLobbyTimeControl()
+        {
+            LobbyTimeControl = LobbyTimeControl == null ? TimedControl : null;
+            Debug.Log("[App] Sure secimi: " + (LobbyTimeControl ?? "suresiz"));
+        }
+
+        /// <summary>Lobideki secime gore oda kurar.</summary>
+        public void CreateLobbyGame() => CreateOnlineGame(LobbyTimeControl);
 
         // =====================================================================
         // Hizli eslesme
@@ -986,6 +1118,10 @@ namespace ConnectFourPro.Game
                 return;
             _lostAt = Time.unscaledTime;
             _lostShownSeconds = -1;
+            // Biz kopunca sunucu sirasi gelen rakibin saatini durdurur; kendi saatimiz isler.
+            // Geri donuste game_joined saati duzeltir.
+            if (!IsSpectator)
+                PauseChessClock(Board.OtherPlayer(MyPiece));
             SetStatus("Bağlantı koptu! Yeniden bağlanılıyor...", StatusTone.Bad);
         }
 
@@ -1018,7 +1154,7 @@ namespace ConnectFourPro.Game
                 case SocketEvents.GameOver: OnGameOver(data); break;
                 case SocketEvents.EloUpdate: OnEloUpdate(data); break;
                 case SocketEvents.OpponentDisconnected: OnOpponentDisconnected(data); break;
-                case SocketEvents.OpponentReconnected: OnOpponentReconnected(); break;
+                case SocketEvents.OpponentReconnected: OnOpponentReconnected(data); break;
                 case SocketEvents.GameEnded: OnGameEnded(); break;
                 case SocketEvents.Error: OnServerError(data); break;
                 case SocketEvents.RematchOffered: OnRematchOffered(data); break;
@@ -1218,16 +1354,32 @@ namespace ConnectFourPro.Game
             int w = info.Winner;
             _opponentDeadline = -1f;
             _turnSecondsLeft = null;
+            StopChessClock();   // biten oyunun saati son haliyle donar (Game.GameOver'dan once)
+            _clockPausedPiece = 0;
             if (info.HasDetailField)
                 _rematchSupported = true;
             // Rakip ayrildi / koptu: rovans istenemez
             if (!IsSpectator && w == MyPiece && (info.Detail == "leave" || info.Detail == "disconnect"))
                 Rematch = RematchState.Unavailable;
             bool forfeit = info.Reason == "forfeit";
-            if (forfeit && !Game.GameOver)
+            // Hizli macta ilk hamle gelmedi: kazanansiz, puansiz iptal; rovans sunulmaz
+            bool aborted = info.Reason == "aborted";
+            if (aborted && Game.MoveCount > 0)
+            {
+                // Gec ilk hamlenin iyimser tasi: sunucu kaydetmedi (iptal), tahta bos gosterilir
+                CancelAnimation();
+                CancelAnalysis();
+                Game = new GameState();
+            }
+            if ((forfeit || aborted) && !Game.GameOver)
             {
                 Game.GameOver = true;
                 Game.Winner = w;
+            }
+            if (aborted)
+            {
+                _abortedGame = Game;
+                Rematch = RematchState.Unavailable;
             }
             if (!IsSpectator && (MyPiece == Board.Player1 || MyPiece == Board.Player2))
             {
@@ -1253,6 +1405,8 @@ namespace ConnectFourPro.Game
         /// <summary>Sonuc metni; detail yoksa (eski sunucu) eski metinler.</summary>
         private (string msg, StatusTone tone) ResultText(int w, bool forfeit, string detail)
         {
+            if (IsAborted)
+                return ("Oyun iptal edildi (puansız)", StatusTone.Neutral);
             if (IsSpectator)
             {
                 string msg = w == Board.Player1 ? "Kırmızı kazandı!" : (w == Board.Player2 ? "Sarı kazandı!" : "Berabere!");
@@ -1352,6 +1506,20 @@ namespace ConnectFourPro.Game
             LastEloChange = data.GetInt("change");
         }
 
+        /// <summary>
+        /// Rakip kopukken durum metni. Hizli macta ilk hamle penceresi acikken (sunucu
+        /// first_move_pending bildirdi, hala hamle yok) galibiyet vaat edilmez: sunucu bu
+        /// durumda hukmen yenilgi yerine oyunu puansiz iptal eder. Eski sunucu alani gondermez.
+        /// </summary>
+        private string OpponentAwayText(int seconds)
+        {
+            if (_disconnectFirstMovePending && Game.MoveCount == 0)
+                return Game.CurrentPlayer == MyPiece
+                    ? "Rakibin bağlantısı koptu. Hamleni yapabilirsin; yapmazsan oyun iptal edilir (puansız)."
+                    : "Rakibin bağlantısı koptu. Dönüp ilk hamleyi yapmazsa oyun iptal edilir (puansız).";
+            return $"Rakibin bağlantısı koptu! {seconds} sn içinde dönmezse kazanırsın.";
+        }
+
         private void OnOpponentDisconnected(JsonObject data)
         {
             if (Screen == AppScreen.PlayingOnline && !Game.GameOver)
@@ -1359,24 +1527,45 @@ namespace ConnectFourPro.Game
                 int grace = data.GetInt("grace_seconds", ReconnectGraceDefault);
                 _opponentDeadline = Time.unscaledTime + grace;
                 _opponentShownSeconds = grace;
-                // Sunucu, sira bendeyken kopan rakibi beklerken saatimi durdurur (_clock_paused)
+                _disconnectFirstMovePending = data.GetBool("first_move_pending");
+                // Sunucu, sira bendeyken kopan rakibi beklerken saatimi durdurur (_clock_paused).
+                // Eski sunucunun olayi saat alani tasimaz: satranc saatini de burada durdururuz.
+                // Sirasi gelen rakip koptuysa onun saati sunucuda islemeye devam eder.
                 if (Game.CurrentPlayer == MyPiece)
                     _turnSecondsLeft = null;
-                SetStatus($"Rakibin bağlantısı koptu! {grace} sn içinde dönmezse kazanırsın.", StatusTone.Bad);
+                PauseChessClock(MyPiece);
+                ResyncChessClock(data);
+                SetStatus(OpponentAwayText(grace), StatusTone.Bad);
             }
             else if (IsSpectator)
             {
                 _turnSecondsLeft = null;   // kimin koptugu bilinmez: saat gosterilmez
+                ResyncChessClock(data);    // satranc saati sunucu degerine (duran saat durur)
                 SetStatus("Bir oyuncunun bağlantısı koptu...");
             }
         }
 
-        private void OnOpponentReconnected()
+        /// <summary>
+        /// Kopma/donus olayindaki satranc saati alanlariyla esitler. Yalnizca sureli odada:
+        /// suresiz oda ve eski sunucu (alan yok) yerel duraklatma mantigiyla aynen kalir.
+        /// </summary>
+        private void ResyncChessClock(JsonObject data)
+        {
+            if (TimeControl == null || Game.GameOver || !data.Has("clock_p1")
+                || (Screen != AppScreen.PlayingOnline && Screen != AppScreen.Spectating))
+                return;
+            UpdateChessClock(data);
+        }
+
+        private void OnOpponentReconnected(JsonObject data)
         {
             _opponentDeadline = -1f;
+            ResumeChessClock();      // eski sunucu: donus olayi saat alani tasimaz
+            ResyncChessClock(data);  // yeni sunucu: sunucunun degeriyle esitlenir
             // Sunucu, rakip donunce sirasi gelen oyuncunun suresini bastan baslatir
+            // (sureli odada hamle basina sure yoktur, satranc saati gecerlidir)
             if (Screen == AppScreen.PlayingOnline && !IsSpectator && !Game.GameOver
-                && Game.CurrentPlayer == MyPiece && MoveTimeSeconds > 0)
+                && Game.CurrentPlayer == MyPiece && MoveTimeSeconds > 0 && TimeControl == null)
             {
                 _turnSecondsLeft = MoveTimeSeconds;
                 _turnClockAt = Time.unscaledTime;
@@ -1574,6 +1763,12 @@ namespace ConnectFourPro.Game
         /// <summary>AI oyunu dugmesinin yazisi: oyun surerken "Yeni Oyun", bitince "Tekrar Oyna".</summary>
         public string NewGameLabel => Game.GameOver ? "Tekrar Oyna" : "Yeni Oyun";
 
+        // Sunucunun puansiz iptal ettigi oyun; yeni GameState ile kendiliginden gecersiz olur
+        private GameState _abortedGame;
+
+        /// <summary>Ekrandaki oyun sunucuda puansiz iptal edildi mi (ilk hamle gelmedi)?</summary>
+        public bool IsAborted => _abortedGame != null && ReferenceEquals(_abortedGame, Game);
+
         /// <summary>Biten oyunun buyuk basligi (null: oyun suruyor).</summary>
         public (string text, StatusTone tone)? ResultHeadline
         {
@@ -1581,6 +1776,8 @@ namespace ConnectFourPro.Game
             {
                 if (!Game.GameOver)
                     return null;
+                if (IsAborted)
+                    return ("İPTAL EDİLDİ", StatusTone.Neutral);
                 int w = Game.Winner;
                 if (w == 0)
                     return ("BERABERE", StatusTone.Neutral);

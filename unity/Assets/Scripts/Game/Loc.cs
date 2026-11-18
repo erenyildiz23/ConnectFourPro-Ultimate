@@ -176,6 +176,7 @@ namespace ConnectFourPro.Game
             ["+ Yeni Oyun"] = "+ New Game",
             ["Yenile"] = "Refresh",
             ["Yenilendi"] = "Refreshed",
+            ["Süresiz"] = "Untimed",   // sure secimi; "3+2" ve saat ("3:00") cevrilmez
             ["ODA"] = "ROOM",
             ["OYUNCU 1"] = "PLAYER 1",
             ["OYUNCU 2"] = "PLAYER 2",
@@ -212,6 +213,7 @@ namespace ConnectFourPro.Game
             ["KAZANDIN"] = "YOU WON",
             ["KAYBETTİN"] = "YOU LOST",
             ["BERABERE"] = "DRAW",
+            ["İPTAL EDİLDİ"] = "ABORTED",
             ["{0} hamle"] = "{0} moves",
 
             // --- Mac tekrari
@@ -279,6 +281,7 @@ namespace ConnectFourPro.Game
             ["Kazandın!"] = "You won!",
             ["Kaybettin."] = "You lost.",
             ["Berabere!"] = "Draw!",
+            ["Oyun iptal edildi (puansız)"] = "Game aborted (unrated)",
             ["AI kazandı!"] = "AI wins!",
             ["Kırmızı kazandı!"] = "Red wins!",
             ["Sarı kazandı!"] = "Yellow wins!",
@@ -320,6 +323,10 @@ namespace ConnectFourPro.Game
             ["Rakibin bağlantısı koptu! {0} sn içinde dönmezse kazanırsın."] =
                 "Your opponent disconnected! You win if they don't return within {0}s.",
             ["Bir oyuncunun bağlantısı koptu..."] = "A player disconnected...",
+            ["Rakibin bağlantısı koptu. Hamleni yapabilirsin; yapmazsan oyun iptal edilir (puansız)."] =
+                "Opponent disconnected. You can still move; if you don't, the game is aborted (unrated).",
+            ["Rakibin bağlantısı koptu. Dönüp ilk hamleyi yapmazsa oyun iptal edilir (puansız)."] =
+                "Opponent disconnected. If they don't return and make the first move, the game is aborted (unrated).",
             ["Yayın bağlantısı geri gelmedi. Lobiye dönüp tekrar izleyebilirsin."] =
                 "The stream connection did not come back. Return to the lobby to watch again.",
             ["Sunucuya yeniden bağlanılamadı. Oyun hükmen kaybedilmiş olabilir; lobiye dönebilirsin."] =

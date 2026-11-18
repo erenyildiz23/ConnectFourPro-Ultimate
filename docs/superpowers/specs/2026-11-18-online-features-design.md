@@ -109,6 +109,50 @@ rakiplerle aynı temel özellikleri sunmasıdır.
 - İstemci: menüye "Hızlı Maç" düğmesi gelir. Bekleme ekranı mevcut
   `Waiting` görünümünü "Rakip aranıyor..." yazısı ve İptal düğmesiyle
   kullanır.
+- **İlk hamle gelmezse puansız iptal:** Hızlı eşleşme odası `quick: True`
+  bayrağı taşır (rövanşta korunur). İlk hamleyi yapacak oyuncu, 5 sn
+  başlangıç payı (`CLOCK_START_DELAY_SECONDS`) bittikten sonra 30 sn
+  (`FIRST_MOVE_ABORT_SECONDS`) içinde oynamazsa oyun iptal edilir:
+  kazanan yok, ELO değişmez, kimseye yenilgi yazılmaz. İptal edilen oyun
+  veritabanına hiç kaydedilmez (geçmişte görünmez). Sunucu bunu satranç
+  saatiyle aynı döngüde (`move_clock_loop` → `enforce_move_deadlines`,
+  `GAMES_LOCK` altında) denetler. Satranç saatindeki gibi 2 sn ağ payı
+  (`MOVE_TIME_GRACE_SECONDS`) vardır: pencere bittikten sonraki 2 sn
+  içinde gelen ilk hamle kabul edilir, iptal 30 + 2 sn sonra olur; bu
+  paydan sonra gelen ilk hamle geçersizdir ve oyunu iptal eder. Odaya (oyuncular ve seyirciler)
+  `game_over {reason: 'aborted', detail: 'first_move', winner: null}`
+  gider. İlk hamle yapılınca pencere kapanır, normal 3+2 kuralları
+  işler. Her rövanşta pencere yeniden açılır. Normal lobi odaları
+  (süreli ya da süresiz) etkilenmez.
+- Pencere açıkken bilerek ayrılma (`leave_game`, iki oyuncu için de)
+  hükmen yenilgi değil, aynı puansız iptaldir (kaydedilmez). İlk
+  hamleden sonra ayrılmak eskisi gibi hükmen yenilgidir. Normal lobi
+  odalarında ayrılma kuralı değişmez.
+- Pencere açıkken kopma: iptal, kopma nedeniyle hükmen yenilgiden
+  önce gelir. İlk hamleyi yapacak oyuncu koparsa yeniden bağlanma süresi
+  dolsa da hükmen yenilgi verilmez; 30 sn dolunca oyun iptal edilir.
+  Sırası gelmeyen oyuncu koparsa da pencere açıkken hükmen yenilgi
+  verilmez: ilk hamleyi yapacak oyuncu 30 sn içinde oynamazsa oyun iptal
+  edilir; oynarsa pencere kapanır ve kopan oyuncu hâlâ dönmediyse
+  hükmen yenilgi (`detail: 'disconnect'`) o anda işlenir. Pencere,
+  rakibin kopması yüzünden saat duraklasa da işlemeye devam eder.
+- Sunucu saat alanlarına `first_move_pending` (bool) ekler (`game_start`,
+  `game_joined`, `move_made`, `opponent_disconnected` vb.). Rakip
+  koptuğunda bu alan doğruysa ve henüz hamle yoksa yeni istemciler
+  "N sn içinde dönmezse kazanırsın" yazmaz: ilk hamleyi yapacak oyuncuya
+  "Hamleni yapabilirsin; yapmazsan oyun iptal edilir (puansız)", diğerine
+  "Dönüp ilk hamleyi yapmazsa oyun iptal edilir (puansız)" gösterilir.
+  İlk hamleden sonra eski geri sayım metni döner. Eski istemciler alanı
+  yok sayar.
+- Geç ilk hamlede istemcinin tahtaya koyduğu iyimser taş, `aborted`
+  sonucu gelince silinir (sunucu o hamleyi kaydetmedi).
+- İstemciler: Unity "Oyun iptal edildi (puansız)" / "Game aborted
+  (unrated)" yazar, başlıkta "İPTAL EDİLDİ" görünür, rövanş düğmesi
+  çıkmaz (ilk hamleyi yapmayan rakiple rövanş anlamsız); "Lobiye Dön"
+  ile çıkılıp yeni hızlı maç aranabilir. pygame "Oyun iptal edildi
+  (puansiz)" gösterir, rövanş düğmesi yine çıkmaz. Sunucu rövanş
+  isteğini reddetmez (eski istemciler için). Eski istemciler bilinmeyen
+  `reason`'u kazanansız sonuç olarak "Berabere!" diye gösterir, çökmez.
 
 ### 3. Hazır sohbet
 
@@ -164,7 +208,17 @@ rakiplerle aynı temel özellikleri sunmasıdır.
   sadece `game_start` içinde var).
 - Olaylardaki saat alanları `_clock_fields` içine eklenir:
   `time_control`, `clock_p1`, `clock_p2` (kalan tam saniye) ve
-  `clock_running` (1, 2 ya da 0). Eski alanlar değişmez.
+  `clock_running` (1, 2 ya da 0). Süresiz odada eski alanlar değişmez.
+- *(Düzeltme, son inceleme I-1)* Saati okuyamayan eski istemciler
+  (pygame, önbellekteki eski WebGL) süreli odada da bir sayaç görsün diye
+  süreli odada `turn_seconds_left` işleyen koltuğun kalan süresi artı
+  kalan başlangıç payıdır. Duraklamada, bitmiş ya da bekleyen odada
+  `None` olur. `move_time` süreli odada 0'dır, böylece eski istemciler
+  rakip dönünce sayacı hamle süresiyle yeniden kurmaz. Yeni istemci
+  `time_control` varken bu alanları kullanmaz.
+- *(Düzeltme, T8-M1)* `opponent_disconnected` ve `opponent_reconnected`
+  olayları da `_clock_fields` taşır. Seyirciler dahil herkes duraklama ve
+  devam anında saati eşitler.
 - İstemci: oda kurma ekranında "Süresiz / 3+2" seçimi olur. Oyun
   ekranında iki oyuncunun adının yanında mm:ss saat görünür. Sırası
   gelen oyuncunun saati yerelde geri sayar ve her sunucu olayında

@@ -83,6 +83,10 @@ namespace ConnectFourPro.Tests
         [TestCase("Rövanş?", "Rematch?")]
         [TestCase("Selam!", "Hi!")]
         [TestCase("Sohbet", "Chat")]
+        [TestCase("Süresiz", "Untimed")]
+        [TestCase("3+2", "3+2")]
+        [TestCase("3:00", "3:00")]
+        [TestCase("+ Yeni Oyun", "+ New Game")]
         [TestCase("Misafir_123456", "Misafir_123456")]
         [TestCase("", "")]
         public void TranslatesToEnglish(string tr, string en)

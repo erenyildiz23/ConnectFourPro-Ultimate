@@ -1383,3 +1383,96 @@ class TestJoinedResult:
                             'p1_info': {'username': 'a'}, 'p2_info': {'username': 'b'}, 'game_no': 1,
                             'result': {'winner': 1, 'reason': 'normal', 'detail': None}})
         assert gui.status_text == "Kirmizi kazandi!" and gui.result_headline()[0] == "KIRMIZI KAZANDI"
+
+
+# =============================================================================
+# Hizli macta ilk hamle gelmedi: puansiz iptal (reason 'aborted')
+# =============================================================================
+
+class TestAbortedGame:
+    ABORTED = {'winner': None, 'winner_uid': None, 'reason': 'aborted', 'detail': 'first_move',
+               'elo_changes': {'p1': 0, 'p2': 0}, 'new_ratings': {'p1': None, 'p2': None}, 'move_count': 0}
+
+    @pytest.mark.parametrize("mine", [PLAYER1_PIECE, PLAYER2_PIECE])
+    def test_player_sees_unrated_abort(self, gui, mine):
+        online(gui, mine)
+        gui.on_game_over_network(dict(self.ABORTED))
+        assert gui.game.game_over and gui.game.winner is None
+        assert gui.status_text == "Oyun iptal edildi (puansiz)" and gui.status_tone == 'neutral'
+        assert gui.result_headline()[0] == "IPTAL EDILDI"
+        assert not gui.rematch_button_visible() and not gui.can_request_rematch()
+        gui.tick()                                                  # cizim hata vermemeli
+
+    def test_spectator_sees_unrated_abort(self, gui):
+        online(gui, 0)
+        gui.state, gui.is_spectator = "SPECTATING", True
+        gui.on_game_over_network(dict(self.ABORTED))
+        assert gui.status_text == "Oyun iptal edildi (puansiz)"
+        gui.tick()
+
+    def test_next_game_clears_abort(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_game_over_network(dict(self.ABORTED))
+        gui.on_game_start({'msg': 'Oyun Basladi!'})
+        assert not gui.game.game_over and gui.result_headline() is None
+
+
+class TestReconnectClockFields:
+    def test_timed_room_restores_countdown_on_opponent_reconnect(self, gui):
+        """Sureli odada sunucu opponent_reconnected ile saat alanlarini gonderir (move_time 0,
+        turn_seconds_left = isleyen saat): sayac bir sonraki hamleyi beklemeden geri gelir."""
+        online(gui, PLAYER1_PIECE)
+        gui.on_game_start({'move_time': 0, 'turn_seconds_left': 185})
+        gui.on_opponent_disconnected({'grace_seconds': 30})
+        assert gui.turn_seconds_left() is None
+        gui.on_opponent_reconnected({'msg': 'Rakip geri dondu', 'move_time': 0, 'turn_seconds_left': 170,
+                                     'time_control': '3+2', 'clock_running': 1})
+        assert gui.turn_seconds_left() == 170
+
+    def test_reconnect_fields_follow_server_when_opponent_moves(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_game_start({'move_time': 0, 'turn_seconds_left': 185})
+        gui.game = ConnectFourGame.from_moves([3])                  # sira rakipte
+        gui.on_opponent_reconnected({'move_time': 0, 'turn_seconds_left': 150})
+        assert gui.turn_seconds_left() == 150
+
+
+class TestFirstMoveWindowTexts:
+    MOVER = "Rakibin baglantisi koptu. Hamleni yapabilirsin; yapmazsan oyun iptal edilir (puansiz)."
+    WAITER = "Rakibin baglantisi koptu. Donup ilk hamleyi yapmazsa oyun iptal edilir (puansiz)."
+
+    def test_first_mover_is_told_to_move(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_opponent_disconnected({'grace_seconds': 30, 'first_move_pending': True})
+        assert gui.status_text == self.MOVER
+        gui.opponent_deadline -= 11.5
+        gui.tick()                                                  # geri sayim galibiyet vaat etmez
+        assert gui.status_text == self.MOVER
+
+    def test_waiting_player_is_told_game_will_be_aborted(self, gui):
+        online(gui, PLAYER2_PIECE)
+        gui.on_opponent_disconnected({'grace_seconds': 30, 'first_move_pending': True})
+        assert gui.status_text == self.WAITER
+        gui.opponent_deadline -= 5
+        gui.tick()
+        assert gui.status_text == self.WAITER
+
+    def test_after_first_move_countdown_returns(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_opponent_disconnected({'grace_seconds': 30, 'first_move_pending': True})
+        gui.game = ConnectFourGame.from_moves([3])                  # ilk hamle yapildi: pencere kapandi
+        gui.opponent_deadline -= 10.5
+        gui.tick()
+        assert gui.status_text == "Rakibin baglantisi koptu! 20 sn icinde donmezse kazanirsin."
+
+    def test_old_server_keeps_win_text(self, gui):
+        online(gui, PLAYER1_PIECE)
+        gui.on_opponent_disconnected({'grace_seconds': 30})
+        assert gui.status_text == "Rakibin baglantisi koptu! 30 sn icinde donmezse kazanirsin."
+
+    def test_late_first_move_ghost_disc_removed_on_abort(self, gui):
+        online(gui, PLAYER1_PIECE, [3])                             # iyimser yerel tas, sunucu kabul etmedi
+        gui.on_game_over_network(dict(TestAbortedGame.ABORTED))
+        assert gui.game.move_history == [] and gui.game.game_over and gui.is_aborted()
+        assert gui.result_headline()[0] == "IPTAL EDILDI"
+        gui.tick()

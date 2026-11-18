@@ -29,7 +29,7 @@ class TestRooms:
         assert data['player_piece'] == 1 and len(data['room_id']) == 5 and data['room_id'].isupper()
         listed = http.get('/active_games').get_json()
         assert listed == [{'room_id': data['room_id'], 'p1': 'alice', 'p1_elo': 1200, 'p2': 'Bekleniyor...',
-                           'p2_elo': 0, 'status': 'WAITING', 'move_count': 0}]
+                           'p2_elo': 0, 'status': 'WAITING', 'move_count': 0, 'time_control': None}]
 
     def test_second_create_replaces_waiting_room(self, sio, server):
         a = sio()
@@ -606,7 +606,8 @@ class TestMoveTimer:
         assert a.wait_for('game_start')['game_no'] == 2
         assert 27 <= b.wait_for('game_start')['turn_seconds_left'] <= 30
 
-    def test_watchdog_loop_is_started_only_when_enabled(self, server, monkeypatch):
+    def test_watchdog_loop_is_always_started(self, server, monkeypatch):
+        # Gorev hamle suresi kapaliyken de calisir: sureli odalarin satranc saatini denetler
         started = []
         monkeypatch.setattr(server.socketio, 'start_background_task', lambda fn, *a: started.append(fn.__name__))
         server.start_cleanup_thread()
@@ -614,7 +615,7 @@ class TestMoveTimer:
         started.clear()
         monkeypatch.setattr(server.config, 'MOVE_TIME_SECONDS', 0)
         server.start_cleanup_thread()
-        assert started == ['cleanup_loop']
+        assert started == ['cleanup_loop', 'move_clock_loop']
 
 
 def finish_game(room_id, a, b):

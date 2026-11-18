@@ -166,6 +166,18 @@ namespace ConnectFourPro.Tests
         }
 
         [Test]
+        public void ActiveGameParsesTimeControl()
+        {
+            var games = ActiveGame.ListFrom(Json.Parse(
+                "[{\"room_id\": \"AB12C\", \"p1\": \"ali\", \"p1_elo\": 1250, \"p2\": \"b\", \"p2_elo\": 0, \"status\": \"WAITING\", \"move_count\": 0, \"time_control\": \"3+2\"}," +
+                " {\"room_id\": \"XY9Z0\", \"p1\": \"a\", \"p1_elo\": 1200, \"p2\": \"b\", \"p2_elo\": 1190, \"status\": \"PLAYING\", \"move_count\": 4, \"time_control\": null}," +
+                " {\"room_id\": \"OLD00\", \"p1\": \"a\", \"p1_elo\": 1200, \"p2\": \"b\", \"p2_elo\": 1190, \"status\": \"PLAYING\", \"move_count\": 4}]"));
+            Assert.That(games[0].TimeControl, Is.EqualTo("3+2"));
+            Assert.That(games[1].TimeControl, Is.Null, "suresiz oda");
+            Assert.That(games[2].TimeControl, Is.Null, "eski sunucu alani yollamaz");
+        }
+
+        [Test]
         public void HistoryEntries()
         {
             var list = HistoryEntry.ListFrom(JsonObject.ParseObject(
