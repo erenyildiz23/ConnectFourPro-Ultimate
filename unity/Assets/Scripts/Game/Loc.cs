@@ -130,6 +130,7 @@ namespace ConnectFourPro.Game
             ["not_your_turn"] = "Sira sizde degil!",
             ["rematch_players_only"] = "Sadece oyuncular rovans isteyebilir",
             ["game_in_progress"] = "Oyun devam ediyor",
+            ["already_in_game"] = "Zaten bir oyundasiniz",
         };
 
         /// <summary>Turkce -> Ingilizce. {n} iceren anahtarlar sablondur.</summary>
@@ -345,6 +346,7 @@ namespace ConnectFourPro.Game
             ["Sira sizde degil!"] = "It's not your turn!",
             ["Sadece oyuncular rovans isteyebilir"] = "Only players can request a rematch",
             ["Oyun devam ediyor"] = "Game in progress",
+            ["Zaten bir oyundasiniz"] = "You are already in a game",
         };
 
         private static readonly Dictionary<string, string> En = new Dictionary<string, string>();
