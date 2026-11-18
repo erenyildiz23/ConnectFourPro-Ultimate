@@ -158,6 +158,8 @@ namespace ConnectFourPro.Game
         // Rakip koptu: sunucunun verdigi bekleme suresinin bitis zamani (-1: yok)
         private float _opponentDeadline = -1f;
         private int _opponentShownSeconds = -1;
+        // Rakip koptugunda sunucu hizli macta ilk hamle penceresinin acik oldugunu bildirdi
+        private bool _disconnectFirstMovePending;
         // Oturum artik ilerleyemez (oda kapandi, geri donus reddedildi, baglanti donmedi)
         // ama Game.GameOver da degil: hamle engellenir, cikis onay istemez.
         private bool _sessionDead;
@@ -458,7 +460,7 @@ namespace ConnectFourPro.Game
                 if (left != _opponentShownSeconds)
                 {
                     _opponentShownSeconds = left;
-                    SetStatus($"Rakibin bağlantısı koptu! {left} sn içinde dönmezse kazanırsın.", StatusTone.Bad);
+                    SetStatus(OpponentAwayText(left), StatusTone.Bad);
                 }
             }
         }
@@ -469,6 +471,7 @@ namespace ConnectFourPro.Game
             _lostShownSeconds = -1;
             _opponentDeadline = -1f;
             _opponentShownSeconds = -1;
+            _disconnectFirstMovePending = false;
             _sessionDead = false;
         }
 
@@ -1361,6 +1364,13 @@ namespace ConnectFourPro.Game
             bool forfeit = info.Reason == "forfeit";
             // Hizli macta ilk hamle gelmedi: kazanansiz, puansiz iptal; rovans sunulmaz
             bool aborted = info.Reason == "aborted";
+            if (aborted && Game.MoveCount > 0)
+            {
+                // Gec ilk hamlenin iyimser tasi: sunucu kaydetmedi (iptal), tahta bos gosterilir
+                CancelAnimation();
+                CancelAnalysis();
+                Game = new GameState();
+            }
             if ((forfeit || aborted) && !Game.GameOver)
             {
                 Game.GameOver = true;
@@ -1496,6 +1506,20 @@ namespace ConnectFourPro.Game
             LastEloChange = data.GetInt("change");
         }
 
+        /// <summary>
+        /// Rakip kopukken durum metni. Hizli macta ilk hamle penceresi acikken (sunucu
+        /// first_move_pending bildirdi, hala hamle yok) galibiyet vaat edilmez: sunucu bu
+        /// durumda hukmen yenilgi yerine oyunu puansiz iptal eder. Eski sunucu alani gondermez.
+        /// </summary>
+        private string OpponentAwayText(int seconds)
+        {
+            if (_disconnectFirstMovePending && Game.MoveCount == 0)
+                return Game.CurrentPlayer == MyPiece
+                    ? "Rakibin bağlantısı koptu. Hamleni yapabilirsin; yapmazsan oyun iptal edilir (puansız)."
+                    : "Rakibin bağlantısı koptu. Dönüp ilk hamleyi yapmazsa oyun iptal edilir (puansız).";
+            return $"Rakibin bağlantısı koptu! {seconds} sn içinde dönmezse kazanırsın.";
+        }
+
         private void OnOpponentDisconnected(JsonObject data)
         {
             if (Screen == AppScreen.PlayingOnline && !Game.GameOver)
@@ -1503,6 +1527,7 @@ namespace ConnectFourPro.Game
                 int grace = data.GetInt("grace_seconds", ReconnectGraceDefault);
                 _opponentDeadline = Time.unscaledTime + grace;
                 _opponentShownSeconds = grace;
+                _disconnectFirstMovePending = data.GetBool("first_move_pending");
                 // Sunucu, sira bendeyken kopan rakibi beklerken saatimi durdurur (_clock_paused).
                 // Eski sunucunun olayi saat alani tasimaz: satranc saatini de burada durdururuz.
                 // Sirasi gelen rakip koptuysa onun saati sunucuda islemeye devam eder.
@@ -1510,7 +1535,7 @@ namespace ConnectFourPro.Game
                     _turnSecondsLeft = null;
                 PauseChessClock(MyPiece);
                 ResyncChessClock(data);
-                SetStatus($"Rakibin bağlantısı koptu! {grace} sn içinde dönmezse kazanırsın.", StatusTone.Bad);
+                SetStatus(OpponentAwayText(grace), StatusTone.Bad);
             }
             else if (IsSpectator)
             {

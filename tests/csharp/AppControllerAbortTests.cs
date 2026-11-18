@@ -3,6 +3,7 @@
 using ConnectFourPro.Core;
 using ConnectFourPro.Game;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace ConnectFourPro.Tests
 {
@@ -65,6 +66,69 @@ namespace ConnectFourPro.Tests
             ReceiveAborted();
             _app.RequestBack();
             Assert.That(_app.Screen, Is.Not.EqualTo(AppScreen.PlayingOnline));
+        }
+
+        private const string MoverText = "Rakibin bağlantısı koptu. Hamleni yapabilirsin; yapmazsan oyun iptal edilir (puansız).";
+        private const string WaiterText = "Rakibin bağlantısı koptu. Dönüp ilk hamleyi yapmazsa oyun iptal edilir (puansız).";
+
+        [Test]
+        public void FirstMoverIsToldToMoveWhenOpponentDrops()
+        {
+            _app.GuestLogin();
+            StartOnlineGameAsP1();
+            Time.unscaledTime = 10f;
+            _transport.Receive("opponent_disconnected", "{\"grace_seconds\":30,\"first_move_pending\":true}");
+            Assert.That(_app.Status, Is.EqualTo(MoverText));
+            Time.unscaledTime = 22.5f;
+            _app.Tick();
+            Assert.That(_app.Status, Is.EqualTo(MoverText), "geri sayim galibiyet vaat etmez");
+        }
+
+        [Test]
+        public void WaitingPlayerIsToldGameWillBeAborted()
+        {
+            _app.GuestLogin();
+            StartOnlineGameAsP2();
+            Time.unscaledTime = 10f;
+            _transport.Receive("opponent_disconnected", "{\"grace_seconds\":30,\"first_move_pending\":true}");
+            Assert.That(_app.Status, Is.EqualTo(WaiterText));
+            Time.unscaledTime = 15.5f;
+            _app.Tick();
+            Assert.That(_app.Status, Is.EqualTo(WaiterText));
+        }
+
+        [Test]
+        public void AfterFirstMoveCountdownPromisesWinAgain()
+        {
+            _app.GuestLogin();
+            StartOnlineGameAsP1();
+            Time.unscaledTime = 10f;
+            _transport.Receive("opponent_disconnected", "{\"grace_seconds\":30,\"first_move_pending\":true}");
+            _app.HandleColumnClick(3);   // ilk hamle: pencere kapanir
+            Time.unscaledTime = 20.5f;
+            _app.Tick();
+            Assert.That(_app.Status, Is.EqualTo("Rakibin bağlantısı koptu! 20 sn içinde dönmezse kazanırsın."));
+        }
+
+        [Test]
+        public void FirstMoveWindowTextsAreTranslated()
+        {
+            Assert.That(Loc.T(MoverText, Lang.En), Is.EqualTo("Opponent disconnected. You can still move; if you don't, the game is aborted (unrated)."));
+            Assert.That(Loc.T(WaiterText, Lang.En), Is.EqualTo("Opponent disconnected. If they don't return and make the first move, the game is aborted (unrated)."));
+        }
+
+        [Test]
+        public void LateFirstMoveGhostDiscIsRemovedOnAbort()
+        {
+            _app.GuestLogin();
+            StartOnlineGameAsP1();
+            _app.HandleColumnClick(3);   // iyimser yerel tas; sunucu pencere dolmus diye iptal eder
+            Assert.That(_app.Game.MoveCount, Is.EqualTo(1));
+            ReceiveAborted();
+            Assert.That(_app.Game.MoveCount, Is.EqualTo(0), "sunucunun kaydetmedigi tas tahtada kalmaz");
+            Assert.That(_app.Game.GameOver, Is.True);
+            Assert.That(_app.IsAborted, Is.True);
+            Assert.That(_app.ResultHeadline.Value.text, Is.EqualTo("İPTAL EDİLDİ"));
         }
     }
 }

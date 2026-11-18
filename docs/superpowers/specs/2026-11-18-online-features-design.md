@@ -116,12 +116,18 @@ rakiplerle aynı temel özellikleri sunmasıdır.
   kazanan yok, ELO değişmez, kimseye yenilgi yazılmaz. İptal edilen oyun
   veritabanına hiç kaydedilmez (geçmişte görünmez). Sunucu bunu satranç
   saatiyle aynı döngüde (`move_clock_loop` → `enforce_move_deadlines`,
-  `GAMES_LOCK` altında) denetler; pencere dolduktan sonra gelen ilk hamle
-  de geçersizdir ve oyunu iptal eder. Odaya (oyuncular ve seyirciler)
+  `GAMES_LOCK` altında) denetler. Satranç saatindeki gibi 2 sn ağ payı
+  (`MOVE_TIME_GRACE_SECONDS`) vardır: pencere bittikten sonraki 2 sn
+  içinde gelen ilk hamle kabul edilir, iptal 30 + 2 sn sonra olur; bu
+  paydan sonra gelen ilk hamle geçersizdir ve oyunu iptal eder. Odaya (oyuncular ve seyirciler)
   `game_over {reason: 'aborted', detail: 'first_move', winner: null}`
   gider. İlk hamle yapılınca pencere kapanır, normal 3+2 kuralları
   işler. Her rövanşta pencere yeniden açılır. Normal lobi odaları
   (süreli ya da süresiz) etkilenmez.
+- Pencere açıkken bilerek ayrılma (`leave_game`, iki oyuncu için de)
+  hükmen yenilgi değil, aynı puansız iptaldir (kaydedilmez). İlk
+  hamleden sonra ayrılmak eskisi gibi hükmen yenilgidir. Normal lobi
+  odalarında ayrılma kuralı değişmez.
 - Pencere açıkken kopma: iptal, kopma nedeniyle hükmen yenilgiden
   önce gelir. İlk hamleyi yapacak oyuncu koparsa yeniden bağlanma süresi
   dolsa da hükmen yenilgi verilmez; 30 sn dolunca oyun iptal edilir.
@@ -130,6 +136,16 @@ rakiplerle aynı temel özellikleri sunmasıdır.
   edilir; oynarsa pencere kapanır ve kopan oyuncu hâlâ dönmediyse
   hükmen yenilgi (`detail: 'disconnect'`) o anda işlenir. Pencere,
   rakibin kopması yüzünden saat duraklasa da işlemeye devam eder.
+- Sunucu saat alanlarına `first_move_pending` (bool) ekler (`game_start`,
+  `game_joined`, `move_made`, `opponent_disconnected` vb.). Rakip
+  koptuğunda bu alan doğruysa ve henüz hamle yoksa yeni istemciler
+  "N sn içinde dönmezse kazanırsın" yazmaz: ilk hamleyi yapacak oyuncuya
+  "Hamleni yapabilirsin; yapmazsan oyun iptal edilir (puansız)", diğerine
+  "Dönüp ilk hamleyi yapmazsa oyun iptal edilir (puansız)" gösterilir.
+  İlk hamleden sonra eski geri sayım metni döner. Eski istemciler alanı
+  yok sayar.
+- Geç ilk hamlede istemcinin tahtaya koyduğu iyimser taş, `aborted`
+  sonucu gelince silinir (sunucu o hamleyi kaydetmedi).
 - İstemciler: Unity "Oyun iptal edildi (puansız)" / "Game aborted
   (unrated)" yazar, başlıkta "İPTAL EDİLDİ" görünür, rövanş düğmesi
   çıkmaz (ilk hamleyi yapmayan rakiple rövanş anlamsız); "Lobiye Dön"

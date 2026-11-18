@@ -398,8 +398,10 @@ def _first_move_pending(room: dict) -> bool:
 
 
 def _first_move_expired(room: dict) -> bool:
-    """Ilk hamle penceresi doldu mu? Kopma/duraklama pencereyi durdurmaz."""
-    return _first_move_pending(room) and _now() > room['first_move_abort_at']
+    """Ilk hamle penceresi (ag payi MOVE_TIME_GRACE_SECONDS dahil) doldu mu? Satranc saati
+    bayragiyla ayni tolerans. Kopma/duraklama pencereyi durdurmaz."""
+    return (_first_move_pending(room)
+            and _now() > room['first_move_abort_at'] + config.MOVE_TIME_GRACE_SECONDS)
 
 
 def _clock_flagged(room: dict) -> bool:
@@ -427,6 +429,8 @@ def _clock_fields(room: dict) -> Dict[str, Any]:
         'turn_seconds_left': None if deadline is None else max(0, math.ceil(deadline - time.time())),
         'time_control': _time_control_name(room),
         'clock_p1': None, 'clock_p2': None, 'clock_running': 0, 'clock_delay': 0,
+        # Hizli macta ilk hamle penceresi acik: istemci kopma metninde galibiyet vaat etmez
+        'first_move_pending': _first_move_pending(room),
     }
     if room.get('time_control'):
         fields['clock_p1'] = max(0, math.ceil(_clock_left(room, PLAYER1_PIECE)))
@@ -1338,6 +1342,11 @@ def on_leave_game(data):
                 room['p2_sid'] = None
             _clock_settle(room)
             room['disconnected'][piece] = time.time()
+            if _first_move_pending(room):
+                # Hizli macta ilk hamleden once ayrilmak kopmayla ayni sonucu verir: puansiz iptal
+                log.info("Oda %s: oyuncu %s ilk hamleden once ayrildi, iptal", room_id, piece)
+                _abort_game(room_id, room)
+                return {'ok': True}
             log.info("Oda %s: oyuncu %s oyunu terk etti", room_id, piece)
             _finish_game(room_id, room, reason='forfeit', forfeit_loser=piece, detail='leave')
         else:
