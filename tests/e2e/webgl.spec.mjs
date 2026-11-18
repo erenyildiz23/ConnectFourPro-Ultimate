@@ -28,7 +28,8 @@ fs.mkdirSync(OUT, { recursive: true });
 const at = (x, y) => ({ x: WIDTH / 2 + x, y });               // UIKit.Place koordinati -> ekran
 const UI = {
   guest: at(0, 540),
-  menuAI: at(0, 200), menuLobby: at(0, 266),
+  // Menu (Views.cs MenuView): Hizli Mac en ustte, sonra AI ve lobi (adim 66)
+  menuQuick: at(0, 200), menuAI: at(0, 266), menuLobby: at(0, 332),
   easy: at(0, 200),
   lobbyCreate: at(-470, 110), lobbyRow0Action: at(470, 225),
   lang: at(560, 50),   // dil dugmesi (GameBootstrap; yalnizca giris ve menu)
@@ -263,13 +264,40 @@ try {
   board = await waitForBoard(p1, b => countOf(b, 'R') === 3 && countOf(b, 'Y') === 3, '14d-tekrar-geri.png');
   check(countOf(board, 'R') === 3 && countOf(board, 'Y') === 3, 'tahta 6. hamledeki durumda\n' + boardText(board));
 
+  // ------------------------------------------------------- 5c. Hizli mac
+  // Iki sayfa menude "Hizli Mac"a basar: ilk giren P1 (kirmizi), ikincisi P2 olur ve
+  // ikisi de oda kodu girmeden oyun ekranina gecer (sunucu: quick_match_join kuyrugu).
+  const q1 = await openGame('Q1');
+  check(await guestLogin(q1), 'Q1 misafir girisi');
+  await click(q1, UI.menuQuick, 1500);
+  check(await waitLog(q1, /\[App\] Hizli eslesme: rakip araniyor/), 'Q1 hizli mac aramasina girdi');
+  check(await waitLog(q1, /\[GameSocket\] Sunucuya baglandi/), 'Q1 Socket.IO ile baglandi');
+  await sleep(1000);
+  await shot(q1, '14e-hizli-mac-araniyor.png');
+  check(!q1.logs.some(l => l.includes('[App] Online oyun basliyor')), 'Q1 tek basina eslesmedi (rakip araniyor)');
+
+  const q2 = await openGame('Q2');
+  check(await guestLogin(q2), 'Q2 misafir girisi');
+  await click(q2, UI.menuQuick, 1500);
+  check(await waitLog(q1, /\[App\] Online oyun basliyor/), 'Q1 eslesti, oyun ekranina gecti');
+  check(await waitLog(q2, /\[App\] Online oyun basliyor/), 'Q2 eslesti, oyun ekranina gecti');
+  board = await waitForBoard(q2, b => countOf(b, '.') === 42, '14f-hizli-mac-q2.png');
+  check(countOf(board, '.') === 42, 'hizli mac bos tahtayla basladi\n' + boardText(board));
+  games = await activeGames();
+  check(games.some(g => g.status === 'PLAYING'), 'hizli mac odasi lobide oyunda gorunuyor');
+  await dropIn(q1, 3, 1500);                              // ilk giren P1: ilk hamle onun
+  board = await waitForBoard(q2, b => countOf(b, 'R') === 1, '14g-hizli-mac-hamle.png');
+  check(board[0][3] === 'R', 'Q1 (kirmizi) hamlesi Q2 ekranina yansidi\n' + boardText(board));
+  await q1.close();
+  await q2.close();
+
   // ------------------------------------------------- 6. Dik (portrait) ekran
   // 540x960 pencere, deviceScaleFactor 1: canvas 9:16 ve CanvasScaler olcegi tam 1, yani
   // sayfa pikseli = (270 + x, y) (UI/Views.cs'deki P(...) koordinatlari, y ogenin merkezi).
   // Tahta (UI/BoardView.cs dik): hucre 72 px, merkez x = 270; hucre merkezi
   // x = 54 + 72*sutun, y = 525 - 72*satir (satir 0 altta).
   const atP = (x, y) => ({ x: 270 + x, y });
-  const PUI = { guest: atP(0, 660), menuAI: atP(0, 340), easy: atP(0, 320) };
+  const PUI = { guest: atP(0, 660), menuAI: atP(0, 418), easy: atP(0, 320) };   // dik menu adimi 78
   const pCell = (col, row) => ({ x: 54 + 72 * col, y: 525 - 72 * row });
   const readPortraitBoard = png => {
     const b = [];

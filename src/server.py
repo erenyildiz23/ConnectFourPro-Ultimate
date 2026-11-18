@@ -59,6 +59,9 @@ GAMES: Dict[str, Dict[str, Any]] = {}
 # sid -> username
 CONNECTED_USERS: Dict[str, str] = {}
 GAMES_LOCK = threading.RLock()
+# Hizli eslesme kuyrugu (GAMES_LOCK altinda degisir): {'sid', 'uid', 'info', 'auth'};
+# ilk giren P1 olur. Ayni kimlik (uid, auth) ve ayni soket kuyrukta en fazla bir kez bulunur.
+QUICK_QUEUE: List[Dict[str, Any]] = []
 
 # Geriye donuk uyumluluk (testler/benchmark'lar bu adlari kullanabilir)
 WAITING_TIMEOUT = config.WAITING_TIMEOUT
@@ -223,6 +226,7 @@ ERROR_CODES = {
     'Sira sizde degil!': 'not_your_turn',
     'Sadece oyuncular rovans isteyebilir': 'rematch_players_only',
     'Oyun devam ediyor': 'game_in_progress',
+    'Zaten bir oyundasiniz': 'already_in_game',
 }
 
 
@@ -328,6 +332,27 @@ def _start_turn_clock(room: dict) -> None:
 def _deadline_passed(room: dict) -> bool:
     deadline = room.get('turn_deadline')
     return deadline is not None and time.time() > deadline + config.MOVE_TIME_GRACE_SECONDS
+
+
+def _seat_second_player(room: dict, sid: str, uid: str, info: dict, auth: bool) -> None:
+    """Bekleyen odaya P2'yi oturtur ve oyunu baslatir. GAMES_LOCK tutulurken cagrilir."""
+    _quick_remove_locked(sid)   # Koltuk alan soket hizli eslesme kuyrugunda kalmaz
+    room['p2_sid'], room['p2_uid'], room['p2_info'] = sid, uid, info
+    room['p2_auth'], room['p2_rejoin'] = auth, secrets.token_urlsafe(16)
+    room['last_move_at'] = time.time()
+    _start_turn_clock(room)
+
+
+def _emit_game_start(room: dict) -> None:
+    """Iki oyuncuya game_start gonderir (her biri rakibinin adini/ELO'sunu gorur)."""
+    p1_info, p2_info = room['p1_info'], room['p2_info']
+    for sid, opponent in ((room['p1_sid'], p2_info), (room['p2_sid'], p1_info)):
+        emit('game_start', {
+            'msg': 'Oyun Basladi!', 'p1_info': p1_info, 'p2_info': p2_info,
+            'opponent_name': opponent.get('username', ''),
+            'opponent_elo': opponent.get('rating', config.DEFAULT_RATING),
+            **_clock_fields(room),
+        }, to=sid)
 
 
 def get_user_waiting_game(user_id: str, authenticated: Optional[bool] = None) -> Optional[str]:
@@ -759,6 +784,7 @@ def on_disconnect():
     log.debug("Ayrildi: %s", sid)
 
     with GAMES_LOCK:
+        _quick_remove_locked(sid)
         for room_id, room in list(GAMES.items()):
             piece = _piece_of(room, sid)
             if piece is None:
@@ -794,11 +820,8 @@ def on_create_game(data):
             _emit_error('Bu misafir adi kullanimda')
             return
         if existing:
-            GAMES.pop(existing, None)
-            try:
-                close_room(existing)
-            except Exception:
-                pass
+            _drop_waiting_room(existing)
+        _quick_remove_locked(request.sid)   # Oda kuran soket hizli eslesme kuyrugundan cikar
         room_id = generate_room_id()
         while room_id in GAMES:
             room_id = generate_room_id()
@@ -870,6 +893,8 @@ def on_join_game(data):
             was_disconnected = own_piece in room['disconnected']
             room['disconnected'].pop(own_piece, None)
             room[f'{key}_sid'] = request.sid
+            if not game.game_over:
+                _quick_remove_locked(request.sid)   # Aktif koltuga donen soket kuyruktan cikar
             join_room(room_id)
             if was_disconnected and not game.game_over and own_piece != game.current_player:
                 _start_turn_clock(room)   # Bekleyen oyuncu doneni karsilayinca hemen suresiz kalmasin
@@ -892,23 +917,13 @@ def on_join_game(data):
 
         # 2) Ikinci oyuncu olarak katil
         if room['p2_uid'] is None:
-            room['p2_sid'], room['p2_uid'], room['p2_info'] = request.sid, user_id, user_info
-            room['p2_auth'], room['p2_rejoin'] = authenticated, secrets.token_urlsafe(16)
-            room['last_move_at'] = time.time()
-            _start_turn_clock(room)
-            p1_info = room['p1_info']
+            _seat_second_player(room, request.sid, user_id, user_info, authenticated)
             log.info("Oda %s: %s P2 olarak katildi", room_id, user_id)
 
             emit('game_joined', {'room_id': room_id, 'player_piece': PLAYER2_PIECE,
-                                 'role': 'player', 'opponent_info': p1_info,
+                                 'role': 'player', 'opponent_info': room['p1_info'],
                                  'rejoin_token': room['p2_rejoin']})
-            for sid, opponent in ((room['p1_sid'], user_info), (request.sid, p1_info)):
-                emit('game_start', {
-                    'msg': 'Oyun Basladi!', 'p1_info': p1_info, 'p2_info': user_info,
-                    'opponent_name': opponent.get('username', ''),
-                    'opponent_elo': opponent.get('rating', config.DEFAULT_RATING),
-                    **_clock_fields(room),
-                }, to=sid)
+            _emit_game_start(room)
             return
 
         # 3) Seyirci
@@ -922,6 +937,114 @@ def on_join_game(data):
         if game.game_over:
             spectator_view['result'] = room['result']
         emit('game_joined', spectator_view)
+
+
+# =============================================================================
+# HIZLI ESLESME
+# =============================================================================
+
+def _drop_waiting_room(room_id: str) -> None:
+    """Bekleyen odayi siler (tek bekleyen oda kurali). GAMES_LOCK tutulurken cagrilir."""
+    GAMES.pop(room_id, None)
+    try:
+        close_room(room_id)
+    except Exception:
+        pass
+
+
+def _quick_remove_locked(sid: str) -> bool:
+    """Soketi hizli eslesme kuyrugundan cikarir; cikardiysa True. GAMES_LOCK altinda cagrilir."""
+    before = len(QUICK_QUEUE)
+    QUICK_QUEUE[:] = [entry for entry in QUICK_QUEUE if entry['sid'] != sid]
+    return len(QUICK_QUEUE) != before
+
+
+def _seated_in_active_game(sid: str) -> bool:
+    """Soket baslamis ve bitmemis bir macta koltuk tutuyor mu? GAMES_LOCK altinda cagrilir."""
+    return any(_piece_of(room, sid) is not None and room['p2_uid'] is not None
+               and not room['game'].game_over
+               for room in GAMES.values())
+
+
+def _quick_pair_locked() -> None:
+    """Kuyrukta iki oyuncu varsa ilk ikisini eslestirir: ilk giren P1, ikincisi P2.
+    Iki tarafa da game_joined (quick: True) ve game_start gider. GAMES_LOCK altinda cagrilir."""
+    # Bu arada aktif bir maca oturan soket (or. rovans) eslestirilmez, kuyruktan duser
+    for entry in [e for e in QUICK_QUEUE if _seated_in_active_game(e['sid'])]:
+        _quick_remove_locked(entry['sid'])
+        emit('quick_match_cancelled', {}, to=entry['sid'])
+    while len(QUICK_QUEUE) >= 2:
+        p1, p2 = QUICK_QUEUE.pop(0), QUICK_QUEUE.pop(0)
+        room_id = generate_room_id()
+        while room_id in GAMES:
+            room_id = generate_room_id()
+        # Hizli mac odasi burada kurulur (Gorev 8 sure kontrolunu burada verecek); simdilik suresiz
+        room = _new_room(p1['sid'], p1['uid'], p1['info'], p1['auth'])
+        _seat_second_player(room, p2['sid'], p2['uid'], p2['info'], p2['auth'])
+        GAMES[room_id] = room
+        log.info("Oda %s: hizli eslesme %s - %s", room_id, p1['uid'], p2['uid'])
+
+        for piece, entry, opponent in ((PLAYER1_PIECE, p1, p2), (PLAYER2_PIECE, p2, p1)):
+            CONNECTED_USERS[entry['sid']] = entry['uid']
+            join_room(room_id, sid=entry['sid'])
+            emit('game_joined', {'room_id': room_id, 'player_piece': piece, 'role': 'player',
+                                 'opponent_info': opponent['info'],
+                                 'rejoin_token': room[f'{_seat_key(piece)}_rejoin'],
+                                 'quick': True}, to=entry['sid'])
+        _emit_game_start(room)
+
+
+@socketio.on('quick_match_join')
+def on_quick_match_join(data):
+    user_id, user_info, authenticated, error = resolve_player(data)
+    if error:
+        _emit_error(error)
+        return
+
+    sid = request.sid
+    with GAMES_LOCK:
+        if _seated_in_active_game(sid):
+            _emit_error('Zaten bir oyundasiniz')
+            return
+        # Tek bekleyen oda kurali (create_game ile ayni): kendi bekleyen odasi silinir;
+        # misafir adi kanit olmadigindan baska baglantinin odasina dokunulmaz.
+        existing = get_user_waiting_game(user_id, authenticated)
+        if existing and not authenticated and GAMES[existing]['p1_sid'] != sid:
+            _emit_error('Bu misafir adi kullanimda')
+            return
+        if existing:
+            _drop_waiting_room(existing)
+
+        # Ayni soket ayni kimlikle tekrar girerse sirasi korunur (yenileme)
+        if any(e['sid'] == sid and e['uid'] == user_id and e['auth'] == authenticated
+               for e in QUICK_QUEUE):
+            emit('quick_match_waiting', {})
+            return
+        same_identity = [e for e in QUICK_QUEUE
+                         if e['sid'] != sid and e['uid'] == user_id and e['auth'] == authenticated]
+        # Misafir adi kanit degildir: kuyruktaki baska canli baglantinin misafiri atilamaz
+        if same_identity and not authenticated:
+            _emit_error('Bu misafir adi kullanimda')
+            return
+        # Kayitli kullanicinin (token kanitli) yeni soketi eski kaydin yerini alir
+        replaced = [e['sid'] for e in same_identity]
+        QUICK_QUEUE[:] = [e for e in QUICK_QUEUE if e['sid'] != sid and e['sid'] not in replaced]
+        for old_sid in replaced:
+            emit('quick_match_cancelled', {}, to=old_sid)
+
+        QUICK_QUEUE.append({'sid': sid, 'uid': user_id, 'info': user_info, 'auth': authenticated})
+        CONNECTED_USERS[sid] = user_id
+        log.info("Hizli eslesme kuyrugu: %s (%d kisi)", user_id, len(QUICK_QUEUE))
+        _quick_pair_locked()
+        if any(e['sid'] == sid for e in QUICK_QUEUE):
+            emit('quick_match_waiting', {})
+
+
+@socketio.on('quick_match_cancel')
+def on_quick_match_cancel(data=None):
+    with GAMES_LOCK:
+        _quick_remove_locked(request.sid)
+    emit('quick_match_cancelled', {})
 
 
 @socketio.on('make_move')
@@ -1066,6 +1189,11 @@ def _start_rematch(room_id: str, room: dict) -> None:
     room['game_no'] += 1
     _start_turn_clock(room)
     log.info("Oda %s: rovans basladi (oyun %d)", room_id, room['game_no'])
+    # Rovansla aktif maca donen soket hizli eslesme kuyrugunda kalamaz (iki canli mac olmasin)
+    for key in ('p1', 'p2'):
+        sid = room[f'{key}_sid']
+        if sid and _quick_remove_locked(sid):
+            socketio.emit('quick_match_cancelled', {}, to=sid)
 
     p1_info, p2_info = room['p1_info'], room['p2_info']
     for piece, opponent in ((PLAYER1_PIECE, p2_info), (PLAYER2_PIECE, p1_info)):

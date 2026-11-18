@@ -161,8 +161,12 @@ namespace ConnectFourPro.UI
             _elo = UIKit.Label(Root, "", 20, Theme.Green, 0, 130);
             P(_elo, 0, 255, 480, 40);
 
+            // Hizli Mac en ustte. Dugme merkezleri: yatay (0, 200 + 66 i), dikey (0, 340 + 78 i);
+            // tests/e2e/webgl.spec.mjs bu koordinatlara tiklar. Masaustunde 7 dugme de sigar
+            // (yatay alt kenar 622 < durum cubugu 668, dikey 838 < 888).
             var items = new List<(string label, Color color, UnityEngine.Events.UnityAction action)>
             {
+                ("Hızlı Maç", Theme.Green, app.StartQuickMatch),
                 ("Yapay Zekâya Karşı", Theme.Button, app.OpenAISelect),
                 ("Online Lobi", Theme.Button, app.OpenLobby),
                 ("Liderlik Tablosu", Theme.Button, app.OpenLeaderboard),
@@ -373,13 +377,15 @@ namespace ConnectFourPro.UI
     public sealed class WaitingView : View
     {
         private static readonly string[] Dots = { "Bekleniyor", "Bekleniyor.", "Bekleniyor..", "Bekleniyor..." };
+        private readonly Text _title;
         private readonly Text _room;
         private readonly Text _hint;
         private readonly Text _dots;
 
         public WaitingView(AppController app, Transform parent) : base(app, parent, "Waiting")
         {
-            P(Title("RAKİP BEKLENİYOR", 170), 0, 250, 510, 60);
+            _title = Title("RAKİP BEKLENİYOR", 170);
+            P(_title, 0, 250, 510, 60);
             _room = UIKit.Label(Root, "", 44, Theme.Green, 0, 270, 900, 60, TextAnchor.MiddleCenter, FontStyle.Bold);
             P(_room, 0, 340, 480, 70);
             FitInPortrait(_room, 28, 44);
@@ -392,7 +398,14 @@ namespace ConnectFourPro.UI
 
         public override void Refresh()
         {
-            if (App.RoomId != null)
+            // Hizli eslesme: oda kodu yok (eslesince sunucu odayi kurar); Iptal kuyruktan cikar
+            _title.text = Loc.T(App.QuickMatchSearching ? "RAKİP ARANIYOR" : "RAKİP BEKLENİYOR");
+            if (App.QuickMatchSearching)
+            {
+                _room.text = Loc.T(AppController.SearchingText);
+                _hint.text = Loc.T("Eşleşince oyun başlar.");
+            }
+            else if (App.RoomId != null)
             {
                 _room.text = Loc.T("Oda Kodu: " + App.RoomId);
                 _hint.text = Loc.T("Rakip lobiden katılabilir!");

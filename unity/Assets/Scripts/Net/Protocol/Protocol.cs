@@ -20,6 +20,9 @@ namespace ConnectFourPro.Net
         public const string LeaveGame = "leave_game";
         public const string LatencyPing = "latency_ping";
         public const string RematchRequest = "rematch_request";
+        // Hizli eslesme kuyrugu (eski sunucular cevap vermez)
+        public const string QuickMatchJoin = "quick_match_join";
+        public const string QuickMatchCancel = "quick_match_cancel";
 
         // Sunucu -> istemci
         public const string GameCreated = "game_created";
@@ -37,12 +40,16 @@ namespace ConnectFourPro.Net
         public const string RematchOffered = "rematch_offered";
         public const string RematchUnavailable = "rematch_unavailable";
         public const string RematchStarted = "rematch_started";
+        // Hizli eslesme: kuyrukta bekleniyor / arama bitti (iptal ya da sunucu dusurdu)
+        public const string QuickMatchWaiting = "quick_match_waiting";
+        public const string QuickMatchCancelled = "quick_match_cancelled";
 
         public static readonly string[] ServerEvents =
         {
             GameCreated, GameJoined, GameStart, MoveMade, GameOver, EloUpdate,
             OpponentDisconnected, OpponentReconnected, GameEnded, Error, LatencyPong,
             RematchOffered, RematchUnavailable, RematchStarted,
+            QuickMatchWaiting, QuickMatchCancelled,
         };
     }
 

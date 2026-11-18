@@ -328,6 +328,53 @@ namespace ConnectFourPro.Tests
         }
 
         [Test]
+        public void QuickMatchEmitsJoinWithIdentity()
+        {
+            _socket.JoinQuickMatch("ali", "tok-1");
+            Assert.That(_transport.ConnectUrls, Is.EqualTo(new[] { Url }), "bagli degilken once baglanir");
+            Assert.That(_transport.Emitted, Is.Empty);
+
+            _transport.RaiseConnected();
+            var data = _transport.EmittedOf("quick_match_join")[0];
+            Assert.That(data.GetString("user_id"), Is.EqualTo("ali"));
+            Assert.That(data.GetString("token"), Is.EqualTo("tok-1"));
+            Assert.That(data.Has("room_id"), Is.False);
+        }
+
+        [Test]
+        public void GuestQuickMatchHasNoTokenAndCancelEmitsWhenConnected()
+        {
+            _transport.RaiseConnected();
+            _socket.JoinQuickMatch("Misafir_000123");
+            Assert.That(_transport.EmittedOf("quick_match_join")[0].Has("token"), Is.False);
+
+            _socket.CancelQuickMatch();
+            Assert.That(_transport.EmittedOf("quick_match_cancel").Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void CancelBeforeConnectDropsPendingJoin()
+        {
+            _socket.JoinQuickMatch("ali");
+            _socket.CancelQuickMatch();
+            _transport.RaiseConnected();
+            Assert.That(_transport.Emitted, Is.Empty, "iptal edilen arama baglaninca gonderilmemeli");
+        }
+
+        [Test]
+        public void QuickMatchGameJoinedTracksSeat()
+        {
+            _transport.RaiseConnected();
+            _socket.JoinQuickMatch("ali");
+            _transport.Receive("game_joined",
+                "{\"room_id\":\"QM123\",\"player_piece\":2,\"role\":\"player\",\"rejoin_token\":\"seat-q\",\"quick\":true}");
+            Assert.That(_socket.RoomId, Is.EqualTo("QM123"));
+            Assert.That(_socket.MyPiece, Is.EqualTo(2));
+            Assert.That(_socket.RejoinToken, Is.EqualTo("seat-q"));
+            Assert.That(_socket.InGame, Is.True);
+        }
+
+        [Test]
         public void DetachStopsListening()
         {
             int events = 0;

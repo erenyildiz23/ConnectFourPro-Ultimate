@@ -140,6 +140,14 @@ namespace ConnectFourPro.Tests
         }
 
         [Test]
+        public void QuickMatchEventsAreKnown()
+        {
+            Assert.That(SocketEvents.QuickMatchJoin, Is.EqualTo("quick_match_join"));
+            Assert.That(SocketEvents.QuickMatchCancel, Is.EqualTo("quick_match_cancel"));
+            Assert.That(SocketEvents.ServerEvents, Is.SupersetOf(new[] { "quick_match_waiting", "quick_match_cancelled" }));
+        }
+
+        [Test]
         public void ActiveGamesList()
         {
             var games = ActiveGame.ListFrom(Json.Parse(

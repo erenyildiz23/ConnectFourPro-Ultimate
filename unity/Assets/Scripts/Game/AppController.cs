@@ -841,6 +841,71 @@ namespace ConnectFourPro.Game
             _socket.CreateGame(Username, _authToken);
         }
 
+        // =====================================================================
+        // Hizli eslesme
+        // =====================================================================
+
+        public const string SearchingText = "Rakip aranıyor...";
+
+        /// <summary>
+        /// Hizli eslesme kuyrugunda rakip araniyor (Waiting ekrani oda kodu yerine bunu
+        /// gosterir). Eslesmenin game_start'inda ya da arama bitince duser.
+        /// </summary>
+        public bool QuickMatchSearching { get; private set; }
+
+        /// <summary>Menudeki "Hizli Mac": kuyruga girer, eslesince oyun ekranina gecilir.</summary>
+        public void StartQuickMatch()
+        {
+            if (_joinPending || QuickMatchSearching)
+                return;
+            InvalidateAISession();
+            ResetOnlineGame();
+            RoomId = null;
+            IsSpectator = false;
+            QuickMatchSearching = true;
+            Debug.Log("[App] Hizli eslesme: rakip araniyor");
+            SetScreen(AppScreen.Waiting);
+            SetStatus(SearchingText);
+            _socket.JoinQuickMatch(Username, _authToken);
+        }
+
+        /// <summary>
+        /// Aramayi iptal eder ve menuye doner. Sunucunun cevabi beklenmez: eski sunucu
+        /// quick_match_join'i bilmez ve hic cevap vermez, iptal yine de calismalidir.
+        /// </summary>
+        public void CancelQuickMatch()
+        {
+            if (!QuickMatchSearching)
+                return;
+            _socket.CancelQuickMatch();
+            LeaveSession(AppScreen.Menu);
+        }
+
+        // Arama sunucu tarafinda bitti (iptal, hata, kopma): menuye don ve nedenini goster
+        private void EndQuickMatch(string status, StatusTone tone)
+        {
+            Debug.Log("[App] Hizli eslesme bitti: " + status);
+            LeaveSession(AppScreen.Menu);
+            SetStatus(status, tone);
+        }
+
+        // Eslesmeden once (oda yokken) aranan durum: sunucu kuyruktan dusurdugunde menuye donulur
+        private bool SearchingWithoutRoom => QuickMatchSearching && RoomId == null;
+
+        private void OnQuickMatchWaiting()
+        {
+            if (QuickMatchSearching && Screen == AppScreen.Waiting)
+                SetStatus(SearchingText);
+        }
+
+        private void OnQuickMatchCancelled()
+        {
+            // Ayni kayitli kullanicinin yeni baglantisi aramanin yerini aldi ya da soket
+            // baska bir yere oturdu; aramiyorsak (gec gelen cevap) yok sayilir
+            if (SearchingWithoutRoom)
+                EndQuickMatch("Rakip arama sona erdi.", StatusTone.Neutral);
+        }
+
         public void JoinOnlineGame(string roomId)
         {
             if (_joinPending)
@@ -870,6 +935,11 @@ namespace ConnectFourPro.Game
         private void ConnectionFailed()
         {
             _joinPending = false;
+            if (QuickMatchSearching)
+            {
+                EndQuickMatch("Sunucuya bağlanılamadı!", StatusTone.Bad);
+                return;
+            }
             SetStatus("Sunucuya bağlanılamadı!", StatusTone.Bad);
             if (Screen == AppScreen.Waiting || Screen == AppScreen.Spectating)
                 SetScreen(AppScreen.Lobby);
@@ -881,6 +951,12 @@ namespace ConnectFourPro.Game
             if (reason == "io client disconnect")
                 return;
             _joinPending = false;   // yanitsiz kalan katilma istegi 'Katil'i kilitlemesin
+            if (SearchingWithoutRoom)
+            {
+                // Sunucu kopan soketi kuyruktan dusurur; yeniden baglaninca kuyruga donulmez
+                EndQuickMatch("Bağlantı koptu, arama iptal edildi.", StatusTone.Bad);
+                return;
+            }
             if (Screen == AppScreen.Waiting)
             {
                 // Sunucu kurucusu kopan bekleyen odayi hemen siler; geri baglaninca
@@ -937,6 +1013,8 @@ namespace ConnectFourPro.Game
                 case SocketEvents.RematchOffered: OnRematchOffered(data); break;
                 case SocketEvents.RematchUnavailable: OnRematchUnavailable(data); break;
                 case SocketEvents.RematchStarted: OnRematchStarted(data); break;
+                case SocketEvents.QuickMatchWaiting: OnQuickMatchWaiting(); break;
+                case SocketEvents.QuickMatchCancelled: OnQuickMatchCancelled(); break;
             }
         }
 
@@ -1033,6 +1111,7 @@ namespace ConnectFourPro.Game
         {
             Debug.Log("[App] Online oyun basliyor");
             _joinPending = false;
+            QuickMatchSearching = false;   // hizli eslesmede game_joined'dan sonra gelir
             InvalidateAISession();
             ResetOnlineGame();
             Replay = null;   // rovans tekrar izlenirken basladi
@@ -1330,6 +1409,12 @@ namespace ConnectFourPro.Game
             // code (yeni sunucu) metinden onceliklidir; yoksa eski sunucunun msg alani kullanilir.
             // Gosterilen metin Turkce kalir, ekrana yazilirken Loc.T ile cevrilir.
             string msg = Loc.ServerError(data.GetString("code", ""), data.GetString("msg", ""));
+            if (SearchingWithoutRoom)
+            {
+                // Kuyruga girilemedi (zaten oyunda, misafir adi kullanimda...)
+                EndQuickMatch("Hata: " + msg, StatusTone.Bad);
+                return;
+            }
             if (Screen == AppScreen.PlayingOnline && !Game.GameOver
                 && (msg == "Oda bulunamadi" || (Offline && msg == "Yeniden baglanma anahtari gecersiz")))
             {
@@ -1450,6 +1535,11 @@ namespace ConnectFourPro.Game
                 CloseReplay();
                 return;
             }
+            if (Screen == AppScreen.Waiting && QuickMatchSearching)
+            {
+                CancelQuickMatch();   // hizli mac menuden baslar, menuye doner
+                return;
+            }
             if (Screen == AppScreen.PlayingOnline && !Game.GameOver && !_sessionDead && !LeaveConfirmPending)
             {
                 _leaveConfirmUntil = Time.unscaledTime + LeaveConfirmSeconds;
@@ -1507,6 +1597,7 @@ namespace ConnectFourPro.Game
             ClearTurnClock();
             _rematchSupported = false;
             Rematch = RematchState.None;
+            QuickMatchSearching = false;
             if (OnOnlineGameScreen || Screen == AppScreen.Waiting)
                 _socket.LeaveGame();
             Replay = null;
