@@ -96,6 +96,33 @@ namespace ConnectFourPro.UI
         /// <summary>9-dilimli yuvarlak koseli dikdortgen (butonlar, paneller).</summary>
         public static Sprite Rounded => _rounded != null ? _rounded : (_rounded = MakeRounded(64, 16));
 
+        /// <summary>
+        /// Saga bakan ucgen (tekrar dugmelerinin simgeleri). Yerlesik yazi tipinde
+        /// medya simgeleri (U+23EE vb.) olmadigi icin simgeler sprite ile cizilir.
+        /// </summary>
+        public static Sprite Triangle => _triangle != null ? _triangle : (_triangle = MakeTriangle(64));
+        private static Sprite _triangle;
+
+        private static Sprite MakeTriangle(int size)
+        {
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            float h = size / 2f;
+            // Egik kenarlarin birim normali icin olcek: kenar y = h - x/2 dogrusu
+            float norm = Mathf.Sqrt(1f + 0.25f);
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float px = x + 0.5f, py = y + 0.5f;
+                    float slant = (h - Mathf.Abs(py - h) - px / 2f) / norm;
+                    byte a = (byte)(Mathf.Clamp01(slant + 0.5f) * Mathf.Clamp01(px) * 255);
+                    pixels[y * size + x] = new Color32(255, 255, 255, a);
+                }
+            tex.SetPixels32(pixels);
+            tex.Apply(false, true);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
         private static Sprite MakeCircle(int size)
         {
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };

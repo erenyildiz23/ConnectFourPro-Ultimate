@@ -62,6 +62,11 @@ namespace ConnectFourPro.Tests
         [TestCase("KAYBETTİN (hükmen)", "YOU LOST (forfeit)")]
         [TestCase("Rakibin bağlantısı koptu! 30 sn içinde dönmezse kazanırsın.",
                   "Your opponent disconnected! You win if they don't return within 30s.")]
+        [TestCase("İzle", "Watch")]
+        [TestCase("Tekrarı izle", "Watch replay")]
+        [TestCase("Hamle 3 / 7", "Move 3 / 7")]
+        [TestCase("MAÇ TEKRARI", "MATCH REPLAY")]
+        [TestCase("veli kazandı! (hükmen)", "veli wins! (forfeit)")]
         [TestCase("Misafir_123456", "Misafir_123456")]
         [TestCase("", "")]
         public void TranslatesToEnglish(string tr, string en)

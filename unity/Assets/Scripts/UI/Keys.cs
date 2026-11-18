@@ -69,5 +69,44 @@ namespace ConnectFourPro.UI
             return false;
 #endif
         }
+
+        /// <summary>Sol ok (tekrarda bir hamle geri).</summary>
+        public static bool LeftPressed()
+        {
+#if CF4_INPUT_SYSTEM && ENABLE_INPUT_SYSTEM
+            var k = UnityEngine.InputSystem.Keyboard.current;
+            return k != null && k.leftArrowKey.wasPressedThisFrame;
+#elif ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.LeftArrow);
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>Sag ok (tekrarda bir hamle ileri).</summary>
+        public static bool RightPressed()
+        {
+#if CF4_INPUT_SYSTEM && ENABLE_INPUT_SYSTEM
+            var k = UnityEngine.InputSystem.Keyboard.current;
+            return k != null && k.rightArrowKey.wasPressedThisFrame;
+#elif ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.RightArrow);
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>Bosluk (tekrarda oynat / durdur).</summary>
+        public static bool SpacePressed()
+        {
+#if CF4_INPUT_SYSTEM && ENABLE_INPUT_SYSTEM
+            var k = UnityEngine.InputSystem.Keyboard.current;
+            return k != null && k.spaceKey.wasPressedThisFrame;
+#elif ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.Space);
+#else
+            return false;
+#endif
+        }
     }
 }
