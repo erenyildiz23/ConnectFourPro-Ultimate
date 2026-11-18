@@ -148,6 +148,13 @@ namespace ConnectFourPro.Tests
         }
 
         [Test]
+        public void QuickChatEventsAreKnown()
+        {
+            Assert.That(SocketEvents.ChatQuick, Is.EqualTo("chat_quick"));
+            Assert.That(SocketEvents.ServerEvents, Has.Member("chat_message"));
+        }
+
+        [Test]
         public void ActiveGamesList()
         {
             var games = ActiveGame.ListFrom(Json.Parse(

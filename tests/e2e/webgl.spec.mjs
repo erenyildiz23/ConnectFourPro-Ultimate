@@ -34,6 +34,10 @@ const UI = {
   lobbyCreate: at(-470, 110), lobbyRow0Action: at(470, 225),
   lang: at(560, 50),   // dil dugmesi (GameBootstrap; yalnizca giris ve menu)
   replayOpen: at(400, 345), replayLast: at(520, 430),
+  // Hazir sohbet (GameView): dugme tahta ile panel arasinda, panelin ilk dugmesi "İyi oyun!";
+  // balon govdesi (140, 225 + i*70) 180 genis, yazinin solundaki dolgudan okunur
+  chatOpen: at(135, 590), chatMsg0: at(322, 270),
+  bubbleP1: at(62, 225), bubbleP2: at(62, 295),
 };
 const cellCenter = (col, row) => at(-250 - 280 + col * 80 + 40, 375 + 240 - row * 80 - 40);
 const COLORS = { red: [233, 69, 96], yellow: [241, 196, 15], empty: [10, 10, 21] };
@@ -288,6 +292,25 @@ try {
   await dropIn(q1, 3, 1500);                              // ilk giren P1: ilk hamle onun
   board = await waitForBoard(q2, b => countOf(b, 'R') === 1, '14g-hizli-mac-hamle.png');
   check(board[0][3] === 'R', 'Q1 (kirmizi) hamlesi Q2 ekranina yansidi\n' + boardText(board));
+
+  // ------------------------------------------------------- 5d. Hazir sohbet
+  // Q1 "Sohbet"e basar, paneldeki ilk mesaji ("İyi oyun!") secer. Sunucu chat_message'i
+  // odaya yayar; Q2'de P1 (ust) satirinin solunda beyaz balon 3 sn gorunur. Balon kanvasa
+  // cizildigi icin hem AppController'in "[App] Sohbet: ..." satiri hem de balonun dolgusu
+  // (Theme.White, yazinin solundaki bos kisim) piksel rengiyle denetlenir.
+  const BUBBLE_WHITE = [234, 234, 234];
+  await click(q1, UI.chatOpen, 1000);
+  await shot(q1, '14h-sohbet-paneli.png');
+  await click(q1, UI.chatMsg0, 300);
+  check(await waitLog(q2, /\[App\] Sohbet: oyuncu 1 mesaj 0/, 5000), 'Q2 "İyi oyun!" mesajini aldi');
+  check(await waitLog(q1, /\[App\] Sohbet: oyuncu 1 mesaj 0/, 5000), 'Q1 kendi mesajinin yankisini aldi');
+  const bubblePng = await shot(q2, '14i-sohbet-balonu.png');
+  check(near(colorAt(bubblePng, UI.bubbleP1), BUBBLE_WHITE, 25),
+        `Q2 ekraninda P1 adinin yaninda balon gorunuyor (renk ${colorAt(bubblePng, UI.bubbleP1).map(Math.round)})`);
+  check(!near(colorAt(bubblePng, UI.bubbleP2), BUBBLE_WHITE, 25), 'P2 satirinda balon yok');
+  await sleep(3500);
+  const goneP = await shot(q2, '14j-sohbet-balonu-gitti.png');
+  check(!near(colorAt(goneP, UI.bubbleP1), BUBBLE_WHITE, 25), 'balon 3 sn sonra kayboldu');
   await q1.close();
   await q2.close();
 

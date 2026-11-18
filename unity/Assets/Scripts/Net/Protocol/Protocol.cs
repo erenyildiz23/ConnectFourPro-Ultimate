@@ -23,6 +23,8 @@ namespace ConnectFourPro.Net
         // Hizli eslesme kuyrugu (eski sunucular cevap vermez)
         public const string QuickMatchJoin = "quick_match_join";
         public const string QuickMatchCancel = "quick_match_cancel";
+        // Hazir sohbet: msg_id 0-7 (Game/QuickChat.cs); eski sunucular cevap vermez
+        public const string ChatQuick = "chat_quick";
 
         // Sunucu -> istemci
         public const string GameCreated = "game_created";
@@ -43,13 +45,15 @@ namespace ConnectFourPro.Net
         // Hizli eslesme: kuyrukta bekleniyor / arama bitti (iptal ya da sunucu dusurdu)
         public const string QuickMatchWaiting = "quick_match_waiting";
         public const string QuickMatchCancelled = "quick_match_cancelled";
+        // Hazir sohbet: odadaki herkese (gonderene ve seyircilere de) {room_id, from_piece, msg_id}
+        public const string ChatMessage = "chat_message";
 
         public static readonly string[] ServerEvents =
         {
             GameCreated, GameJoined, GameStart, MoveMade, GameOver, EloUpdate,
             OpponentDisconnected, OpponentReconnected, GameEnded, Error, LatencyPong,
             RematchOffered, RematchUnavailable, RematchStarted,
-            QuickMatchWaiting, QuickMatchCancelled,
+            QuickMatchWaiting, QuickMatchCancelled, ChatMessage,
         };
     }
 

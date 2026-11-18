@@ -120,6 +120,19 @@ namespace ConnectFourPro.Net
             }));
         }
 
+        /// <summary>Hazir sohbet mesaji gonderir (yetki, numara ve 2 sn siniri sunucuda da denetlenir).</summary>
+        public bool SendQuickChat(int msgId)
+        {
+            if (!IsConnected || RoomId == null)
+                return false;
+            _transport.Emit(SocketEvents.ChatQuick, Json.Serialize(new Dictionary<string, object>
+            {
+                ["room_id"] = RoomId,
+                ["msg_id"] = msgId,
+            }));
+            return true;
+        }
+
         /// <summary>Biten oyundan sonra ayni rakiple yeni oyun ister (sunucu iki koltuk da isteyince baslatir).</summary>
         public bool RequestRematch()
         {
