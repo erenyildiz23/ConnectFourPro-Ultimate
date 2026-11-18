@@ -93,9 +93,41 @@ class TestChessClock:
         monkeypatch.setattr(server.config, 'MOVE_TIME_SECONDS', 30)
         room_id, a, b, joined = start_timed(sio)
         assert server.GAMES[room_id]['turn_deadline'] is None
-        assert a.last('game_start')['turn_seconds_left'] is None
+        start = a.last('game_start')
+        # Eski istemci alanlari saat gosterir; 30 sn hamle suresi degil (move_time 0)
+        assert start['move_time'] == 0 and start['turn_seconds_left'] == 185
         clock.advance(60)   # Hamle basina 30 sn sinir yok
         assert server.enforce_move_deadlines() == 0
+
+    def test_old_client_fields_follow_running_clock(self, sio, server, clock):
+        """Eski istemci (pygame, eski WebGL) yalnizca turn_seconds_left okur: sureli odada
+        isleyen koltugun kalan suresi + baslangic payi gelir, saatle birlikte azalir."""
+        room_id, a, b, joined = start_timed(sio)
+        for payload in (a.last('game_start'), b.last('game_start'), joined):
+            assert payload['turn_seconds_left'] == 185 and payload['move_time'] == 0
+        clock.advance(3)
+        assert fields(server, room_id)['turn_seconds_left'] == 182   # pay icinde: 180 + 2
+        clock.advance(7)
+        f = fields(server, room_id)
+        assert f['turn_seconds_left'] == f['clock_p1'] == 175
+        move(a, room_id, 3, 1)
+        moved = b.wait_for('move_made')
+        assert moved['clock_running'] == 2 and moved['turn_seconds_left'] == moved['clock_p2'] == 180
+        clock.advance(7.5)
+        f = fields(server, room_id)
+        assert f['turn_seconds_left'] == f['clock_p2'] == 173
+
+    def test_untimed_room_old_fields_unchanged(self, sio, server, clock, monkeypatch):
+        monkeypatch.setattr(server.config, 'MOVE_TIME_SECONDS', 30)
+        room_id, a, b = start_match(sio)
+        start = fields(server, room_id)
+        assert start['move_time'] == 30 and start['turn_seconds_left'] in (29, 30)
+        assert start['time_control'] is None and start['clock_running'] == 0
+        b.disconnect()   # suresiz odada da kopma olayi saat alanlarini tasir (degerler eskisi gibi)
+        gone = a.wait_for('opponent_disconnected')
+        assert gone['time_control'] is None and gone['clock_p1'] is None and gone['clock_running'] == 0
+        # Sira P1'de, rakibi kopuk: sayac eskisi gibi duraklar
+        assert gone['move_time'] == 30 and gone['turn_seconds_left'] is None
 
     def test_timed_room_reports_full_clocks_at_start(self, sio, server, clock):
         room_id, a, b, joined = start_timed(sio)
@@ -141,6 +173,7 @@ class TestChessClock:
             assert over['reason'] == 'forfeit' and over['detail'] == 'timeout' and over['winner'] == 2
         assert server.enforce_move_deadlines() == 0
         assert fields(server, room_id)['clock_running'] == 0
+        assert fields(server, room_id)['turn_seconds_left'] is None   # biten oyunda sayac yok
 
     def test_move_within_grace_accepted(self, sio, server, clock):
         room_id, a, b, _ = start_timed(sio)
@@ -162,17 +195,30 @@ class TestChessClock:
                                                                            monkeypatch):
         monkeypatch.setattr(server.config, 'RECONNECT_GRACE_SECONDS', 3)
         room_id, a, b, _ = start_timed(sio)   # Sira P1'de
+        c = sio()   # seyirci de saat alanlariyla senkron kalir
+        c.emit('join_game', {'room_id': room_id, 'user_id': 'carol'})
+        c.wait_for('game_joined')
         clock.advance(10)
         b.disconnect()
-        a.wait_for('opponent_disconnected')
+        for client in (a, c):
+            gone = client.wait_for('opponent_disconnected')
+            assert gone['time_control'] == '3+2'
+            assert gone['clock_p1'] == 175 and gone['clock_p2'] == 180
+            assert gone['clock_running'] == 0 and gone['clock_delay'] == 0
+            assert gone['turn_seconds_left'] is None   # duraklamada eski istemci sayac gostermez
         clock.advance(500)
         f = fields(server, room_id)
         assert f['clock_p1'] == 175 and f['clock_running'] == 0
+        assert f['turn_seconds_left'] is None
         assert server.enforce_move_deadlines() == 0
         b2 = sio()
         b2.emit('join_game', {'room_id': room_id, 'user_id': 'bob', 'rejoin_token': b.rejoin_token})
         joined = b2.wait_for('game_joined')
         assert joined['clock_p1'] == 175 and joined['clock_running'] == 1
+        for client in (a, c):
+            back = client.wait_for('opponent_reconnected')
+            assert back['clock_p1'] == 175 and back['clock_p2'] == 180
+            assert back['clock_running'] == 1 and back['turn_seconds_left'] == 175
         clock.advance(3)
         move(a, room_id, 3, 1)
         moved = b2.wait_for('move_made')
@@ -182,7 +228,9 @@ class TestChessClock:
         monkeypatch.setattr(server.config, 'RECONNECT_GRACE_SECONDS', 3)
         room_id, a, b, _ = start_timed(sio)   # Sira P1'de
         a.disconnect()
-        b.wait_for('opponent_disconnected')
+        gone = b.wait_for('opponent_disconnected')
+        assert gone['clock_running'] == 1 and gone['clock_delay'] == 5
+        assert gone['clock_p1'] == 180 and gone['turn_seconds_left'] == 185
         clock.advance(15)
         f = fields(server, room_id)
         assert f['clock_p1'] == 170 and f['clock_running'] == 1

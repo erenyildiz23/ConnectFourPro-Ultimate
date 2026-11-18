@@ -395,7 +395,12 @@ def _clock_flagged(room: dict) -> bool:
 def _clock_fields(room: dict) -> Dict[str, Any]:
     """Istemci geri sayimi icin: kalan sure TAM saniye (saat farki onemsiz); sure yoksa None.
     Satranc saati alanlari (time_control, clock_p1/p2, clock_running, clock_delay) eklenir;
-    suresiz odada None/0'dir. Eski alanlar (move_time, turn_seconds_left) aynen kalir."""
+    suresiz odada None/0'dir ve eski alanlar (move_time, turn_seconds_left) aynen kalir.
+    Sureli odada eski alanlar yalnizca saat okuyamayan eski istemciler (pygame, eski WebGL)
+    icindir: turn_seconds_left = isleyen koltugun kalan suresi + kalan baslangic payi (pay
+    bitince saat islemeye baslar, sayac tam saat sifira indiginde 0 olur); duraklamada,
+    bekleyen/bitmis odada None (sayac gizlenir). move_time 0: eski istemciler rakip donunce
+    sayaci hamle suresiyle yeniden kurmasin. Yeni istemci time_control varken bunlari kullanmaz."""
     deadline = room.get('turn_deadline')
     if _clock_paused(room):
         deadline = None
@@ -412,6 +417,10 @@ def _clock_fields(room: dict) -> Dict[str, Any]:
         if fields['clock_running']:
             # Baslangic payindan kalan tam saniye: istemci bu sure boyunca geri saymaz
             fields['clock_delay'] = max(0, math.ceil(room['clock_turn_started'] - _now()))
+        running = fields['clock_running']
+        fields['move_time'] = 0
+        fields['turn_seconds_left'] = (fields[f'clock_{_seat_key(running)}'] + fields['clock_delay']
+                                       if running else None)
     return fields
 
 
@@ -906,9 +915,11 @@ def on_disconnect():
                 now = time.time()
                 _clock_settle(room)   # Rakibi kopan sirasi gelenin saati bundan sonra durur
                 room['disconnected'][piece] = now
+                # Saat alanlari: sunucu bekleyen oyuncunun saatini durdurdu; herkes (seyirci dahil) esitlenir
                 socketio.emit('opponent_disconnected', {
                     'msg': 'Rakip ayrildi',
                     'grace_seconds': config.RECONNECT_GRACE_SECONDS,
+                    **_clock_fields(room),
                 }, to=room_id)
                 socketio.start_background_task(_forfeit_after_grace, room_id, piece, now)
 
@@ -1021,7 +1032,9 @@ def on_join_game(data):
                 joined['result'] = room['result']   # Oyuncu yokken biten oyunun sonucu
             emit('game_joined', joined)
             if was_disconnected:
-                emit('opponent_reconnected', {'msg': 'Rakip geri dondu'}, to=room_id, include_self=False)
+                # Saat alanlari: duraklayan saat yeniden isler; herkes (seyirci dahil) esitlenir
+                emit('opponent_reconnected', {'msg': 'Rakip geri dondu', **_clock_fields(room)},
+                     to=room_id, include_self=False)
             return
 
         join_room(room_id)

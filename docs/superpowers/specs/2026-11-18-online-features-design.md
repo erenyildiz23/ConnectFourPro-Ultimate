@@ -164,7 +164,17 @@ rakiplerle aynı temel özellikleri sunmasıdır.
   sadece `game_start` içinde var).
 - Olaylardaki saat alanları `_clock_fields` içine eklenir:
   `time_control`, `clock_p1`, `clock_p2` (kalan tam saniye) ve
-  `clock_running` (1, 2 ya da 0). Eski alanlar değişmez.
+  `clock_running` (1, 2 ya da 0). Süresiz odada eski alanlar değişmez.
+- *(Düzeltme, son inceleme I-1)* Saati okuyamayan eski istemciler
+  (pygame, önbellekteki eski WebGL) süreli odada da bir sayaç görsün diye
+  süreli odada `turn_seconds_left` işleyen koltuğun kalan süresi artı
+  kalan başlangıç payıdır. Duraklamada, bitmiş ya da bekleyen odada
+  `None` olur. `move_time` süreli odada 0'dır, böylece eski istemciler
+  rakip dönünce sayacı hamle süresiyle yeniden kurmaz. Yeni istemci
+  `time_control` varken bu alanları kullanmaz.
+- *(Düzeltme, T8-M1)* `opponent_disconnected` ve `opponent_reconnected`
+  olayları da `_clock_fields` taşır. Seyirciler dahil herkes duraklama ve
+  devam anında saati eşitler.
 - İstemci: oda kurma ekranında "Süresiz / 3+2" seçimi olur. Oyun
   ekranında iki oyuncunun adının yanında mm:ss saat görünür. Sırası
   gelen oyuncunun saati yerelde geri sayar ve her sunucu olayında

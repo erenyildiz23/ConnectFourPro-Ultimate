@@ -349,6 +349,10 @@ namespace ConnectFourPro.Game
             if (data.Has("move_time"))
                 MoveTimeSeconds = data.GetInt("move_time");
             UpdateChessClock(data);
+            // Sureli odada turn_seconds_left eski istemciler icin isleyen saati tasir;
+            // burada satranc saati gecerli, hamle basina sayac acilmaz (cift gosterim olmaz)
+            if (TimeControl != null)
+                _turnSecondsLeft = null;
         }
 
         /// <summary>
@@ -387,8 +391,9 @@ namespace ConnectFourPro.Game
         }
 
         /// <summary>
-        /// Sunucu kopma sirasinda bir koltugun saatini durdurur ama kopma/donus olaylari saat
-        /// alani tasimaz: istemci kendi sayacini durdurur, donuste kaldigi yerden surdurur.
+        /// Sunucu kopma sirasinda bir koltugun saatini durdurur. Eski sunucunun kopma/donus
+        /// olaylari saat alani tasimaz: istemci kendi sayacini durdurur, donuste kaldigi yerden
+        /// surdurur. Yeni sunucuda olaydaki saat alanlari ardindan sayaci esitler.
         /// </summary>
         private void PauseChessClock(int piece)
         {
@@ -1146,7 +1151,7 @@ namespace ConnectFourPro.Game
                 case SocketEvents.GameOver: OnGameOver(data); break;
                 case SocketEvents.EloUpdate: OnEloUpdate(data); break;
                 case SocketEvents.OpponentDisconnected: OnOpponentDisconnected(data); break;
-                case SocketEvents.OpponentReconnected: OnOpponentReconnected(); break;
+                case SocketEvents.OpponentReconnected: OnOpponentReconnected(data); break;
                 case SocketEvents.GameEnded: OnGameEnded(); break;
                 case SocketEvents.Error: OnServerError(data); break;
                 case SocketEvents.RematchOffered: OnRematchOffered(data); break;
@@ -1490,24 +1495,39 @@ namespace ConnectFourPro.Game
                 _opponentDeadline = Time.unscaledTime + grace;
                 _opponentShownSeconds = grace;
                 // Sunucu, sira bendeyken kopan rakibi beklerken saatimi durdurur (_clock_paused).
-                // Olay saat alani tasimaz: satranc saatini de burada durdururuz. Sirasi gelen
-                // rakip koptuysa onun saati sunucuda islemeye devam eder.
+                // Eski sunucunun olayi saat alani tasimaz: satranc saatini de burada durdururuz.
+                // Sirasi gelen rakip koptuysa onun saati sunucuda islemeye devam eder.
                 if (Game.CurrentPlayer == MyPiece)
                     _turnSecondsLeft = null;
                 PauseChessClock(MyPiece);
+                ResyncChessClock(data);
                 SetStatus($"Rakibin bağlantısı koptu! {grace} sn içinde dönmezse kazanırsın.", StatusTone.Bad);
             }
             else if (IsSpectator)
             {
                 _turnSecondsLeft = null;   // kimin koptugu bilinmez: saat gosterilmez
+                ResyncChessClock(data);    // satranc saati sunucu degerine (duran saat durur)
                 SetStatus("Bir oyuncunun bağlantısı koptu...");
             }
         }
 
-        private void OnOpponentReconnected()
+        /// <summary>
+        /// Kopma/donus olayindaki satranc saati alanlariyla esitler. Yalnizca sureli odada:
+        /// suresiz oda ve eski sunucu (alan yok) yerel duraklatma mantigiyla aynen kalir.
+        /// </summary>
+        private void ResyncChessClock(JsonObject data)
+        {
+            if (TimeControl == null || Game.GameOver || !data.Has("clock_p1")
+                || (Screen != AppScreen.PlayingOnline && Screen != AppScreen.Spectating))
+                return;
+            UpdateChessClock(data);
+        }
+
+        private void OnOpponentReconnected(JsonObject data)
         {
             _opponentDeadline = -1f;
-            ResumeChessClock();   // donus olayi saat alani tasimaz; sonraki olay yine duzeltir
+            ResumeChessClock();      // eski sunucu: donus olayi saat alani tasimaz
+            ResyncChessClock(data);  // yeni sunucu: sunucunun degeriyle esitlenir
             // Sunucu, rakip donunce sirasi gelen oyuncunun suresini bastan baslatir
             // (sureli odada hamle basina sure yoktur, satranc saati gecerlidir)
             if (Screen == AppScreen.PlayingOnline && !IsSpectator && !Game.GameOver

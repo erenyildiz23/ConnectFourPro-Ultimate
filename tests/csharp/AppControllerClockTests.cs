@@ -1,8 +1,9 @@
 // Satranc saati, istemci (Game/AppController.cs): sunucunun _clock_fields alanlari
 // (time_control, clock_p1/p2, clock_running, clock_delay) yerelde geri sayilir ve her
 // saat tasiyan olayda duzeltilir. Eski sunucu (alan yok) ve suresiz oda: saat yok.
-// Rakip kopma/donus olaylari saat alani tasimaz; sunucu kopma sirasinda bekleyen
-// oyuncunun saatini durdurdugu icin istemci de kendi sayacini durdurur.
+// Rakip kopma/donus olaylari yeni sunucuda saat alanlarini tasir ve istemci (seyirci dahil)
+// bunlarla esitlenir; alan yoksa (eski sunucu) istemci kendi sayacini yerelde durdurur.
+// Sureli odada eski turn_seconds_left (eski istemciler icin) hamle basina sayac acmaz.
 using System.Collections.Generic;
 using ConnectFourPro.Core;
 using ConnectFourPro.Game;
@@ -258,6 +259,68 @@ namespace ConnectFourPro.Tests
             _transport.Receive("game_joined", Json.Serialize(joined));
             Time.unscaledTime = 15f;
             Assert.That(_app.ClockSeconds(Board.Player1), Is.EqualTo(170));
+            Assert.That(_app.ClockSeconds(Board.Player2), Is.EqualTo(155));
+        }
+
+        [Test]
+        public void TimedRoomIgnoresOldClientTurnSeconds()
+        {
+            _app.GuestLogin();
+            _app.CreateOnlineGame("3+2");
+            _transport.RaiseConnected();
+            _transport.Receive("game_created", Created);
+            Time.unscaledTime = 100f;
+            var fields = ClockFields("3+2", 180, 180, Board.Player1, 5, moveTime: 0);
+            fields["turn_seconds_left"] = 185;   // sunucu eski istemciler icin doldurur
+            _transport.Receive("game_start", ServerMessages.WithFields(StartVsVeli, fields));
+            Assert.That(_app.ClockSeconds(Board.Player1), Is.EqualTo(180));
+            Assert.That(_app.TurnSecondsLeft, Is.Null, "sureli odada hamle basina sayac gosterilmez");
+            Assert.That(_app.TurnClockWarning, Is.False);
+            Time.unscaledTime = 280f;
+            Assert.That(_app.TurnClockWarning, Is.False);
+        }
+
+        [Test]
+        public void OpponentDisconnectEventsResyncClocks()
+        {
+            _app.GuestLogin();
+            StartTimedGameAsP1();
+            Time.unscaledTime = 103f;
+            // Sunucu olayi 176 diyor (yerel sayac 177): sunucunun degeri gecerli, saat durur
+            _transport.Receive("opponent_disconnected", ServerMessages.WithFields(
+                "{\"msg\":\"Rakip ayrildi\",\"grace_seconds\":30}", ClockFields("3+2", 176, 180, 0)));
+            Time.unscaledTime = 120f;
+            Assert.That(_app.ClockSeconds(Board.Player1), Is.EqualTo(176));
+            Assert.That(_app.ClockTicking(Board.Player1), Is.False);
+            Assert.That(_app.Status, Does.Contain("Rakibin bağlantısı koptu"));
+
+            _transport.Receive("opponent_reconnected", ServerMessages.WithFields(
+                "{\"msg\":\"Rakip geri dondu\"}", ClockFields("3+2", 176, 180, Board.Player1)));
+            Time.unscaledTime = 123f;
+            Assert.That(_app.ClockSeconds(Board.Player1), Is.EqualTo(173), "donuste sunucu degerinden isler");
+            Assert.That(_app.ClockTicking(Board.Player1), Is.True);
+            Assert.That(_app.TurnSecondsLeft, Is.Null);
+        }
+
+        [Test]
+        public void SpectatorClockStopsWhenWaitingPlayerDrops()
+        {
+            _app.GuestLogin();
+            _app.SpectateGame("AB12C");
+            _transport.RaiseConnected();
+            Time.unscaledTime = 10f;
+            var joined = (Dictionary<string, object>)Json.Parse(SpectatorJoined(GameState.FromMoves(new[] { 3 })));
+            foreach (var kv in ClockFields("3+2", 170, 160, Board.Player2))
+                joined[kv.Key] = kv.Value;
+            _transport.Receive("game_joined", Json.Serialize(joined));
+            Time.unscaledTime = 12f;
+            _transport.Receive("opponent_disconnected", ServerMessages.WithFields(
+                "{\"msg\":\"Rakip ayrildi\",\"grace_seconds\":30}", ClockFields("3+2", 170, 158, 0)));
+            Time.unscaledTime = 30f;
+            Assert.That(_app.ClockSeconds(Board.Player2), Is.EqualTo(158), "sunucu saati durdurdu");
+            _transport.Receive("opponent_reconnected", ServerMessages.WithFields(
+                "{\"msg\":\"Rakip geri dondu\"}", ClockFields("3+2", 170, 158, Board.Player2)));
+            Time.unscaledTime = 33f;
             Assert.That(_app.ClockSeconds(Board.Player2), Is.EqualTo(155));
         }
     }
