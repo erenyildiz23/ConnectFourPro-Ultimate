@@ -396,6 +396,8 @@ class ConnectFourGUI:
         self.opponent_remaining = -1              # Durum satirinda gosterilen saniye
         # Rovans ve hamle suresi (sunucu: rematch_*, move_time / turn_seconds_left)
         self.rematch_state = 'idle'               # 'idle' | 'requested' | 'offered' | 'unavailable'
+        # Puansiz iptal edilen oyun (reason 'aborted'); yeni oyun nesnesiyle kendiliginden gecersiz olur
+        self.aborted_game = None
         self.game_no = 1                          # Odadaki kacinci oyun
         self.move_time = 0                        # Sunucunun hamle suresi (sn, 0 = kapali)
         self.turn_deadline: Optional[float] = None   # Sirasi gelenin son an (yerel saat); None = sayac yok
@@ -619,6 +621,8 @@ class ConnectFourGUI:
         if not self.game.game_over or self.state not in ("PLAYING_AI", "PLAYING_ONLINE", "SPECTATING"):
             return None
         w = self.game.winner
+        if self.is_aborted():
+            return "IPTAL EDILDI", COLORS['white']
         if w is None:
             return "BERABERE", COLORS['white']
         if self.is_spectator:
@@ -739,9 +743,15 @@ class ConnectFourGUI:
             return [('REMATCH', "Rovans", self.can_request_rematch())]
         return []
 
+    def is_aborted(self) -> bool:
+        """Ekrandaki oyun sunucuda puansiz iptal edildi mi (ilk hamle gelmedi)?"""
+        return self.aborted_game is not None and self.aborted_game is self.game
+
     def rematch_button_visible(self) -> bool:
-        """Biten online oyunda oyuncuya rovans dugmesi gosterilir (seyirciye ve AI oyununa degil)."""
-        return self.state == "PLAYING_ONLINE" and self.game.game_over and not self.is_spectator
+        """Biten online oyunda oyuncuya rovans dugmesi gosterilir (seyirciye, AI oyununa ve
+        iptal edilen oyuna degil: ilk hamleyi yapmayan rakiple rovans anlamsiz)."""
+        return (self.state == "PLAYING_ONLINE" and self.game.game_over and not self.is_spectator
+                and not self.is_aborted())
 
     def can_request_rematch(self) -> bool:
         return (self.rematch_button_visible() and not self.room_closed and not self.connection_down
@@ -1499,8 +1509,10 @@ class ConnectFourGUI:
         detail = data.get('detail')      # 'timeout' | 'disconnect' | 'leave' | None (eski sunucuda yok)
         self._clear_connection_state()
         self.turn_deadline = None
-        if reason == 'forfeit' and not self.game.game_over:
+        if reason in ('forfeit', 'aborted') and not self.game.game_over:
             self.game.game_over, self.game.winner = True, w
+        if reason == 'aborted':
+            self.aborted_game = self.game
         self._play_result_once(w)
         if not self.is_spectator and self.my_piece in (PLAYER1_PIECE, PLAYER2_PIECE):
             key = 'p1' if self.my_piece == PLAYER1_PIECE else 'p2'
@@ -1511,7 +1523,9 @@ class ConnectFourGUI:
                 if new_rating is not None:
                     self.user_elo = new_rating
         tone = 'neutral'
-        if self.is_spectator:
+        if reason == 'aborted':
+            msg = "Oyun iptal edildi (puansiz)"     # Kazanan yok, ELO degismez
+        elif self.is_spectator:
             msg = "Kirmizi kazandi!" if w == PLAYER1_PIECE else ("Sari kazandi!" if w == PLAYER2_PIECE else "Berabere!")
             if reason == 'forfeit':
                 msg += {'timeout': " (sure doldu)", 'disconnect': " (baglanti koptu)"}.get(detail, " (hukmen)")
@@ -1553,7 +1567,11 @@ class ConnectFourGUI:
 
     def on_opponent_reconnected(self, data):
         self.opponent_deadline = None
-        if (self.state == "PLAYING_ONLINE" and not self.game.game_over and self.move_time > 0
+        if (self.state in ("PLAYING_ONLINE", "SPECTATING") and not self.game.game_over
+                and 'move_time' in data):
+            # Yeni sunucu saat alanlarini gonderir (sureli odada isleyen saat): sayac hemen doner
+            self._apply_clock(data)
+        elif (self.state == "PLAYING_ONLINE" and not self.game.game_over and self.move_time > 0
                 and self.turn_deadline is None and self.game.current_player == self.my_piece):
             # Sunucu, donen rakibin karsisindaki bekleyen oyuncu icin saati bastan baslatir
             self.turn_deadline, self.turn_warned = time.time() + self.move_time, False

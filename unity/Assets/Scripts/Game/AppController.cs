@@ -1359,10 +1359,17 @@ namespace ConnectFourPro.Game
             if (!IsSpectator && w == MyPiece && (info.Detail == "leave" || info.Detail == "disconnect"))
                 Rematch = RematchState.Unavailable;
             bool forfeit = info.Reason == "forfeit";
-            if (forfeit && !Game.GameOver)
+            // Hizli macta ilk hamle gelmedi: kazanansiz, puansiz iptal; rovans sunulmaz
+            bool aborted = info.Reason == "aborted";
+            if ((forfeit || aborted) && !Game.GameOver)
             {
                 Game.GameOver = true;
                 Game.Winner = w;
+            }
+            if (aborted)
+            {
+                _abortedGame = Game;
+                Rematch = RematchState.Unavailable;
             }
             if (!IsSpectator && (MyPiece == Board.Player1 || MyPiece == Board.Player2))
             {
@@ -1388,6 +1395,8 @@ namespace ConnectFourPro.Game
         /// <summary>Sonuc metni; detail yoksa (eski sunucu) eski metinler.</summary>
         private (string msg, StatusTone tone) ResultText(int w, bool forfeit, string detail)
         {
+            if (IsAborted)
+                return ("Oyun iptal edildi (puansız)", StatusTone.Neutral);
             if (IsSpectator)
             {
                 string msg = w == Board.Player1 ? "Kırmızı kazandı!" : (w == Board.Player2 ? "Sarı kazandı!" : "Berabere!");
@@ -1729,6 +1738,12 @@ namespace ConnectFourPro.Game
         /// <summary>AI oyunu dugmesinin yazisi: oyun surerken "Yeni Oyun", bitince "Tekrar Oyna".</summary>
         public string NewGameLabel => Game.GameOver ? "Tekrar Oyna" : "Yeni Oyun";
 
+        // Sunucunun puansiz iptal ettigi oyun; yeni GameState ile kendiliginden gecersiz olur
+        private GameState _abortedGame;
+
+        /// <summary>Ekrandaki oyun sunucuda puansiz iptal edildi mi (ilk hamle gelmedi)?</summary>
+        public bool IsAborted => _abortedGame != null && ReferenceEquals(_abortedGame, Game);
+
         /// <summary>Biten oyunun buyuk basligi (null: oyun suruyor).</summary>
         public (string text, StatusTone tone)? ResultHeadline
         {
@@ -1736,6 +1751,8 @@ namespace ConnectFourPro.Game
             {
                 if (!Game.GameOver)
                     return null;
+                if (IsAborted)
+                    return ("İPTAL EDİLDİ", StatusTone.Neutral);
                 int w = Game.Winner;
                 if (w == 0)
                     return ("BERABERE", StatusTone.Neutral);

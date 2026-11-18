@@ -109,6 +109,34 @@ rakiplerle aynı temel özellikleri sunmasıdır.
 - İstemci: menüye "Hızlı Maç" düğmesi gelir. Bekleme ekranı mevcut
   `Waiting` görünümünü "Rakip aranıyor..." yazısı ve İptal düğmesiyle
   kullanır.
+- **İlk hamle gelmezse puansız iptal:** Hızlı eşleşme odası `quick: True`
+  bayrağı taşır (rövanşta korunur). İlk hamleyi yapacak oyuncu, 5 sn
+  başlangıç payı (`CLOCK_START_DELAY_SECONDS`) bittikten sonra 30 sn
+  (`FIRST_MOVE_ABORT_SECONDS`) içinde oynamazsa oyun iptal edilir:
+  kazanan yok, ELO değişmez, kimseye yenilgi yazılmaz. İptal edilen oyun
+  veritabanına hiç kaydedilmez (geçmişte görünmez). Sunucu bunu satranç
+  saatiyle aynı döngüde (`move_clock_loop` → `enforce_move_deadlines`,
+  `GAMES_LOCK` altında) denetler; pencere dolduktan sonra gelen ilk hamle
+  de geçersizdir ve oyunu iptal eder. Odaya (oyuncular ve seyirciler)
+  `game_over {reason: 'aborted', detail: 'first_move', winner: null}`
+  gider. İlk hamle yapılınca pencere kapanır, normal 3+2 kuralları
+  işler. Her rövanşta pencere yeniden açılır. Normal lobi odaları
+  (süreli ya da süresiz) etkilenmez.
+- Pencere açıkken kopma: iptal, kopma nedeniyle hükmen yenilgiden
+  önce gelir. İlk hamleyi yapacak oyuncu koparsa yeniden bağlanma süresi
+  dolsa da hükmen yenilgi verilmez; 30 sn dolunca oyun iptal edilir.
+  Sırası gelmeyen oyuncu koparsa da pencere açıkken hükmen yenilgi
+  verilmez: ilk hamleyi yapacak oyuncu 30 sn içinde oynamazsa oyun iptal
+  edilir; oynarsa pencere kapanır ve kopan oyuncu hâlâ dönmediyse
+  hükmen yenilgi (`detail: 'disconnect'`) o anda işlenir. Pencere,
+  rakibin kopması yüzünden saat duraklasa da işlemeye devam eder.
+- İstemciler: Unity "Oyun iptal edildi (puansız)" / "Game aborted
+  (unrated)" yazar, başlıkta "İPTAL EDİLDİ" görünür, rövanş düğmesi
+  çıkmaz (ilk hamleyi yapmayan rakiple rövanş anlamsız); "Lobiye Dön"
+  ile çıkılıp yeni hızlı maç aranabilir. pygame "Oyun iptal edildi
+  (puansiz)" gösterir, rövanş düğmesi yine çıkmaz. Sunucu rövanş
+  isteğini reddetmez (eski istemciler için). Eski istemciler bilinmeyen
+  `reason`'u kazanansız sonuç olarak "Berabere!" diye gösterir, çökmez.
 
 ### 3. Hazır sohbet
 

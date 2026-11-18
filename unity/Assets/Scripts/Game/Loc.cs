@@ -213,6 +213,7 @@ namespace ConnectFourPro.Game
             ["KAZANDIN"] = "YOU WON",
             ["KAYBETTİN"] = "YOU LOST",
             ["BERABERE"] = "DRAW",
+            ["İPTAL EDİLDİ"] = "ABORTED",
             ["{0} hamle"] = "{0} moves",
 
             // --- Mac tekrari
@@ -280,6 +281,7 @@ namespace ConnectFourPro.Game
             ["Kazandın!"] = "You won!",
             ["Kaybettin."] = "You lost.",
             ["Berabere!"] = "Draw!",
+            ["Oyun iptal edildi (puansız)"] = "Game aborted (unrated)",
             ["AI kazandı!"] = "AI wins!",
             ["Kırmızı kazandı!"] = "Red wins!",
             ["Sarı kazandı!"] = "Yellow wins!",

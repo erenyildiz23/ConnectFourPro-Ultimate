@@ -279,7 +279,7 @@ def _parse_time_control(value: Any) -> Optional[str]:
 
 
 def _new_room(p1_sid: str, p1_uid: str, p1_info: dict, p1_auth: bool = False,
-              time_control: Optional[str] = None) -> Dict[str, Any]:
+              time_control: Optional[str] = None, quick: bool = False) -> Dict[str, Any]:
     now = time.time()
     tc = TIME_CONTROLS.get(time_control) if time_control else None
     return {
@@ -303,6 +303,10 @@ def _new_room(p1_sid: str, p1_uid: str, p1_info: dict, p1_auth: bool = False,
         'time_control': dict(tc) if tc else None,
         'clock': {PLAYER1_PIECE: float(tc['base']), PLAYER2_PIECE: float(tc['base'])} if tc else None,
         'clock_turn_started': None,
+        # Hizli eslesme odasi (rovansta korunur): ilk hamle penceresi yalnizca bunda vardir.
+        # first_move_abort_at: ilk hamle bu zamana kadar gelmezse oyun puansiz iptal (None = yok)
+        'quick': quick,
+        'first_move_abort_at': None,
     }
 
 
@@ -382,6 +386,20 @@ def _reset_chess_clock(room: dict) -> None:
         return
     room['clock'] = {PLAYER1_PIECE: float(tc['base']), PLAYER2_PIECE: float(tc['base'])}
     room['clock_turn_started'] = _now() + config.CLOCK_START_DELAY_SECONDS
+    # Ilk hamle penceresi baslangic payindan sonra baslar; _clock_settle bunu kaydirmaz
+    room['first_move_abort_at'] = (room['clock_turn_started'] + config.FIRST_MOVE_ABORT_SECONDS
+                                   if room.get('quick') else None)
+
+
+def _first_move_pending(room: dict) -> bool:
+    """Hizli macta ilk hamle penceresi acik mi (oyun suruyor, henuz hamle yok)?"""
+    return (room.get('first_move_abort_at') is not None and room['p2_uid'] is not None
+            and not room['game'].game_over and not room['game'].move_history)
+
+
+def _first_move_expired(room: dict) -> bool:
+    """Ilk hamle penceresi doldu mu? Kopma/duraklama pencereyi durdurmaz."""
+    return _first_move_pending(room) and _now() > room['first_move_abort_at']
 
 
 def _clock_flagged(room: dict) -> bool:
@@ -536,26 +554,62 @@ def _finish_game(room_id: str, room: dict, reason: str = 'normal',
     socketio.emit('game_over', result, to=room_id)
 
 
+def _abort_game(room_id: str, room: dict) -> None:
+    """
+    Ilk hamle gelmedi: oyun kazanansiz ve puansiz biter (reason 'aborted'). ELO degismez,
+    oyun veritabanina kaydedilmez (sonuc da kayip da yok). GAMES_LOCK tutulurken cagrilir.
+    Eski istemciler bilinmeyen reason'u kazanansiz sonuc (berabere) gibi gosterir.
+    """
+    game: ConnectFourGame = room['game']
+    _clock_settle(room)
+    game.game_over = True
+    game.winner = None
+    room['end_reason'] = 'aborted'
+    room['turn_deadline'] = None
+    room['first_move_abort_at'] = None
+    room['last_move_at'] = time.time()
+    log.info("Oyun iptal: oda=%s ilk hamle gelmedi (puansiz)", room_id)
+    result = {
+        'winner': None, 'winner_uid': None,
+        'elo_changes': {'p1': 0, 'p2': 0}, 'new_ratings': {'p1': None, 'p2': None},
+        'move_count': 0, 'reason': 'aborted', 'detail': 'first_move',
+    }
+    room['result'] = result
+    socketio.emit('game_over', result, to=room_id)
+
+
 def _forfeit_after_grace(room_id: str, piece: int, disconnected_at: float) -> None:
-    """Arka plan gorevi: oyuncu sure icinde donmezse rakip hukmen kazanir."""
+    """Arka plan gorevi: oyuncu sure icinde donmezse rakip hukmen kazanir.
+    Hizli macta ilk hamle penceresi acikken hukmen yenilgi verilmez (iptal oncelikli):
+    gorev pencere kapanana kadar bekler; pencere iptalle biterse hicbir sey yapmaz, ilk
+    hamleyle kapanirsa ve oyuncu hala kopuksa hukmen yenilgi o zaman islenir."""
     socketio.sleep(config.RECONNECT_GRACE_SECONDS)
-    with GAMES_LOCK:
-        room = GAMES.get(room_id)
-        if (not room or room['game'].game_over
-                or room['disconnected'].get(piece) != disconnected_at):
-            return  # Oyun bitti veya oyuncu geri dondu
-        log.info("Oda %s: oyuncu %s geri donmedi, hukmen yenilgi", room_id, piece)
-        _finish_game(room_id, room, reason='forfeit', forfeit_loser=piece, detail='disconnect')
+    while True:
+        with GAMES_LOCK:
+            room = GAMES.get(room_id)
+            if (not room or room['game'].game_over
+                    or room['disconnected'].get(piece) != disconnected_at):
+                return  # Oyun bitti veya oyuncu geri dondu
+            if not _first_move_pending(room):
+                log.info("Oda %s: oyuncu %s geri donmedi, hukmen yenilgi", room_id, piece)
+                _finish_game(room_id, room, reason='forfeit', forfeit_loser=piece, detail='disconnect')
+                return
+        socketio.sleep(1)   # Pencere acik: iptal (move_clock_loop) ya da ilk hamle beklenir
 
 
 def enforce_move_deadlines() -> int:
     """Hamle suresi (suresiz oda: turn_deadline) ya da satranc saati (sureli oda) dolan
-    oyuncuyu hukmen yenik sayar. Bitirilen oyun sayisi."""
+    oyuncuyu hukmen yenik sayar; hizli macta ilk hamle penceresi dolan oyunu puansiz iptal
+    eder. Bitirilen oyun sayisi."""
     finished = 0
     with GAMES_LOCK:
         for room_id, room in list(GAMES.items()):
             game = room['game']
             if room['p2_uid'] is None or game.game_over:
+                continue
+            if _first_move_expired(room):
+                _abort_game(room_id, room)
+                finished += 1
                 continue
             if room.get('time_control'):
                 # Duraklatilmis saat azalmaz; kopuk sirasi gelenin saati ise isler
@@ -1103,7 +1157,7 @@ def _quick_pair_locked() -> None:
         while room_id in GAMES:
             room_id = generate_room_id()
         # Hizli mac her zaman sureli (3+2); saat P2 oturunca paydan sonra isler
-        room = _new_room(p1['sid'], p1['uid'], p1['info'], p1['auth'], QUICK_TIME_CONTROL)
+        room = _new_room(p1['sid'], p1['uid'], p1['info'], p1['auth'], QUICK_TIME_CONTROL, quick=True)
         _seat_second_player(room, p2['sid'], p2['uid'], p2['info'], p2['auth'])
         GAMES[room_id] = room
         log.info("Oda %s: hizli eslesme %s - %s", room_id, p1['uid'], p2['uid'])
@@ -1225,6 +1279,9 @@ def on_make_move(data):
         if game.current_player != player_piece:
             _emit_error('Sira sizde degil!')
             return
+        if _first_move_expired(room):
+            _abort_game(room_id, room)   # Pencereden sonra gelen ilk hamle gecersiz: iptal
+            return
         if (_deadline_passed(room) and not _clock_paused(room)) or _clock_flagged(room):
             # Izleyici gorevi henuz calismamis olsa bile gec gelen hamle gecersizdir
             _finish_game(room_id, room, reason='forfeit', forfeit_loser=player_piece, detail='timeout')
@@ -1235,6 +1292,7 @@ def on_make_move(data):
             return
 
         room['last_move_at'] = time.time()
+        room['first_move_abort_at'] = None   # Ilk hamle geldi: iptal penceresi kapanir
         _start_turn_clock(room)
         if room.get('time_control'):
             # Ek sure hamleciye; rakibin sirasi simdi baslar (baslangic payi sadece ilk sirada)

@@ -112,6 +112,10 @@ MOVE_TIME_GRACE_SECONDS = _env_int("MOVE_TIME_GRACE_SECONDS", 2)
 # saniye islemez: istemciler o sirada oyun ekranini yukler
 CLOCK_START_DELAY_SECONDS = 5
 
+# Hizli macta (ve rovanslarinda) ilk hamleyi yapacak oyuncu baslangic payindan sonra bu
+# kadar saniye icinde oynamazsa oyun puansiz iptal edilir (kazanan yok, kayit yok)
+FIRST_MOVE_ABORT_SECONDS = 30
+
 # --- ELO ---
 ELO_K_FACTOR = _env_int("ELO_K_FACTOR", 30)
 ELO_MIN_CHANGE = _env_int("ELO_MIN_CHANGE", 10)
