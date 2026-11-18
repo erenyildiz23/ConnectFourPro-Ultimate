@@ -150,6 +150,7 @@ namespace ConnectFourPro.Game
 
             // --- Menu
             ["Yapay Zekâya Karşı"] = "Versus AI",
+            ["Hızlı Maç"] = "Quick Match",
             ["Online Lobi"] = "Online Lobby",
             ["Liderlik Tablosu"] = "Leaderboard",
             ["Maç Geçmişi"] = "Match History",
@@ -195,6 +196,9 @@ namespace ConnectFourPro.Game
             ["Oda Kodu: {0}"] = "Room Code: {0}",
             ["Rakip lobiden katılabilir!"] = "Your opponent can join from the lobby!",
             ["Oda oluşturuluyor..."] = "Creating room...",
+            ["RAKİP ARANIYOR"] = "FINDING OPPONENT",
+            ["Rakip aranıyor..."] = "Searching for an opponent...",
+            ["Eşleşince oyun başlar."] = "The game starts once matched.",
 
             // --- Liderlik / gecmis
             ["LİDERLİK TABLOSU"] = "LEADERBOARD",
@@ -332,6 +336,8 @@ namespace ConnectFourPro.Game
             ["Oyun sunucuda sona ermiş. Lobiye dönebilirsin."] = "The game has ended on the server. You can return to the lobby.",
             ["Yayın sunucuda sona ermiş. Lobiye dönebilirsin."] = "The stream has ended on the server. You can return to the lobby.",
             ["Hata: {0}"] = "Error: {0}",
+            ["Rakip arama sona erdi."] = "The search has ended.",
+            ["Bağlantı koptu, arama iptal edildi."] = "Connection lost, search cancelled.",
 
             // --- Sunucu hata mesajlari (src/server.py; ASCII Turkce)
             ["Oturum gecersiz, tekrar giris yapin"] = "Session expired, please log in again",

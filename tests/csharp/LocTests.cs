@@ -67,6 +67,13 @@ namespace ConnectFourPro.Tests
         [TestCase("Hamle 3 / 7", "Move 3 / 7")]
         [TestCase("MAÇ TEKRARI", "MATCH REPLAY")]
         [TestCase("veli kazandı! (hükmen)", "veli wins! (forfeit)")]
+        [TestCase("Hızlı Maç", "Quick Match")]
+        [TestCase("Rakip aranıyor...", "Searching for an opponent...")]
+        [TestCase("RAKİP ARANIYOR", "FINDING OPPONENT")]
+        [TestCase("Eşleşince oyun başlar.", "The game starts once matched.")]
+        [TestCase("Rakip arama sona erdi.", "The search has ended.")]
+        [TestCase("Bağlantı koptu, arama iptal edildi.", "Connection lost, search cancelled.")]
+        [TestCase("Hata: Zaten bir oyundasiniz", "Error: You are already in a game")]
         [TestCase("Misafir_123456", "Misafir_123456")]
         [TestCase("", "")]
         public void TranslatesToEnglish(string tr, string en)

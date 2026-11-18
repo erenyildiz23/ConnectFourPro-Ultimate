@@ -72,6 +72,34 @@ namespace ConnectFourPro.Net
             Send(SocketEvents.JoinGame, Json.Serialize(payload));
         }
 
+        /// <summary>Hizli eslesme kuyruguna girer (create_game ile ayni kimlik alanlari).</summary>
+        public void JoinQuickMatch(string userId, string authToken = null)
+        {
+            UserId = userId;
+            AuthToken = authToken;
+            RejoinToken = null;
+            _spectatorRole = false;
+            Send(SocketEvents.QuickMatchJoin, Json.Serialize(Identity()));
+        }
+
+        /// <summary>
+        /// Kuyruktan cikar. Bagli degilken henuz gonderilmemis katilma istegi dusurulur
+        /// (eski sunucu hic cevap vermese de arama boylece iptal edilebilir).
+        /// </summary>
+        public void CancelQuickMatch()
+        {
+            if (IsConnected)
+            {
+                _transport.Emit(SocketEvents.QuickMatchCancel, "{}");
+                return;
+            }
+            var keep = new List<(string, string)>(_pending);
+            _pending.Clear();
+            foreach (var item in keep)
+                if (item.Item1 != SocketEvents.QuickMatchJoin)
+                    _pending.Enqueue(item);
+        }
+
         private Dictionary<string, object> Identity()
         {
             var payload = new Dictionary<string, object> { ["user_id"] = UserId };
