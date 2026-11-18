@@ -86,15 +86,58 @@ class TestQuickMatch:
         b.wait_for('quick_match_waiting')
         assert b.events('game_joined') == [] and not server.GAMES
 
-    def test_same_identity_not_matched_with_itself(self, sio, server):
+    def test_guest_name_in_queue_rejected(self, sio, server):
         a1, a2 = sio(), sio()
         a1.emit('quick_match_join', identity('alice'))
         a1.wait_for('quick_match_waiting')
         a2.emit('quick_match_join', identity('alice'))
-        a2.wait_for('quick_match_waiting')
+        assert a2.wait_for('error')['code'] == 'guest_name_taken'
         assert a1.events('game_joined') == [] and a2.events('game_joined') == []
+        assert a1.events('quick_match_cancelled') == []
         assert not server.GAMES
-        assert queue_sids(server) == [sid_of(server, a2)]
+        assert queue_sids(server) == [sid_of(server, a1)]
+
+    def test_same_socket_rejoin_is_refresh(self, sio, server):
+        a, b = sio(), sio()
+        b.emit('quick_match_join', identity('bob'))
+        b.wait_for('quick_match_waiting')
+        b.clear()
+        # bob ayni soketle tekrar girer: sirasi korunur, ilk giren olarak P1 kalir
+        b.emit('quick_match_join', identity('bob'))
+        b.wait_for('quick_match_waiting')
+        assert queue_sids(server) == [sid_of(server, b)]
+        a.emit('quick_match_join', identity('alice'))
+        assert b.wait_for('game_joined')['player_piece'] == 1
+        assert a.wait_for('game_joined')['player_piece'] == 2
+
+    def test_rematch_removes_queued_player(self, sio, server):
+        room_id, a, b = start_match(sio)
+        play(room_id, a, b, P1_VERTICAL_WIN)
+        a.wait_for('game_over')
+        a.emit('quick_match_join', identity('alice'))
+        a.wait_for('quick_match_waiting')
+        for client in (a, b):
+            client.emit('rematch_request', {'room_id': room_id})
+        a.wait_for('game_start')
+        a.wait_for('quick_match_cancelled')
+        assert queue_sids(server) == []
+        c = sio()
+        c.emit('quick_match_join', identity('carol'))
+        c.wait_for('quick_match_waiting')
+        assert a.events('game_joined') == [] and c.events('game_joined') == []
+        assert list(server.GAMES) == [room_id]
+
+    def test_pairing_skips_entry_seated_in_active_game(self, sio, server):
+        room_id, a, b = start_match(sio)
+        a_sid = sid_of(server, a)
+        with server.GAMES_LOCK:   # Bayat kayit: koltuk alip kuyrukta kalmis soket
+            server.QUICK_QUEUE.append({'sid': a_sid, 'uid': 'alice',
+                                       'info': server.guest_info('alice'), 'auth': False})
+        c = sio()
+        c.emit('quick_match_join', identity('carol'))
+        c.wait_for('quick_match_waiting')
+        assert a.events('game_joined') == [] and c.events('game_joined') == []
+        assert queue_sids(server) == [sid_of(server, c)] and list(server.GAMES) == [room_id]
 
     def test_join_removes_own_waiting_room(self, sio, server):
         a = sio()
@@ -165,6 +208,18 @@ class TestQuickMatch:
 
 @pytest.mark.db
 class TestQuickMatchRegistered:
+    def test_same_identity_not_matched_with_itself(self, sio, http, server, database):
+        token = login_token(http, "alice")
+        a1, a2 = sio(), sio()
+        a1.emit('quick_match_join', identity('alice', token))
+        a1.wait_for('quick_match_waiting')
+        a2.emit('quick_match_join', identity('alice', token))
+        a2.wait_for('quick_match_waiting')
+        a1.wait_for('quick_match_cancelled')   # Eski soket yerini yeni sokete birakir
+        assert a1.events('game_joined') == [] and a2.events('game_joined') == []
+        assert not server.GAMES
+        assert queue_sids(server) == [sid_of(server, a2)]
+
     def test_registered_vs_registered_quick_match_is_rated(self, sio, http, database):
         tokens = (login_token(http, "alice"), login_token(http, "bob"))
         room_id, a, b = quick_pair(sio, tokens=tokens)

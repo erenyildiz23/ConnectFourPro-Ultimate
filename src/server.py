@@ -969,6 +969,10 @@ def _seated_in_active_game(sid: str) -> bool:
 def _quick_pair_locked() -> None:
     """Kuyrukta iki oyuncu varsa ilk ikisini eslestirir: ilk giren P1, ikincisi P2.
     Iki tarafa da game_joined (quick: True) ve game_start gider. GAMES_LOCK altinda cagrilir."""
+    # Bu arada aktif bir maca oturan soket (or. rovans) eslestirilmez, kuyruktan duser
+    for entry in [e for e in QUICK_QUEUE if _seated_in_active_game(e['sid'])]:
+        _quick_remove_locked(entry['sid'])
+        emit('quick_match_cancelled', {}, to=entry['sid'])
     while len(QUICK_QUEUE) >= 2:
         p1, p2 = QUICK_QUEUE.pop(0), QUICK_QUEUE.pop(0)
         room_id = generate_room_id()
@@ -1011,22 +1015,29 @@ def on_quick_match_join(data):
         if existing:
             _drop_waiting_room(existing)
 
-        # Ayni soket ya da ayni kimlik kuyrukta tek kayit: yeni giris eskisinin yerini alir
-        replaced = [entry['sid'] for entry in QUICK_QUEUE
-                    if entry['sid'] != sid and entry['uid'] == user_id and entry['auth'] == authenticated]
-        QUICK_QUEUE[:] = [entry for entry in QUICK_QUEUE
-                          if entry['sid'] != sid
-                          and not (entry['uid'] == user_id and entry['auth'] == authenticated)]
+        # Ayni soket ayni kimlikle tekrar girerse sirasi korunur (yenileme)
+        if any(e['sid'] == sid and e['uid'] == user_id and e['auth'] == authenticated
+               for e in QUICK_QUEUE):
+            emit('quick_match_waiting', {})
+            return
+        same_identity = [e for e in QUICK_QUEUE
+                         if e['sid'] != sid and e['uid'] == user_id and e['auth'] == authenticated]
+        # Misafir adi kanit degildir: kuyruktaki baska canli baglantinin misafiri atilamaz
+        if same_identity and not authenticated:
+            _emit_error('Bu misafir adi kullanimda')
+            return
+        # Kayitli kullanicinin (token kanitli) yeni soketi eski kaydin yerini alir
+        replaced = [e['sid'] for e in same_identity]
+        QUICK_QUEUE[:] = [e for e in QUICK_QUEUE if e['sid'] != sid and e['sid'] not in replaced]
         for old_sid in replaced:
             emit('quick_match_cancelled', {}, to=old_sid)
 
         QUICK_QUEUE.append({'sid': sid, 'uid': user_id, 'info': user_info, 'auth': authenticated})
         CONNECTED_USERS[sid] = user_id
         log.info("Hizli eslesme kuyrugu: %s (%d kisi)", user_id, len(QUICK_QUEUE))
-        if len(QUICK_QUEUE) < 2:
-            emit('quick_match_waiting', {})
-            return
         _quick_pair_locked()
+        if any(e['sid'] == sid for e in QUICK_QUEUE):
+            emit('quick_match_waiting', {})
 
 
 @socketio.on('quick_match_cancel')
@@ -1178,6 +1189,11 @@ def _start_rematch(room_id: str, room: dict) -> None:
     room['game_no'] += 1
     _start_turn_clock(room)
     log.info("Oda %s: rovans basladi (oyun %d)", room_id, room['game_no'])
+    # Rovansla aktif maca donen soket hizli eslesme kuyrugunda kalamaz (iki canli mac olmasin)
+    for key in ('p1', 'p2'):
+        sid = room[f'{key}_sid']
+        if sid and _quick_remove_locked(sid):
+            socketio.emit('quick_match_cancelled', {}, to=sid)
 
     p1_info, p2_info = room['p1_info'], room['p2_info']
     for piece, opponent in ((PLAYER1_PIECE, p2_info), (PLAYER2_PIECE, p1_info)):
