@@ -1,7 +1,7 @@
 """Satranc saati (3+2) testleri: sunucu otoritesinde kalan sure, ek sure, duraklama, rovans."""
 import pytest
 
-from conftest import P1_VERTICAL_WIN, play, start_match, wait_until
+from conftest import P1_VERTICAL_WIN, play, start_match
 
 GRACE = 2
 
