@@ -191,7 +191,7 @@ namespace ConnectFourPro.UI
         {
             if (App.IsGuest)
             {
-                _name.text = "Misafir: " + App.Username;
+                _name.text = Loc.T("Misafir: " + App.Username);
                 _name.fontSize = 20;
                 _name.color = Theme.Gray;
                 _elo.text = "";
@@ -394,15 +394,15 @@ namespace ConnectFourPro.UI
         {
             if (App.RoomId != null)
             {
-                _room.text = "Oda Kodu: " + App.RoomId;
-                _hint.text = "Rakip lobiden katılabilir!";
+                _room.text = Loc.T("Oda Kodu: " + App.RoomId);
+                _hint.text = Loc.T("Rakip lobiden katılabilir!");
             }
             else
             {
                 _room.text = "";
-                _hint.text = "Oda oluşturuluyor...";
+                _hint.text = Loc.T("Oda oluşturuluyor...");
             }
-            _dots.text = Dots[(int)(Time.unscaledTime * 2) % 4];
+            _dots.text = Loc.T(Dots[(int)(Time.unscaledTime * 2) % 4]);
         }
     }
 
@@ -437,16 +437,16 @@ namespace ConnectFourPro.UI
         public override void Refresh()
         {
             var data = App.LeaderboardData;
-            _message.text = App.LeaderboardError ? "Sunucuya bağlanılamadı"
+            _message.text = Loc.T(App.LeaderboardError ? "Sunucuya bağlanılamadı"
                           : data == null ? "Yükleniyor..."
-                          : data.Count == 0 ? "Henüz kayıtlı oyuncu yok" : "";
+                          : data.Count == 0 ? "Henüz kayıtlı oyuncu yok" : "");
             int limit = Responsive.Current == LayoutOrientation.Portrait ? PortraitRows : _lines.Length;
             for (int i = 0; i < _lines.Length; i++)
             {
                 if (data != null && i < data.Count && i < limit)
                 {
                     var p = data[i];
-                    _lines[i].text = $"{i + 1}. {p.Username}  -  ELO: {p.Rating}  (G:{p.Wins} M:{p.Losses})";
+                    _lines[i].text = Loc.T($"{i + 1}. {p.Username}  -  ELO: {p.Rating}  (G:{p.Wins} M:{p.Losses})");
                     _lines[i].color = i < 3 ? Theme.Yellow : Theme.White;
                 }
                 else
@@ -491,10 +491,10 @@ namespace ConnectFourPro.UI
         public override void Refresh()
         {
             var data = App.HistoryData;
-            _message.text = App.IsGuest ? "Maç geçmişi sadece kayıtlı oyuncular için tutulur."
+            _message.text = Loc.T(App.IsGuest ? "Maç geçmişi sadece kayıtlı oyuncular için tutulur."
                           : App.HistoryError ? "Sunucuya bağlanılamadı"
                           : data == null ? "Yükleniyor..."
-                          : data.Count == 0 ? "Henüz online maç oynamadınız." : "";
+                          : data.Count == 0 ? "Henüz online maç oynamadınız." : "");
             int limit = Responsive.Current == LayoutOrientation.Portrait ? PortraitRows : 10;
             for (int i = 0; i < 10; i++)
             {
@@ -520,9 +520,9 @@ namespace ConnectFourPro.UI
                 _cells[i, 0].text = g.ShortDate;
                 _cells[i, 0].color = Theme.Gray;
                 _cells[i, 1].text = "vs " + g.OpponentOf(App.Username);
-                _cells[i, 2].text = text;
+                _cells[i, 2].text = Loc.T(text);
                 _cells[i, 2].color = color;
-                _cells[i, 3].text = g.MoveCount + " hamle";
+                _cells[i, 3].text = Loc.T(g.MoveCount + " hamle");
                 _cells[i, 3].color = Theme.Gray;
             }
         }
@@ -635,29 +635,29 @@ namespace ConnectFourPro.UI
             var headline = app.ResultHeadline;
             if (headline.HasValue && !Board.IsAnimating)
             {
-                _title.text = headline.Value.text;
+                _title.text = Loc.T(headline.Value.text);
                 _title.color = HeadlineColor(headline.Value.tone);
             }
             else
             {
-                _title.text = app.IsSpectator ? "CANLI YAYIN" : app.Screen == AppScreen.PlayingAI ? "Yapay Zekâya Karşı" : "Online Maç";
+                _title.text = Loc.T(app.IsSpectator ? "CANLI YAYIN" : app.Screen == AppScreen.PlayingAI ? "Yapay Zekâya Karşı" : "Online Maç");
                 _title.color = Theme.Red;
             }
-            _panelTitle.text = app.IsSpectator ? "İZLİYORSUNUZ" : "OYUN BİLGİSİ";
+            _panelTitle.text = Loc.T(app.IsSpectator ? "İZLİYORSUNUZ" : "OYUN BİLGİSİ");
             _panelTitle.color = app.IsSpectator ? Theme.Waiting : Theme.White;
 
             var (p1, p1Elo, p2, p2Elo) = app.PlayerLabels();
             SetPlayer(0, p1, p1Elo, Core.Board.Player1);
             SetPlayer(1, p2, p2Elo, Core.Board.Player2);
 
-            _room.text = app.RoomId != null ? "Oda: " + app.RoomId : "";
-            _moves.text = "Hamle: " + app.Game.MoveCount;
+            _room.text = Loc.T(app.RoomId != null ? "Oda: " + app.RoomId : "");
+            _moves.text = Loc.T("Hamle: " + app.Game.MoveCount);
 
             var s = app.Summary;
             _accuracyTitle.enabled = s != null;
-            _accuracy.text = s != null ? $"Sen: %{s.MyAccuracy:0}   Rakip: %{s.OpponentAccuracy:0}" : "";
+            _accuracy.text = Loc.T(s != null ? $"Sen: %{s.MyAccuracy:0}   Rakip: %{s.OpponentAccuracy:0}" : "");
 
-            _menuLabel.text = app.BackLabel;
+            _menuLabel.text = Loc.T(app.BackLabel);
             bool again = app.Screen == AppScreen.PlayingAI;
             if (again)
                 UIKit.SetLabel(_again, app.NewGameLabel);
@@ -685,16 +685,17 @@ namespace ConnectFourPro.UI
         {
             // Isim iki tarafta da ayni (en fazla 14 karakter, misafir adi tam sigar);
             // "(Sen)" etiketi isim satirina sigmadigi icin alttaki ELO satirinda durur.
+            name = Loc.T(name);
             _names[i].text = name != null && name.Length > 14 ? name.Substring(0, 14) : name;
             string eloText = elo.HasValue ? "ELO: " + elo.Value : "";
             if (App.IsLocalPiece(piece))
                 eloText = eloText.Length > 0 ? "(Sen)  " + eloText : "(Sen)";
-            _elos[i].text = eloText;
+            _elos[i].text = Loc.T(eloText);
             _turns[i].enabled = App.Game.CurrentPlayer == piece && !App.Game.GameOver;
             int? secs = App.TurnSecondsLeft;
             if (_turns[i].enabled && secs.HasValue)
             {
-                _clocks[i].text = secs.Value + " sn";
+                _clocks[i].text = Loc.T(secs.Value + " sn");
                 _clocks[i].color = App.TurnClockWarning ? Theme.Error : Theme.Gray;
             }
             else

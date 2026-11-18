@@ -28,6 +28,8 @@ namespace ConnectFourPro.Game
         private Text _status;
         private Image _statusBar;
         private CanvasScaler _scaler;
+        private Button _langButton;
+        private const string LangPrefKey = "lang";
         private LayoutOrientation _orientation = LayoutOrientation.Landscape;
 
         public AppController App => _app;
@@ -53,6 +55,11 @@ namespace ConnectFourPro.Game
 
             if (!string.IsNullOrWhiteSpace(serverUrlOverride))
                 ServerConfig.Url = serverUrlOverride;
+
+            // Dil: kayitli tercih, yoksa sistem/tarayici dili (Turkce degilse Ingilizce)
+            Loc.Current = Loc.Initial(PlayerPrefs.GetString(LangPrefKey, ""),
+                                      Application.systemLanguage == SystemLanguage.Turkish);
+            Debug.Log("[App] Dil: " + Loc.Code(Loc.Current));
 
             EnsureCamera();
             var transport = SocketTransports.Create(gameObject);
@@ -129,8 +136,21 @@ namespace ConnectFourPro.Game
             Responsive.Portrait(sb, 0, 0, 0, 72);
             Responsive.Portrait(server.rectTransform, 0, 12, 520, 24);
 
+            // Dil dugmesi (yalnizca giris ve menu ekraninda): yatayda sag ust, dikeyde sol ust.
+            // e2e testinin tikladigi noktalardan uzak.
+            _langButton = UIKit.Button(root, Loc.ToggleLabel, Theme.Panel, ToggleLanguage, 560, 50, 130, 40, 18);
+            Responsive.Portrait(_langButton.GetComponent<RectTransform>(), -195, 50, 130, 44);
+
             _scaler = canvas.GetComponent<CanvasScaler>();
             ApplyOrientation(ScreenLayout.For(Screen.width, Screen.height));
+        }
+
+        private void ToggleLanguage()
+        {
+            Loc.Toggle();
+            PlayerPrefs.SetString(LangPrefKey, Loc.Code(Loc.Current));
+            PlayerPrefs.Save();
+            Debug.Log("[App] Dil: " + Loc.Code(Loc.Current));
         }
 
         private void ApplyOrientation(LayoutOrientation o)
@@ -169,7 +189,12 @@ namespace ConnectFourPro.Game
 
             bool inGame = _app.Screen == AppScreen.PlayingAI || _app.Screen == AppScreen.PlayingOnline
                           || _app.Screen == AppScreen.Spectating;
-            _status.text = _app.Status;
+            _status.text = Loc.T(_app.Status);
+            bool showLang = _app.Screen == AppScreen.Login || _app.Screen == AppScreen.Menu;
+            if (_langButton.gameObject.activeSelf != showLang)
+                _langButton.gameObject.SetActive(showLang);
+            if (showLang)
+                UIKit.SetLabel(_langButton, Loc.ToggleLabel);
             _status.color = _app.Tone == StatusTone.Good ? Theme.Green
                           : _app.Tone == StatusTone.Bad ? Theme.Error
                           : inGame ? Theme.White : Theme.Gray;

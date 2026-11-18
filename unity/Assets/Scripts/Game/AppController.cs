@@ -1258,7 +1258,9 @@ namespace ConnectFourPro.Game
         private void OnServerError(JsonObject data)
         {
             _joinPending = false;
-            string msg = data.GetString("msg", "");
+            // code (yeni sunucu) metinden onceliklidir; yoksa eski sunucunun msg alani kullanilir.
+            // Gosterilen metin Turkce kalir, ekrana yazilirken Loc.T ile cevrilir.
+            string msg = Loc.ServerError(data.GetString("code", ""), data.GetString("msg", ""));
             if (Screen == AppScreen.PlayingOnline && !Game.GameOver
                 && (msg == "Oda bulunamadi" || (Offline && msg == "Yeniden baglanma anahtari gecersiz")))
             {

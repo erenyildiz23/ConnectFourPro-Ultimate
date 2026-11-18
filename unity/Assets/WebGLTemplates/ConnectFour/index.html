@@ -51,6 +51,12 @@
     var fill = document.getElementById('fill');
     var percent = document.getElementById('percent');
     var loader = document.getElementById('loader');
+    // Yukleme yazilari: tarayici dili Turkce degilse Ingilizce (oyun ici dil secimi ayrica hatirlanir)
+    var tr = /^tr/i.test(navigator.language || '');
+    var T = tr ? { loading: 'Yükleniyor...', failed: 'Oyun yüklenemedi: ' }
+               : { loading: 'Loading...', failed: 'Could not load the game: ' };
+    document.documentElement.lang = tr ? 'tr' : 'en';
+    percent.textContent = T.loading;
 
     // Yuksek DPI ekranlarda gereksiz buyuk cozunurlukte cizmemek icin ust sinir
     var config = {
@@ -73,7 +79,7 @@
     createUnityInstance(canvas, config, function (progress) {
       var p = Math.round(progress * 100);
       fill.style.width = p + '%';
-      percent.textContent = 'Yükleniyor... %' + p;
+      percent.textContent = T.loading + ' ' + p + '%';
     }).then(function () {
       loader.style.opacity = 0;
       setTimeout(function () { loader.style.display = 'none'; }, 300);
@@ -81,7 +87,7 @@
     }).catch(function (message) {
       var error = document.getElementById('error');
       error.style.display = 'block';
-      error.textContent = 'Oyun yüklenemedi: ' + message;
+      error.textContent = T.failed + message;
     });
   </script>
 </body>

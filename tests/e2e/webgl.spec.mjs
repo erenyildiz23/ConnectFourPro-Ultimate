@@ -31,6 +31,7 @@ const UI = {
   menuAI: at(0, 200), menuLobby: at(0, 266),
   easy: at(0, 200),
   lobbyCreate: at(-470, 110), lobbyRow0Action: at(470, 225),
+  lang: at(560, 50),   // dil dugmesi (GameBootstrap; yalnizca giris ve menu)
 };
 const cellCenter = (col, row) => at(-250 - 280 + col * 80 + 40, 375 + 240 - row * 80 - 40);
 const COLORS = { red: [233, 69, 96], yellow: [241, 196, 15], empty: [10, 10, 21] };
@@ -50,8 +51,9 @@ const browser = await chromium.launch({
 });
 const consoleErrors = [];
 
-async function openGame(name, viewport = { width: WIDTH, height: HEIGHT }) {
-  const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+// Tarayici dili sabit: oyun ilk acilista tarayici diline gore TR/EN secer (Game/Loc.cs)
+async function openGame(name, viewport = { width: WIDTH, height: HEIGHT }, locale = 'en-US') {
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale });
   const page = await context.newPage();
   page.name = name;
   page.logs = [];
@@ -152,6 +154,19 @@ try {
   await shot(a, '01-giris.png');
   check(true, 'oyun tarayicida yuklendi (WebGL)');
   check(a.logs.some(l => l.includes('[App] Hazir')), 'uygulama basladi ([App] Hazir)');
+  const langLogs = (p, code) => p.logs.filter(l => l.includes(`[App] Dil: ${code}`)).length;
+  check(langLogs(a, 'en') === 1, 'Ingilizce tarayicida oyun Ingilizce acildi');
+  await click(a, UI.lang);
+  check(await waitLog(a, /\[App\] Dil: tr/, 5000), 'dil dugmesi: Turkceye gecti');
+  await shot(a, '01b-giris-tr.png');
+  await click(a, UI.lang);
+  const backToEn = Date.now() + 5000;
+  while (langLogs(a, 'en') < 2 && Date.now() < backToEn) await sleep(200);
+  check(langLogs(a, 'en') === 2, 'dil dugmesi: Ingilizceye geri dondu');
+  const t = await openGame('TR', undefined, 'tr-TR');
+  check(langLogs(t, 'tr') === 1, 'Turkce tarayicida oyun Turkce acildi');
+  await shot(t, '01c-giris-tr-tarayici.png');
+  await t.context().close();
 
   // ------------------------------------------------- 2. Misafir girisi -> menu
   check(await guestLogin(a), 'misafir girisi');
