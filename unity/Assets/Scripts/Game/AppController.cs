@@ -31,6 +31,7 @@ namespace ConnectFourPro.Game
         Spectating,
         Leaderboard,
         History,
+        Replay,
     }
 
     public enum StatusTone
@@ -177,6 +178,12 @@ namespace ConnectFourPro.Game
         public List<HistoryEntry> HistoryData { get; private set; }
         public bool HistoryError { get; private set; }
 
+        // Mac tekrari: acik tekrar (yoksa null) ve geri donulecek ekran
+        public ReplayModel Replay { get; private set; }
+        public AppScreen ReplayReturnScreen { get; private set; } = AppScreen.Menu;
+        // Tekrarin otomatik oynatmasi icin son Tick zamani
+        private float _replayClock;
+
         // Hamle analizi (online oyunlarda)
         public bool AnalysisEnabled = true;
         private readonly List<(int player, bool wasBest)> _analysis = new List<(int, bool)>();
@@ -244,6 +251,12 @@ namespace ConnectFourPro.Game
             {
                 _summaryCount = _analysis.Count;
                 Summary = ComputeSummary();   // analizler oyun bittikten sonra da tamamlanabilir
+            }
+            if (Screen == AppScreen.Replay && Replay != null)
+            {
+                float now = Time.unscaledTime;
+                Replay.Tick(now - _replayClock);
+                _replayClock = now;
             }
             TickConnectionCountdowns();
         }
@@ -583,6 +596,61 @@ namespace ConnectFourPro.Game
         }
 
         // =====================================================================
+        // Mac tekrari
+        // =====================================================================
+
+        /// <summary>Gecmisteki bir maci izler; hamlesi olmayan kayitta ekran degismez.</summary>
+        public void OpenReplay(HistoryEntry entry)
+        {
+            if (entry == null || entry.Moves.Count == 0)
+                return;
+            string result = string.IsNullOrEmpty(entry.Winner) ? "Berabere!" : entry.Winner + " kazandı!";
+            if (entry.EndReason == "forfeit")
+                result += " (hükmen)";
+            StartReplay(new ReplayModel(entry.Moves, entry.Player1, entry.Player2, result));
+        }
+
+        /// <summary>
+        /// Biten online oyunun (oyuncu olarak) tekrari izlenebilir. Misafirlerin gecmisi
+        /// tutulmadigi icin onlarin tek yolu budur; yerel hamle listesi kullanilir.
+        /// </summary>
+        public bool CanReplayLastGame =>
+            Screen == AppScreen.PlayingOnline && !IsSpectator && Game.GameOver && Game.MoveCount > 0;
+
+        public void OpenReplayOfLastGame()
+        {
+            if (!CanReplayLastGame)
+                return;
+            var (p1, _, p2, _) = PlayerLabels();
+            int w = Game.Winner;
+            string result = w == 0 ? "Berabere!" : (w == Board.Player1 ? p1 : p2) + " kazandı!";
+            if (w != 0 && Game.Status != GameStatus.Win)
+                result += " (hükmen)";   // tahtada dortlu yok: sure / ayrilma
+            StartReplay(new ReplayModel(Game.MoveHistory, p1, p2, result));
+        }
+
+        private void StartReplay(ReplayModel replay)
+        {
+            ReplayReturnScreen = Screen;
+            Replay = replay;
+            _replayClock = Time.unscaledTime;
+            Debug.Log($"[App] Tekrar acildi: {replay.Count} hamle");
+            SetScreen(AppScreen.Replay);
+        }
+
+        private void CloseReplay()
+        {
+            Replay = null;
+            SetScreen(ReplayReturnScreen);
+        }
+
+        // Online oyun ekrani ya da onun ustunde acilmis tekrar: sunucunun rovans /
+        // oda olaylari tekrar izlenirken de islenir, cikista odadan ayrilinir.
+        private bool OnOnlineGameScreen =>
+            Screen == AppScreen.PlayingOnline
+            || (Screen == AppScreen.Replay && ReplayReturnScreen == AppScreen.PlayingOnline);
+
+        // =====================================================================
         // AI oyunu
         // =====================================================================
 
@@ -820,7 +888,7 @@ namespace ConnectFourPro.Game
                 SetStatus("Bağlantı koptu! Oda kapanmış olabilir, yeniden bağlanılıyor...", StatusTone.Bad);
                 return;
             }
-            if (Screen == AppScreen.PlayingOnline && !IsSpectator && ResultKnown && _rematchSupported
+            if (OnOnlineGameScreen && !IsSpectator && ResultKnown && _rematchSupported
                 && Rematch != RematchState.Unavailable)
             {
                 // Biten oyunda koltuga geri katilinmaz (sunucu ayrilan oyuncunun rovansini iptal eder)
@@ -967,6 +1035,7 @@ namespace ConnectFourPro.Game
             _joinPending = false;
             InvalidateAISession();
             ResetOnlineGame();
+            Replay = null;   // rovans tekrar izlenirken basladi
             IsSpectator = false;
             bool rematch = data.GetBool("rematch");
             // Rovansta koltuklar yer degistirir; ilk oyunda tas game_created/game_joined'dan gelir
@@ -1146,7 +1215,7 @@ namespace ConnectFourPro.Game
         }
 
         private bool IsRematchForMe(JsonObject data) =>
-            Screen == AppScreen.PlayingOnline && !IsSpectator && ResultKnown && _rematchSupported
+            OnOnlineGameScreen && !IsSpectator && ResultKnown && _rematchSupported
             && data.GetString("room_id", RoomId) == RoomId;
 
         private void OnRematchOffered(JsonObject data)
@@ -1247,7 +1316,7 @@ namespace ConnectFourPro.Game
                 _sessionDead = true;
                 SetStatus("Oda zaman aşımı nedeniyle kapatıldı. Lobiye dönebilirsin.", StatusTone.Bad);
             }
-            else if (Screen == AppScreen.PlayingOnline && !IsSpectator && _rematchSupported
+            else if (OnOnlineGameScreen && !IsSpectator && _rematchSupported
                      && Rematch != RematchState.Unavailable)
             {
                 Rematch = RematchState.Unavailable;   // biten oda silindi
@@ -1277,7 +1346,7 @@ namespace ConnectFourPro.Game
                 SetStatus("Yayın sunucuda sona ermiş. Lobiye dönebilirsin.", StatusTone.Bad);
                 return;
             }
-            if (Screen == AppScreen.PlayingOnline && Game.GameOver && Rematch == RematchState.OfferedByMe)
+            if (OnOnlineGameScreen && Game.GameOver && Rematch == RematchState.OfferedByMe)
             {
                 // Rovans istegi reddedildi (oda silindi ya da koltuk artik bizim degil)
                 Rematch = RematchState.Unavailable;
@@ -1376,6 +1445,11 @@ namespace ConnectFourPro.Game
         /// </summary>
         public void RequestBack()
         {
+            if (Screen == AppScreen.Replay)
+            {
+                CloseReplay();
+                return;
+            }
             if (Screen == AppScreen.PlayingOnline && !Game.GameOver && !_sessionDead && !LeaveConfirmPending)
             {
                 _leaveConfirmUntil = Time.unscaledTime + LeaveConfirmSeconds;
@@ -1433,8 +1507,9 @@ namespace ConnectFourPro.Game
             ClearTurnClock();
             _rematchSupported = false;
             Rematch = RematchState.None;
-            if (Screen == AppScreen.PlayingOnline || Screen == AppScreen.Waiting)
+            if (OnOnlineGameScreen || Screen == AppScreen.Waiting)
                 _socket.LeaveGame();
+            Replay = null;
             _socket.Disconnect();
             _socket.Detach();
             _socket = NewSocket();
@@ -1454,7 +1529,7 @@ namespace ConnectFourPro.Game
         public void Shutdown()
         {
             _ai.CancelAll();
-            if (Screen == AppScreen.PlayingOnline || Screen == AppScreen.Waiting)
+            if (OnOnlineGameScreen || Screen == AppScreen.Waiting)
                 _socket.LeaveGame();
             _socket.Disconnect();
         }

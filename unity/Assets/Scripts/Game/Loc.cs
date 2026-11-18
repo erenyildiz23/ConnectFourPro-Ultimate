@@ -209,6 +209,11 @@ namespace ConnectFourPro.Game
             ["BERABERE"] = "DRAW",
             ["{0} hamle"] = "{0} moves",
 
+            // --- Mac tekrari
+            ["MAÇ TEKRARI"] = "MATCH REPLAY",
+            ["Tekrarı izle"] = "Watch replay",
+            ["Hamle {0} / {1}"] = "Move {0} / {1}",
+
             // --- Oyun ekrani
             ["Hamle analizi (isabet)"] = "Move analysis (accuracy)",
             ["Tekrar Oyna"] = "Play Again",
