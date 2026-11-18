@@ -9,7 +9,7 @@ def flush(*clients):
     for c in clients:
         seen = len(c.events('latency_pong'))
         c.emit('latency_ping', {'t': 1})
-        assert wait_until(lambda: len(c.events('latency_pong')) > seen, 3.0)
+        assert wait_until(lambda c=c, seen=seen: len(c.events('latency_pong')) > seen, 3.0)
 
 
 def add_spectator(sio, room_id):
