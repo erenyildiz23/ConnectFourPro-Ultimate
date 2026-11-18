@@ -176,6 +176,7 @@ namespace ConnectFourPro.Game
             ["+ Yeni Oyun"] = "+ New Game",
             ["Yenile"] = "Refresh",
             ["Yenilendi"] = "Refreshed",
+            ["Süresiz"] = "Untimed",   // sure secimi; "3+2" ve saat ("3:00") cevrilmez
             ["ODA"] = "ROOM",
             ["OYUNCU 1"] = "PLAYER 1",
             ["OYUNCU 2"] = "PLAYER 2",

@@ -53,13 +53,17 @@ namespace ConnectFourPro.Net
             _transport.EventReceived += OnEvent;
         }
 
-        public void CreateGame(string userId, string authToken = null)
+        /// <summary>Oda kurar; timeControl ("3+2") verilirse sureli oda (null: eski yuk, suresiz).</summary>
+        public void CreateGame(string userId, string authToken = null, string timeControl = null)
         {
             UserId = userId;
             AuthToken = authToken;
             RejoinToken = null;
             _spectatorRole = false;
-            Send(SocketEvents.CreateGame, Json.Serialize(Identity()));
+            var payload = Identity();
+            if (!string.IsNullOrEmpty(timeControl))
+                payload["time_control"] = timeControl;
+            Send(SocketEvents.CreateGame, Json.Serialize(payload));
         }
 
         public void JoinGame(string roomId, string userId, string authToken = null)

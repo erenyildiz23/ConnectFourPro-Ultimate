@@ -249,17 +249,28 @@ namespace ConnectFourPro.UI
         private readonly List<Text> _landscapeHeader = new List<Text>();
         private readonly List<Text> _portraitHeader = new List<Text>();
         private int _shownVersion = -1;
+        // "Yeni Oyun"un yanindaki sure secimi (Suresiz / 3+2); dolgusu secime gore degisir
+        private readonly Button _timeControl;
+        private readonly Image _timeControlFill;
+        private readonly Text _timeControlText;
+        private string _shownTimeControl = "?";
 
         public LobbyView(AppController app, Transform parent) : base(app, parent, "Lobby")
         {
             P(Title("ONLİNE LOBİ", 45), 0, 150, 510, 60);
-            P(UIKit.Button(Root, "+ Yeni Oyun", Theme.Button, app.CreateOnlineGame, -470, 110, 180, 48), -160, 220, 170, 52);
+            // Dikey: Yeni Oyun | sure | Yenile | Geri tek satirda (x -250..250, aralar >= 5)
+            P(UIKit.Button(Root, "+ Yeni Oyun", Theme.Button, app.CreateLobbyGame, -470, 110, 180, 48), -170, 220, 160, 52);
+            _timeControl = UIKit.Button(Root, "Süresiz", Theme.InputBackground, app.ToggleLobbyTimeControl,
+                                        -195, 110, 130, 48, 18);
+            _timeControlFill = _timeControl.GetComponent<Image>();
+            _timeControlText = _timeControl.GetComponentInChildren<Text>();
+            P(_timeControl, -35, 220, 100, 52);
             P(UIKit.Button(Root, "Yenile", Theme.Button, () =>
             {
                 app.RefreshActiveGames();
                 app.SetStatus("Yenilendi");
-            }, -320, 110, 100, 48), 10, 220, 130, 52);
-            P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 500, 110, 120, 48), 180, 220, 120, 52);
+            }, -320, 110, 100, 48), 80, 220, 110, 52);
+            P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 500, 110, 120, 48), 195, 220, 110, 52);
 
             var header = UIKit.Panel(Root, "Header", Theme.Panel);
             UIKit.Place(header.rectTransform, 0, 170, 1180, 40);
@@ -308,6 +319,16 @@ namespace ConnectFourPro.UI
 
         public override void Refresh()
         {
+            // Sure secimi (dil degisince de yazi yenilenir)
+            UIKit.SetLabel(_timeControl, App.LobbyTimeControlLabel);
+            if (_shownTimeControl != App.LobbyTimeControl)
+            {
+                _shownTimeControl = App.LobbyTimeControl;
+                var fill = App.LobbyTimeControl != null ? Theme.Yellow : Theme.InputBackground;
+                _timeControlFill.color = fill;
+                _timeControlText.color = Theme.OnColor(fill);
+            }
+
             if (_shownVersion == App.ActiveGamesVersion)
                 return;
             _shownVersion = App.ActiveGamesVersion;
@@ -333,7 +354,14 @@ namespace ConnectFourPro.UI
             float y = 335 + index * 64;
             var bg = UIKit.Image(_rows, "Row " + g.RoomId, index % 2 == 0 ? Theme.Panel : Theme.Background);
             UIKit.Place(bg.rectTransform, 0, y, 510, 60);
-            UIKit.Label(_rows, g.RoomId, 20, Theme.Hover, -185, y, 130, 56, TextAnchor.MiddleCenter, FontStyle.Bold);
+            if (g.TimeControl != null)
+            {
+                // Sureli oda: oda kodunun altinda "3+2" etiketi
+                UIKit.Label(_rows, g.RoomId, 20, Theme.Hover, -185, y - 13, 130, 30, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.Label(_rows, g.TimeControl, 18, Theme.Yellow, -185, y + 15, 130, 26, TextAnchor.MiddleCenter, FontStyle.Bold);
+            }
+            else
+                UIKit.Label(_rows, g.RoomId, 20, Theme.Hover, -185, y, 130, 56, TextAnchor.MiddleCenter, FontStyle.Bold);
             UIKit.Label(_rows, $"{Short(g.P1)} ({g.P1Elo})", 18, Theme.Red, -15, y - 15, 190, 28);
             string room = g.RoomId;
             if (g.Waiting)
@@ -353,7 +381,14 @@ namespace ConnectFourPro.UI
             float y = 225 + index * 54;
             var bg = UIKit.Image(_rows, "Row " + g.RoomId, index % 2 == 0 ? Theme.Panel : Theme.Background);
             UIKit.Place(bg.rectTransform, 0, y, 1180, 50);
-            UIKit.Label(_rows, g.RoomId, 20, Theme.Hover, -480, y, 220, 50, TextAnchor.MiddleCenter, FontStyle.Bold);
+            if (g.TimeControl != null)
+            {
+                // Sureli oda: oda kodunun saginda "3+2" etiketi (ODA sutunu -590..-370)
+                UIKit.Label(_rows, g.RoomId, 20, Theme.Hover, -510, y, 120, 50, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.Label(_rows, g.TimeControl, 18, Theme.Yellow, -410, y, 70, 50, TextAnchor.MiddleCenter, FontStyle.Bold);
+            }
+            else
+                UIKit.Label(_rows, g.RoomId, 20, Theme.Hover, -480, y, 220, 50, TextAnchor.MiddleCenter, FontStyle.Bold);
             UIKit.Label(_rows, $"{Short(g.P1)} ({g.P1Elo})", 19, Theme.Red, -260, y, 230, 50);
             string room = g.RoomId;
             if (g.Waiting)
@@ -586,6 +621,8 @@ namespace ConnectFourPro.UI
         private readonly Text[] _bubbleTexts = new Text[2];
         private readonly RectTransform[] _bubbleTails = new RectTransform[2];
         private readonly bool[] _bubbleShown = new bool[2];
+        // Satranc saati ilk gorundugunde bir kez loglanir (tests/e2e/webgl.spec.mjs bekler)
+        private bool _chessClockShown;
 
         public BoardView Board { get; }
 
@@ -770,6 +807,10 @@ namespace ConnectFourPro.UI
             var (p1, p1Elo, p2, p2Elo) = app.PlayerLabels();
             SetPlayer(0, p1, p1Elo, Core.Board.Player1);
             SetPlayer(1, p2, p2Elo, Core.Board.Player2);
+            bool chessClock = app.TimeControl != null;
+            if (chessClock && !_chessClockShown)
+                Debug.Log("[Game] Saat gorunuyor: " + _clocks[0].text + " | " + _clocks[1].text);
+            _chessClockShown = chessClock;
 
             _room.text = Loc.T(app.RoomId != null ? "Oda: " + app.RoomId : "");
             _moves.text = Loc.T("Hamle: " + app.Game.MoveCount);
@@ -836,6 +877,16 @@ namespace ConnectFourPro.UI
                 eloText = eloText.Length > 0 ? "(Sen)  " + eloText : "(Sen)";
             _elos[i].text = Loc.T(eloText);
             _turns[i].enabled = App.Game.CurrentPlayer == piece && !App.Game.GameOver;
+            // Sureli oda: iki oyuncunun da saati (mm:ss) adin yaninda; isleyen beyaz,
+            // duran gri, 10 sn altinda kirmizi. Hamle basina sure yerine gecer.
+            int? clock = App.ClockSeconds(piece);
+            if (clock.HasValue)
+            {
+                _clocks[i].text = ClockFormat.Format(clock.Value);
+                _clocks[i].color = App.ClockWarning(piece) ? Theme.Error
+                                 : App.ClockTicking(piece) ? Theme.White : Theme.Gray;
+                return;
+            }
             int? secs = App.TurnSecondsLeft;
             if (_turns[i].enabled && secs.HasValue)
             {

@@ -32,6 +32,7 @@ const UI = {
   menuQuick: at(0, 200), menuAI: at(0, 266), menuLobby: at(0, 332),
   easy: at(0, 200),
   lobbyCreate: at(-470, 110), lobbyRow0Action: at(470, 225),
+  lobbyTime: at(-195, 110),   // "Yeni Oyun"un yanindaki Suresiz / 3+2 secimi
   lang: at(560, 50),   // dil dugmesi (GameBootstrap; yalnizca giris ve menu)
   replayOpen: at(400, 345), replayLast: at(520, 430),
   // Hazir sohbet (GameView): dugme tahta ile panel arasinda, panelin ilk dugmesi "İyi oyun!";
@@ -267,6 +268,42 @@ try {
   check(await waitLog(p1, /\[Replay\] Hamle 6 \/ 7/), 'sol ok bir hamle geri aldi (6 / 7)');
   board = await waitForBoard(p1, b => countOf(b, 'R') === 3 && countOf(b, 'Y') === 3, '14d-tekrar-geri.png');
   check(countOf(board, 'R') === 3 && countOf(board, 'Y') === 3, 'tahta 6. hamledeki durumda\n' + boardText(board));
+
+  // ------------------------------------------------- 5b2. Sureli mac (3+2)
+  // T1 lobide sure secimini 3+2'ye cevirir ve oda kurar; T2 lobiden katilir. Saat kanvasa
+  // cizildigi icin GameView'in "[Game] Saat gorunuyor: 3:00 | 3:00" satiri ve AppController'in
+  // her saat tasiyan sunucu olayinda yazdigi "[App] Saat 3+2: <P1> / <P2> (isleyen n)" satiri
+  // okunur. T1 baslangic payi (5 sn) icinde oynar: ek sureyle saati 3:00'dan ayrilir
+  // (paydaysa 3:02) ve saat T2'ye gecer.
+  const t1 = await openGame('T1');
+  check(await guestLogin(t1), 'T1 misafir girisi');
+  await click(t1, UI.menuLobby, 1500);
+  await click(t1, UI.lobbyTime, 800);
+  check(await waitLog(t1, /\[App\] Sure secimi: 3\+2/, 5000), 'T1 lobide 3+2 secti');
+  await shot(t1, '14s1-lobi-3+2-secimi.png');
+  await click(t1, UI.lobbyCreate, 1500);
+  check(await waitLog(t1, /\[GameSocket\] Sunucuya baglandi/), 'T1 Socket.IO ile baglandi');
+  await sleep(1000);
+  games = await activeGames();
+  const timedRoom = games.find(g => g.status === 'WAITING');
+  check(!!timedRoom && timedRoom.time_control === '3+2', 'T1 3+2 oda kurdu: ' + JSON.stringify(timedRoom));
+
+  const t2 = await openGame('T2');
+  check(await guestLogin(t2), 'T2 misafir girisi');
+  await click(t2, UI.menuLobby, 3500);
+  await shot(t2, '14s2-lobi-3+2-etiketi.png');
+  await click(t2, UI.lobbyRow0Action, 1000);
+  check(await waitLog(t1, /\[Game\] Saat gorunuyor: 3:00 \| 3:00/), 'T1 ekraninda iki saat 3:00 gorunuyor');
+  check(await waitLog(t2, /\[Game\] Saat gorunuyor: 3:00 \| 3:00/), 'T2 ekraninda iki saat 3:00 gorunuyor');
+  await shot(t2, '14s3-sureli-mac-t2.png');
+  await dropIn(t1, 3, 1500);
+  check(await waitLog(t2, /\[App\] Saat 3\+2: (?!3:00 )\d+:\d\d \/ 3:00 \(isleyen 2\)/),
+        'hamleden sonra T1 saati degisti, saat T2\'de isliyor: ' +
+        t2.logs.filter(l => l.includes('[App] Saat')).join(' ; '));
+  board = await waitForBoard(t2, b => countOf(b, 'R') === 1, '14s4-sureli-mac-hamle.png');
+  check(board[0][3] === 'R', 'T1 hamlesi T2 ekranina yansidi\n' + boardText(board));
+  await t1.close();
+  await t2.close();
 
   // ------------------------------------------------------- 5c. Hizli mac
   // Iki sayfa menude "Hizli Mac"a basar: ilk giren P1 (kirmizi), ikincisi P2 olur ve

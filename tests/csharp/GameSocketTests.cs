@@ -53,6 +53,20 @@ namespace ConnectFourPro.Tests
         }
 
         [Test]
+        public void CreatePayloadCarriesTimeControlOnlyWhenTimed()
+        {
+            _socket.CreateGame("ali", "tok-1", "3+2");
+            _transport.RaiseConnected();
+            var data = _transport.EmittedOf("create_game")[0];
+            Assert.That(data.GetString("user_id"), Is.EqualTo("ali"));
+            Assert.That(data.GetString("time_control"), Is.EqualTo("3+2"));
+
+            _socket.CreateGame("ali", "tok-1");
+            data = _transport.EmittedOf("create_game")[1];
+            Assert.That(data.Has("time_control"), Is.False);
+        }
+
+        [Test]
         public void JoinPayloadCarriesRoomUserAndToken()
         {
             _transport.RaiseConnected();
