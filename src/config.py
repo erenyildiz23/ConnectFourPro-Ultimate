@@ -108,6 +108,10 @@ RECONNECT_GRACE_SECONDS = _env_int("RECONNECT_GRACE_SECONDS", 30)
 MOVE_TIME_SECONDS = _env_int("MOVE_TIME_SECONDS", 0)
 MOVE_TIME_GRACE_SECONDS = _env_int("MOVE_TIME_GRACE_SECONDS", 2)
 
+# Sureli macta (satranc saati) saat P2 katildiktan / rovans basladiktan sonra bu kadar
+# saniye islemez: istemciler o sirada oyun ekranini yukler
+CLOCK_START_DELAY_SECONDS = 5
+
 # --- ELO ---
 ELO_K_FACTOR = _env_int("ELO_K_FACTOR", 30)
 ELO_MIN_CHANGE = _env_int("ELO_MIN_CHANGE", 10)

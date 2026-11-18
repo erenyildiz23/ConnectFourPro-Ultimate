@@ -69,6 +69,11 @@ QUICK_CHAT_COUNT = 8
 CHAT_MIN_INTERVAL = 2.0
 LAST_CHAT_AT: Dict[str, float] = {}
 
+# Sureli mac (satranc saati): ad -> {'base': baslangic saniyesi, 'inc': hamle basina ek sure}.
+# Bilinmeyen ad suresiz oda demektir. Hizli eslesme her zaman QUICK_TIME_CONTROL kurar.
+TIME_CONTROLS: Dict[str, Dict[str, int]] = {'3+2': {'base': 180, 'inc': 2}}
+QUICK_TIME_CONTROL = '3+2'
+
 # Geriye donuk uyumluluk (testler/benchmark'lar bu adlari kullanabilir)
 WAITING_TIMEOUT = config.WAITING_TIMEOUT
 INACTIVE_TIMEOUT = config.INACTIVE_TIMEOUT
@@ -268,8 +273,15 @@ def _clean_str(data: Any, key: str, max_len: int = 64) -> Optional[str]:
     return value[:max_len] if value else None
 
 
-def _new_room(p1_sid: str, p1_uid: str, p1_info: dict, p1_auth: bool = False) -> Dict[str, Any]:
+def _parse_time_control(value: Any) -> Optional[str]:
+    """Istemcinin gonderdigi sure adi; bilinmeyen/gecersiz deger None (suresiz)."""
+    return value if isinstance(value, str) and value in TIME_CONTROLS else None
+
+
+def _new_room(p1_sid: str, p1_uid: str, p1_info: dict, p1_auth: bool = False,
+              time_control: Optional[str] = None) -> Dict[str, Any]:
     now = time.time()
+    tc = TIME_CONTROLS.get(time_control) if time_control else None
     return {
         'game': ConnectFourGame(),
         # *_auth: kimlik token ile dogrulandi; *_rejoin: koltugu geri alma anahtari
@@ -285,6 +297,12 @@ def _new_room(p1_sid: str, p1_uid: str, p1_info: dict, p1_auth: bool = False) ->
         'turn_deadline': None,   # Sirasi gelen oyuncunun son hamle zamani; None = sure yok
         'rematch': set(),        # Oyun bittikten sonra rovans isteyen koltuklar (piece)
         'game_no': 1,            # Odadaki kacinci oyun
+        # Satranc saati: time_control None = suresiz oda (turn_deadline/MOVE_TIME_SECONDS isler).
+        # clock: piece -> kalan saniye (sirasi gelenin degeri clock_turn_started'tan beri
+        # gecen sure dusulmeden tutulur); clock_turn_started: sira baslangici (pay dahil)
+        'time_control': dict(tc) if tc else None,
+        'clock': {PLAYER1_PIECE: float(tc['base']), PLAYER2_PIECE: float(tc['base'])} if tc else None,
+        'clock_turn_started': None,
     }
 
 
@@ -316,20 +334,92 @@ def _clock_paused(room: dict) -> bool:
             and other_player(game.current_player) in room['disconnected'])
 
 
+def _now() -> float:
+    """Satranc saati hesaplarinin zamani (testler sahte saatle degistirir)."""
+    return time.time()
+
+
+def _time_control_name(room: dict) -> Optional[str]:
+    tc = room.get('time_control')
+    if not tc:
+        return None
+    return next((name for name, value in TIME_CONTROLS.items() if value == tc), None)
+
+
+def _clock_running(room: dict) -> int:
+    """Saati isleyen koltuk (1/2); suresiz, bekleyen, bitmis ya da duraklatilmis odada 0."""
+    if (not room.get('time_control') or room['p2_uid'] is None or room['game'].game_over
+            or room.get('clock_turn_started') is None or _clock_paused(room)):
+        return 0
+    return room['game'].current_player
+
+
+def _clock_left(room: dict, piece: int) -> float:
+    """Koltugun anlik kalan suresi (saniye, eksi olabilir). Baslangic payi dusulmez."""
+    left = room['clock'][piece]
+    if _clock_running(room) == piece:
+        left -= max(0.0, _now() - room['clock_turn_started'])
+    return left
+
+
+def _clock_settle(room: dict) -> None:
+    """Sirasi gelenin o ana kadar harcadigi sureyi saatine isler ve sira baslangicini simdiye
+    ceker (baslangic payi bitmediyse korunur). Duraklatma durumu (kopma/donus) degismeden ve
+    hamleden once cagrilir; duraklatilmis aralik boylece kimseye yazilmaz. GAMES_LOCK altinda."""
+    if (not room.get('time_control') or room['game'].game_over
+            or room.get('clock_turn_started') is None):
+        return
+    piece = _clock_running(room)
+    if piece:
+        room['clock'][piece] = _clock_left(room, piece)
+    room['clock_turn_started'] = max(_now(), room['clock_turn_started'])
+
+
+def _reset_chess_clock(room: dict) -> None:
+    """Sureli odada iki saati baslangic suresine kurar; saat CLOCK_START_DELAY_SECONDS sonra isler."""
+    tc = room.get('time_control')
+    if not tc:
+        return
+    room['clock'] = {PLAYER1_PIECE: float(tc['base']), PLAYER2_PIECE: float(tc['base'])}
+    room['clock_turn_started'] = _now() + config.CLOCK_START_DELAY_SECONDS
+
+
+def _clock_flagged(room: dict) -> bool:
+    """Sureli odada sirasi gelenin suresi gecikme payi da dahil bitti mi?"""
+    if not room.get('time_control') or room['p2_uid'] is None or room['game'].game_over:
+        return False
+    piece = room['game'].current_player
+    return _clock_left(room, piece) + config.MOVE_TIME_GRACE_SECONDS < 0
+
+
 def _clock_fields(room: dict) -> Dict[str, Any]:
-    """Istemci geri sayimi icin: kalan sure TAM saniye (saat farki onemsiz); sure yoksa None."""
+    """Istemci geri sayimi icin: kalan sure TAM saniye (saat farki onemsiz); sure yoksa None.
+    Satranc saati alanlari (time_control, clock_p1/p2, clock_running, clock_delay) eklenir;
+    suresiz odada None/0'dir. Eski alanlar (move_time, turn_seconds_left) aynen kalir."""
     deadline = room.get('turn_deadline')
     if _clock_paused(room):
         deadline = None
-    return {
+    fields = {
         'move_time': config.MOVE_TIME_SECONDS,
         'turn_seconds_left': None if deadline is None else max(0, math.ceil(deadline - time.time())),
+        'time_control': _time_control_name(room),
+        'clock_p1': None, 'clock_p2': None, 'clock_running': 0, 'clock_delay': 0,
     }
+    if room.get('time_control'):
+        fields['clock_p1'] = max(0, math.ceil(_clock_left(room, PLAYER1_PIECE)))
+        fields['clock_p2'] = max(0, math.ceil(_clock_left(room, PLAYER2_PIECE)))
+        fields['clock_running'] = _clock_running(room)
+        if fields['clock_running']:
+            # Baslangic payindan kalan tam saniye: istemci bu sure boyunca geri saymaz
+            fields['clock_delay'] = max(0, math.ceil(room['clock_turn_started'] - _now()))
+    return fields
 
 
 def _start_turn_clock(room: dict) -> None:
-    """Sirasi gelen oyuncu icin hamle suresini baslatir (sure kapaliysa/oyun bittiyse None)."""
-    if config.MOVE_TIME_SECONDS > 0 and room['p2_uid'] and not room['game'].game_over:
+    """Sirasi gelen oyuncu icin hamle suresini baslatir (sure kapaliysa/oyun bittiyse None).
+    Sureli odada hamle basina sinir yoktur, satranc saati turn_deadline'in yerine gecer."""
+    if (config.MOVE_TIME_SECONDS > 0 and room['p2_uid'] and not room['game'].game_over
+            and not room.get('time_control')):
         room['turn_deadline'] = time.time() + config.MOVE_TIME_SECONDS
     else:
         room['turn_deadline'] = None
@@ -347,6 +437,7 @@ def _seat_second_player(room: dict, sid: str, uid: str, info: dict, auth: bool) 
     room['p2_auth'], room['p2_rejoin'] = auth, secrets.token_urlsafe(16)
     room['last_move_at'] = time.time()
     _start_turn_clock(room)
+    _reset_chess_clock(room)   # Saat ilk hamleyle degil, P2 katilinca (paydan sonra) isler
 
 
 def _emit_game_start(room: dict) -> None:
@@ -381,6 +472,7 @@ def _finish_game(room_id: str, room: dict, reason: str = 'normal',
     GAMES_LOCK tutulurken cagrilmalidir.
     """
     game: ConnectFourGame = room['game']
+    _clock_settle(room)   # Biten oyunun saati son haliyle donar
     if forfeit_loser is not None:
         game.game_over = True
         game.winner = other_player(forfeit_loser)
@@ -448,13 +540,20 @@ def _forfeit_after_grace(room_id: str, piece: int, disconnected_at: float) -> No
 
 
 def enforce_move_deadlines() -> int:
-    """Hamle suresi dolan oyuncuyu hukmen yenik sayar. Bitirilen oyun sayisi."""
+    """Hamle suresi (suresiz oda: turn_deadline) ya da satranc saati (sureli oda) dolan
+    oyuncuyu hukmen yenik sayar. Bitirilen oyun sayisi."""
     finished = 0
     with GAMES_LOCK:
         for room_id, room in list(GAMES.items()):
             game = room['game']
-            if (room['p2_uid'] is None or game.game_over or not _deadline_passed(room)
-                    or _clock_paused(room)):
+            if room['p2_uid'] is None or game.game_over:
+                continue
+            if room.get('time_control'):
+                # Duraklatilmis saat azalmaz; kopuk sirasi gelenin saati ise isler
+                expired = _clock_flagged(room)
+            else:
+                expired = _deadline_passed(room) and not _clock_paused(room)
+            if not expired:
                 continue
             log.info("Oda %s: oyuncu %s hamle suresini asti", room_id, game.current_player)
             _finish_game(room_id, room, reason='forfeit', forfeit_loser=game.current_player,
@@ -516,9 +615,9 @@ def start_cleanup_thread() -> None:
 
     socketio.start_background_task(cleanup_loop)
     log.info("Arka plan temizlik gorevi basladi")
-    if config.MOVE_TIME_SECONDS > 0:
-        socketio.start_background_task(move_clock_loop)
-        log.info("Hamle suresi: %ds", config.MOVE_TIME_SECONDS)
+    # Hamle suresi kapali (0) olsa da calisir: sureli odalarin satranc saatini de denetler
+    socketio.start_background_task(move_clock_loop)
+    log.info("Hamle suresi: %ds (satranc saati denetimi acik)", config.MOVE_TIME_SECONDS)
 
 
 # =============================================================================
@@ -682,6 +781,7 @@ def active_games():
                 'p2_elo': p2.get('rating', config.DEFAULT_RATING) if p2 else 0,
                 'status': 'PLAYING' if room['p2_uid'] else 'WAITING',
                 'move_count': len(room['game'].move_history),
+                'time_control': _time_control_name(room),   # "3+2" ya da None (suresiz)
             })
     return jsonify(games_list), 200
 
@@ -804,6 +904,7 @@ def on_disconnect():
                 _seat_left_finished(room_id, room, piece)
             else:
                 now = time.time()
+                _clock_settle(room)   # Rakibi kopan sirasi gelenin saati bundan sonra durur
                 room['disconnected'][piece] = now
                 socketio.emit('opponent_disconnected', {
                     'msg': 'Rakip ayrildi',
@@ -832,7 +933,9 @@ def on_create_game(data):
         room_id = generate_room_id()
         while room_id in GAMES:
             room_id = generate_room_id()
-        GAMES[room_id] = _new_room(request.sid, user_id, user_info, authenticated)
+        # Alan yoksa ya da bilinmiyorsa oda suresizdir (eski istemciler etkilenmez)
+        time_control = _parse_time_control(data.get('time_control') if isinstance(data, dict) else None)
+        GAMES[room_id] = _new_room(request.sid, user_id, user_info, authenticated, time_control)
         rejoin_token = GAMES[room_id]['p1_rejoin']
 
     CONNECTED_USERS[request.sid] = user_id
@@ -898,6 +1001,7 @@ def on_join_game(data):
                 _emit_error('Baska bir baglantidan oyuna girildi', to=old_sid)
                 leave_room(room_id, sid=old_sid)
             was_disconnected = own_piece in room['disconnected']
+            _clock_settle(room)   # Duraklatilmis aralik kimsenin saatine yazilmaz
             room['disconnected'].pop(own_piece, None)
             room[f'{key}_sid'] = request.sid
             if not game.game_over:
@@ -929,7 +1033,7 @@ def on_join_game(data):
 
             emit('game_joined', {'room_id': room_id, 'player_piece': PLAYER2_PIECE,
                                  'role': 'player', 'opponent_info': room['p1_info'],
-                                 'rejoin_token': room['p2_rejoin']})
+                                 'rejoin_token': room['p2_rejoin'], **_clock_fields(room)})
             _emit_game_start(room)
             return
 
@@ -985,8 +1089,8 @@ def _quick_pair_locked() -> None:
         room_id = generate_room_id()
         while room_id in GAMES:
             room_id = generate_room_id()
-        # Hizli mac odasi burada kurulur (Gorev 8 sure kontrolunu burada verecek); simdilik suresiz
-        room = _new_room(p1['sid'], p1['uid'], p1['info'], p1['auth'])
+        # Hizli mac her zaman sureli (3+2); saat P2 oturunca paydan sonra isler
+        room = _new_room(p1['sid'], p1['uid'], p1['info'], p1['auth'], QUICK_TIME_CONTROL)
         _seat_second_player(room, p2['sid'], p2['uid'], p2['info'], p2['auth'])
         GAMES[room_id] = room
         log.info("Oda %s: hizli eslesme %s - %s", room_id, p1['uid'], p2['uid'])
@@ -997,7 +1101,7 @@ def _quick_pair_locked() -> None:
             emit('game_joined', {'room_id': room_id, 'player_piece': piece, 'role': 'player',
                                  'opponent_info': opponent['info'],
                                  'rejoin_token': room[f'{_seat_key(piece)}_rejoin'],
-                                 'quick': True}, to=entry['sid'])
+                                 'quick': True, **_clock_fields(room)}, to=entry['sid'])
         _emit_game_start(room)
 
 
@@ -1108,16 +1212,21 @@ def on_make_move(data):
         if game.current_player != player_piece:
             _emit_error('Sira sizde degil!')
             return
-        if _deadline_passed(room) and not _clock_paused(room):
+        if (_deadline_passed(room) and not _clock_paused(room)) or _clock_flagged(room):
             # Izleyici gorevi henuz calismamis olsa bile gec gelen hamle gecersizdir
             _finish_game(room_id, room, reason='forfeit', forfeit_loser=player_piece, detail='timeout')
             return
+        _clock_settle(room)   # Hamlecinin harcadigi sure saatine islenir
         if not game.make_move(col):
             _emit_error('Gecersiz hamle!')
             return
 
         room['last_move_at'] = time.time()
         _start_turn_clock(room)
+        if room.get('time_control'):
+            # Ek sure hamleciye; rakibin sirasi simdi baslar (baslangic payi sadece ilk sirada)
+            room['clock'][player_piece] += room['time_control']['inc']
+            room['clock_turn_started'] = _now()
         response = game.to_dict()
         response['col'] = col
         response.update(_clock_fields(room))
@@ -1156,6 +1265,7 @@ def on_leave_game(data):
                 room['p1_sid'] = None
             else:
                 room['p2_sid'] = None
+            _clock_settle(room)
             room['disconnected'][piece] = time.time()
             log.info("Oda %s: oyuncu %s oyunu terk etti", room_id, piece)
             _finish_game(room_id, room, reason='forfeit', forfeit_loser=piece, detail='leave')
@@ -1220,6 +1330,7 @@ def _start_rematch(room_id: str, room: dict) -> None:
     room['rematch'] = set()
     room['game_no'] += 1
     _start_turn_clock(room)
+    _reset_chess_clock(room)   # Rovansta saatler sifirlanir (yine baslangic payiyla)
     log.info("Oda %s: rovans basladi (oyun %d)", room_id, room['game_no'])
     # Rovansla aktif maca donen soket hizli eslesme kuyrugunda kalamaz (iki canli mac olmasin)
     for key in ('p1', 'p2'):
