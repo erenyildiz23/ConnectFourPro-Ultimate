@@ -161,14 +161,15 @@ namespace ConnectFourPro.UI
             _elo = UIKit.Label(Root, "", 20, Theme.Green, 0, 130);
             P(_elo, 0, 255, 480, 40);
 
-            // Hizli Mac en ustte. Dugme merkezleri: yatay (0, 200 + 66 i), dikey (0, 340 + 78 i);
-            // tests/e2e/webgl.spec.mjs bu koordinatlara tiklar. Masaustunde 7 dugme de sigar
-            // (yatay alt kenar 622 < durum cubugu 668, dikey 838 < 888).
+            // Hizli Mac en ustte. Dugme merkezleri ScreenLayout.Menu'den: WebGL'de 7 dugme, yatay
+            // (0, 200 + 66 i), dikey (0, 340 + 78 i); tests/e2e/webgl.spec.mjs bu koordinatlara
+            // tiklar. Masaustundeki 8. dugmede aralik daralir (ScreenLayoutTests sigmayi denetler).
             var items = new List<(string label, Color color, UnityEngine.Events.UnityAction action)>
             {
                 ("Hızlı Maç", Theme.Green, app.StartQuickMatch),
                 ("Yapay Zekâya Karşı", Theme.Button, app.OpenAISelect),
                 ("Online Lobi", Theme.Button, app.OpenLobby),
+                ("Turnuvalar", Theme.Button, app.OpenTournaments),
                 ("Liderlik Tablosu", Theme.Button, app.OpenLeaderboard),
                 ("Maç Geçmişi", Theme.Button, app.OpenHistory),
                 ("Çıkış Yap", Theme.Panel, app.Logout),
@@ -177,9 +178,11 @@ namespace ConnectFourPro.UI
             // Tarayicida uygulama kapatilamaz; bu buton yalnizca masaustunde
             items.Add(("Oyunu Kapat", Theme.Gray, Quit));
 #endif
+            var land = ScreenLayout.Menu(items.Count, LayoutOrientation.Landscape);
+            var port = ScreenLayout.Menu(items.Count, LayoutOrientation.Portrait);
             for (int i = 0; i < items.Count; i++)
-                P(UIKit.Button(Root, items[i].label, items[i].color, items[i].action, 0, 200 + i * 66, 300, 52, 21),
-                  0, 340 + i * 78, 440, 60);
+                P(UIKit.Button(Root, items[i].label, items[i].color, items[i].action, 0, land.Center(i), 300, land.Height, 21),
+                  0, port.Center(i), 440, port.Height);
         }
 
         private static void Quit()
@@ -613,6 +616,8 @@ namespace ConnectFourPro.UI
         private readonly Button _undo;
         private readonly Button _rematch;
         private readonly Button _replay;
+        // Turnuva oyunu bitince rovans yerine "Siradaki oyun" (ya da "Turnuva bitti")
+        private readonly Text _nextGame;
         // Hazir sohbet: ac/kapa dugmesi, 8 mesajlik panel, oyuncu satiri basina bir balon
         private readonly Button _chat;
         private readonly List<GameObject> _chatPanel = new List<GameObject>();
@@ -629,9 +634,10 @@ namespace ConnectFourPro.UI
         public GameView(AppController app, Transform parent) : base(app, parent, "Game")
         {
             _title = UIKit.Label(Root, "", 38, Theme.Red, 0, 42, 1000, 56, TextAnchor.MiddleCenter, FontStyle.Bold);
-            // Dikey: baslik 510'a sigar (uzun sonuc basliklari kuculur), "Sunucu" etiketinin altinda
+            // Dikey: baslik 510'a sigar (uzun sonuc basliklari ve "<ad>'nın Arenası · 12:34" kuculur),
+            // "Sunucu" etiketinin altinda
             P(_title, 0, 38, 510, 44);
-            FitInPortrait(_title, 28, 38);
+            FitInPortrait(_title, 22, 38);
 
             Board = BoardView.Create(Root, -250, 375, () => App.Game, app.CanHumanMove, () => App.HumanPiece);
             Board.ColumnClicked += app.HandleColumnClick;
@@ -647,6 +653,10 @@ namespace ConnectFourPro.UI
             P(panel, 0, 731, 510, 298);
             _panelTitle = UIKit.Label(Root, "", 24, Theme.White, px, 165, 300, 34, TextAnchor.MiddleCenter, FontStyle.Bold);
             P(_panelTitle, 0, 600, 400, 28);
+            // Turnuva oyununda panel basligi turnuvanin adi (en fazla 32 harf): sigmazsa kuculur
+            _panelTitle.resizeTextForBestFit = true;
+            _panelTitle.resizeTextMaxSize = 24;
+            _panelTitle.resizeTextMinSize = 16;
 
             for (int i = 0; i < 2; i++)
             {
@@ -696,6 +706,10 @@ namespace ConnectFourPro.UI
             _replay = UIKit.Button(Root, "Tekrarı izle", Theme.Hover, app.OpenReplayOfLastGame, px, 345, 220, 34, 18);
             _replay.gameObject.SetActive(false);
             P(_replay, -170, 842, 160, 52);
+            // Turnuva oyunu bitince "Rovans"in yerinde: "Siradaki oyun..." (sunucu yeni eslesmeyi yapar)
+            _nextGame = UIKit.Label(Root, "", 20, Theme.Yellow, px, 530, 300, 48, TextAnchor.MiddleCenter, FontStyle.Bold);
+            P(_nextGame, 0, 842, 176, 52);
+            FitInPortrait(_nextGame, 18, 20);
             _menu = UIKit.Button(Root, "Menü", Theme.Button, app.RequestBack, px, 590, 180, 48);
             _menuLabel = _menu.GetComponentInChildren<Text>();
             // Dikey: Geri Al | Yeni Oyun / Rovans | Menu tek satirda, en alt kenar y=868 (< 888)
@@ -775,6 +789,7 @@ namespace ConnectFourPro.UI
         public override void OnLayoutChanged(LayoutOrientation o)
         {
             base.OnLayoutChanged(o);
+            _panelTitle.resizeTextMinSize = o == LayoutOrientation.Portrait ? ScreenLayout.PortraitMinFontSize : 16;
             // Kuyruk isme dogru: yatayda isim balonun saginda, dikeyde solunda
             foreach (var t in _bubbleTails)
                 t.localScale = new Vector3(o == LayoutOrientation.Portrait ? -1 : 1, 1, 1);
@@ -790,19 +805,30 @@ namespace ConnectFourPro.UI
                 app.HandleColumnClick(key);
 
             // Oyun bitince baslik sonucu gosterir (son tas dusmeden once degil)
+            // Turnuva oyunu: ustte turnuvanin adi ve kalan suresi (sayfa verisi bu turnuvaya aitse)
+            var arena = app.InArenaGame && app.CurrentTournament != null
+                        && app.CurrentTournament.Id == app.ArenaGameTournamentId
+                ? app.CurrentTournament : null;
+            string arenaName = arena != null ? ArenaModel.DisplayName(arena.Creator, Loc.Current) : null;
+
             var headline = app.ResultHeadline;
             if (headline.HasValue && !Board.IsAnimating)
             {
                 _title.text = Loc.T(headline.Value.text);
                 _title.color = HeadlineColor(headline.Value.tone);
             }
+            else if (arena != null)
+            {
+                _title.text = arenaName + " · " + ClockFormat.Format(app.ArenaSecondsLeft);
+                _title.color = Theme.Red;
+            }
             else
             {
                 _title.text = Loc.T(app.IsSpectator ? "CANLI YAYIN" : app.Screen == AppScreen.PlayingAI ? "Yapay Zekâya Karşı" : "Online Maç");
                 _title.color = Theme.Red;
             }
-            _panelTitle.text = Loc.T(app.IsSpectator ? "İZLİYORSUNUZ" : "OYUN BİLGİSİ");
-            _panelTitle.color = app.IsSpectator ? Theme.Waiting : Theme.White;
+            _panelTitle.text = arenaName ?? Loc.T(app.IsSpectator ? "İZLİYORSUNUZ" : "OYUN BİLGİSİ");
+            _panelTitle.color = app.IsSpectator ? Theme.Waiting : arena != null ? Theme.Yellow : Theme.White;
 
             var (p1, p1Elo, p2, p2Elo) = app.PlayerLabels();
             SetPlayer(0, p1, p1Elo, Core.Board.Player1);
@@ -812,7 +838,14 @@ namespace ConnectFourPro.UI
                 Debug.Log("[Game] Saat gorunuyor: " + _clocks[0].text + " | " + _clocks[1].text);
             _chessClockShown = chessClock;
 
-            _room.text = Loc.T(app.RoomId != null ? "Oda: " + app.RoomId : "");
+            if (arena != null)
+            {
+                // Oda kodu yerine turnuva durumu; oyun bitince alinan puan onde ("+4 · 12:34 kaldı")
+                string state = Loc.T(ArenaModel.StatusText(arena, app.UtcNow(), BrowserClock.OffsetMinutes));
+                _room.text = app.Game.GameOver && app.LastArenaPoints is int pts ? "+" + pts + " · " + state : state;
+            }
+            else
+                _room.text = Loc.T(app.RoomId != null ? "Oda: " + app.RoomId : "");
             _moves.text = Loc.T("Hamle: " + app.Game.MoveCount);
 
             var s = app.Summary;
@@ -833,6 +866,18 @@ namespace ConnectFourPro.UI
                 UIKit.SetLabel(_rematch, app.RematchLabel);
             if (_rematch.gameObject.activeSelf != rematch)
                 _rematch.gameObject.SetActive(rematch);
+            // Turnuva oyunu bitti: "Siradaki oyun" yalnizca sunucu bu turnuvada yeni eslesme
+            // yapacaksa (duraklatilmamis, sure dolmamis); turnuva bittiyse onun durumu
+            string next = "";
+            if (app.InArenaGame && app.Game.GameOver && !Board.IsAnimating)
+            {
+                if (app.ArenaPendingTournamentId is int pending && pending == app.ArenaGameTournamentId)
+                    next = Loc.T("Sıradaki oyun") + new string('.', 1 + (int)(Time.unscaledTime * 2) % 3);
+                else if (arena != null && arena.IsOver)
+                    next = Loc.T(ArenaModel.StatusText(arena, app.UtcNow(), 0));
+            }
+            _nextGame.text = next;
+
             // Son tas dusmeden tekrar acilmaz (baslik gibi)
             bool replay = app.CanReplayLastGame && !Board.IsAnimating;
             if (_replay.gameObject.activeSelf != replay)
@@ -1100,6 +1145,496 @@ namespace ConnectFourPro.UI
                 _shown = r.State;
             }
             _shownIndex = r.Index;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    /// <summary>
+    /// Tarayicinin yerel saat farki (turnuva baslangic saatleri yerel saatle yazilir).
+    /// WebGL'de .NET saat dilimi bilgisi yok: fark tarayicidan okunur (SocketBridge.jslib).
+    /// </summary>
+    public static class BrowserClock
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern int CF4_UtcOffsetMinutes();
+#endif
+        private static int _offset;
+        private static float _readAt = -1000f;
+
+        /// <summary>UTC farki (dakika, dogu pozitif); dakikada bir yeniden okunur (yaz saati).</summary>
+        public static int OffsetMinutes
+        {
+            get
+            {
+                if (Time.unscaledTime - _readAt < 60f)
+                    return _offset;
+                _readAt = Time.unscaledTime;
+                try
+                {
+#if UNITY_WEBGL && !UNITY_EDITOR
+                    _offset = CF4_UtcOffsetMinutes();
+#else
+                    _offset = (int)System.Math.Round(System.TimeZoneInfo.Local.GetUtcOffset(System.DateTime.UtcNow).TotalMinutes);
+#endif
+                }
+                catch (System.Exception)
+                {
+                    _offset = 0;
+                }
+                return _offset;
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    /// <summary>
+    /// Turnuvalar listesi (misafir de gorur) ve kayitli oyuncu icin turnuva acma formu.
+    /// Satirlar sabit yuvalardir (History gibi); kalan sure her karede yazilir.
+    /// </summary>
+    public sealed class TournamentsView : View
+    {
+        private readonly int _rowCount;
+        private readonly Button _create;
+        private readonly Text _message;
+        private readonly GameObject[][] _rowObjects;
+        private readonly Text[] _rowName;
+        private readonly Text[] _rowInfo;
+        private readonly Image[] _rowActionFill;
+        private readonly Text[] _rowActionText;
+        private readonly bool[] _rowShown;
+
+        // Turnuva acma formu (listenin ustunde; yari saydam arka plan alttaki tiklamalari tutar)
+        private readonly List<GameObject> _form = new List<GameObject>();
+        private bool _formOpen;
+        private readonly Image[] _durationFill = new Image[3];
+        private readonly Text[] _durationText = new Text[3];
+        private readonly Text _startValue;
+        private int _duration = ArenaModel.Durations[0];
+        private int _startIn;
+        private string _logged;
+
+        public TournamentsView(AppController app, Transform parent) : base(app, parent, "Tournaments")
+        {
+            P(Title("TURNUVALAR", 45), 0, 150, 510, 60);
+            // Dugme satiri (lobi gibi; tests/e2e "+ Turnuva Ac"a (-455, 110)'dan tiklar).
+            // Dikey: Turnuva Ac | Yenile | Geri tek satirda (x -255..250)
+            _create = UIKit.Button(Root, "+ Turnuva Aç", Theme.Green, () => SetFormOpen(true), -455, 110, 250, 48);
+            P(_create, -130, 220, 250, 52);
+            P(UIKit.Button(Root, "Yenile", Theme.Button, app.RefreshTournaments, -255, 110, 110, 48), 65, 220, 120, 52);
+            P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 500, 110, 120, 48), 190, 220, 120, 52);
+
+            _message = UIKit.Label(Root, "", 24, Theme.Gray, 0, 300);
+            P(_message, 0, 450, 480, 80);
+
+            // Satir: yatayda ad | bilgi | dugme tek satirda; dikeyde ad ustte, bilgi altta, dugme sagda.
+            // Satir dugmesi tests/e2e icin ilk satirda (500, 170).
+            var land = ScreenLayout.TournamentList(LayoutOrientation.Landscape);
+            var port = ScreenLayout.TournamentList(LayoutOrientation.Portrait);
+            _rowCount = land.Count;
+            _rowObjects = new GameObject[_rowCount][];
+            _rowName = new Text[_rowCount];
+            _rowInfo = new Text[_rowCount];
+            _rowActionFill = new Image[_rowCount];
+            _rowActionText = new Text[_rowCount];
+            _rowShown = new bool[_rowCount];
+            for (int i = 0; i < _rowCount; i++)
+            {
+                float y = land.Center(i), py = port.Center(i);
+                var bg = UIKit.Image(Root, "Row " + i, i % 2 == 0 ? Theme.Panel : Theme.Background);
+                UIKit.Place(bg.rectTransform, 0, y, 1180, land.Height);
+                P(bg, 0, py, 510, port.Height);
+                _rowName[i] = UIKit.Label(Root, "", 21, Theme.White, -330, y, 470, 40, TextAnchor.MiddleLeft, FontStyle.Bold);
+                P(_rowName[i], -60, py - 14, 380, 28);
+                FitInPortrait(_rowName[i], 18, 21);
+                _rowInfo[i] = UIKit.Label(Root, "", 19, Theme.Gray, 150, y, 450, 40, TextAnchor.MiddleLeft);
+                P(_rowInfo[i], -60, py + 15, 380, 26);
+                FitInPortrait(_rowInfo[i], 18, 19);
+                int row = i;
+                var action = UIKit.Button(Root, "Katıl", Theme.Green, () => Act(row), 500, y, 120, 40, 18);
+                P(action, 190, py, 110, 48);
+                _rowActionFill[i] = action.GetComponent<Image>();
+                _rowActionText[i] = action.GetComponentInChildren<Text>();
+                _rowObjects[i] = new[] { bg.gameObject, _rowName[i].gameObject, _rowInfo[i].gameObject, action.gameObject };
+                foreach (var go in _rowObjects[i])
+                    go.SetActive(false);
+            }
+
+            // Form: panel yatayda y 190..540, dikeyde 250..710
+            var backdrop = UIKit.Image(Root, "FormBackdrop",
+                                       new Color(Theme.Background.r, Theme.Background.g, Theme.Background.b, 0.92f));
+            var brt = backdrop.rectTransform;
+            brt.anchorMin = Vector2.zero;
+            brt.anchorMax = Vector2.one;
+            brt.offsetMin = brt.offsetMax = Vector2.zero;
+            _form.Add(backdrop.gameObject);
+            var panel = UIKit.Panel(Root, "FormPanel", Theme.Panel);
+            UIKit.Place(panel.rectTransform, 0, 365, 560, 350);
+            P(panel, 0, 480, 510, 460);
+            _form.Add(panel.gameObject);
+            var title = UIKit.Label(Root, "Turnuva Aç", 28, Theme.White, 0, 215, 500, 40, TextAnchor.MiddleCenter, FontStyle.Bold);
+            P(title, 0, 285, 480, 40);
+            _form.Add(title.gameObject);
+            var durLabel = UIKit.Label(Root, "Süre", 20, Theme.Gray, 0, 262, 500, 30);
+            P(durLabel, 0, 335, 480, 30);
+            _form.Add(durLabel.gameObject);
+            // Sure: 15 / 30 / 60 dk (tests/e2e 15'e (-130, 305)'ten tiklar); secili olan sari
+            for (int k = 0; k < ArenaModel.Durations.Length; k++)
+            {
+                int minutes = ArenaModel.Durations[k];
+                var b = UIKit.Button(Root, minutes + " dk", Theme.InputBackground, () => _duration = minutes,
+                                     -130 + k * 130, 305, 110, 48);
+                P(b, -150 + k * 150, 385, 130, 52);
+                _durationFill[k] = b.GetComponent<Image>();
+                _durationText[k] = b.GetComponentInChildren<Text>();
+                _form.Add(b.gameObject);
+            }
+            var startLabel = UIKit.Label(Root, "Başlangıç", 20, Theme.Gray, 0, 360, 500, 30);
+            P(startLabel, 0, 445, 480, 30);
+            _form.Add(startLabel.gameObject);
+            var earlier = UIKit.Button(Root, "<", Theme.InputBackground,
+                                       () => _startIn = ArenaModel.StepStartIn(_startIn, -1), -170, 405, 60, 48, 24);
+            P(earlier, -190, 495, 64, 52);
+            _form.Add(earlier.gameObject);
+            var later = UIKit.Button(Root, ">", Theme.InputBackground,
+                                     () => _startIn = ArenaModel.StepStartIn(_startIn, 1), 170, 405, 60, 48, 24);
+            P(later, 190, 495, 64, 52);
+            _form.Add(later.gameObject);
+            _startValue = UIKit.Label(Root, "Hemen", 22, Theme.White, 0, 405, 260, 48, TextAnchor.MiddleCenter, FontStyle.Bold);
+            P(_startValue, 0, 495, 290, 52);
+            _form.Add(_startValue.gameObject);
+            // Gonder (tests/e2e (-90, 485)'ten tiklar) / Iptal
+            var submit = UIKit.Button(Root, "Turnuva Aç", Theme.Green, () => App.CreateTournament(_duration, _startIn),
+                                      -90, 485, 170, 50, 19);
+            P(submit, -110, 620, 200, 56);
+            _form.Add(submit.gameObject);
+            var cancel = UIKit.Button(Root, "İptal", Theme.InputBackground, () => SetFormOpen(false), 90, 485, 170, 50);
+            P(cancel, 110, 620, 200, 56);
+            _form.Add(cancel.gameObject);
+            SetFormOpen(false);
+        }
+
+        private void SetFormOpen(bool open)
+        {
+            if (open)
+            {
+                _duration = ArenaModel.Durations[0];
+                _startIn = 0;
+            }
+            _formOpen = open;
+            foreach (var go in _form)
+                go.SetActive(open);
+        }
+
+        private bool Joinable(TournamentSummary t) =>
+            App.CanCreateTournament && !t.IsOver && App.ArenaJoinedId != t.Id;
+
+        private void Act(int row)
+        {
+            var list = App.Tournaments;
+            if (row >= list.Count)
+                return;
+            var t = list[row];
+            bool join = Joinable(t);
+            App.OpenTournament(t.Id);
+            if (join)
+                App.JoinTournament();
+        }
+
+        public override void OnShow()
+        {
+            UIKit.ClearSelection();
+            SetFormOpen(false);
+            _logged = null;
+        }
+
+        public override void Refresh()
+        {
+            var app = App;
+            bool canCreate = app.CanCreateTournament;
+            if (_create.gameObject.activeSelf != canCreate)
+                _create.gameObject.SetActive(canCreate);
+            if (_formOpen && !canCreate)
+                SetFormOpen(false);
+
+            var list = app.Tournaments;
+            _message.text = Loc.T(app.TournamentsError ? "Sunucuya bağlanılamadı"
+                          : list.Count > 0 ? ""
+                          : app.TournamentsLoading ? "Yükleniyor..." : "Henüz turnuva yok");
+
+            System.DateTime now = app.UtcNow();
+            int offset = BrowserClock.OffsetMinutes;
+            for (int i = 0; i < _rowCount; i++)
+            {
+                bool has = i < list.Count;
+                if (_rowShown[i] != has)
+                {
+                    _rowShown[i] = has;
+                    foreach (var go in _rowObjects[i])
+                        go.SetActive(has);
+                }
+                if (!has)
+                    continue;
+                var t = list[i];
+                _rowName[i].text = ArenaModel.DisplayName(t.Creator, Loc.Current);
+                _rowName[i].color = t.IsOver ? Theme.Gray : Theme.White;
+                _rowInfo[i].text = ArenaModel.InfoLine(t, now, offset, Loc.Current);
+                _rowInfo[i].color = t.IsRunning ? Theme.Green : Theme.Gray;
+                // Kayitli oyuncu katilir (sayfa acilir ve arena_join gider); misafir / biten: izler
+                bool join = Joinable(t);
+                _rowActionText[i].text = Loc.T(join ? "Katıl" : "İzle");
+                var fill = join ? Theme.Green : Theme.Hover;
+                _rowActionFill[i].color = fill;
+                _rowActionText[i].color = Theme.OnColor(fill);
+            }
+
+            if (_formOpen)
+            {
+                for (int k = 0; k < _durationFill.Length; k++)
+                {
+                    var fill = ArenaModel.Durations[k] == _duration ? Theme.Yellow : Theme.InputBackground;
+                    _durationFill[k].color = fill;
+                    _durationText[k].color = Theme.OnColor(fill);
+                    _durationText[k].text = Loc.T(ArenaModel.Durations[k] + " dk");
+                }
+                _startValue.text = _startIn == 0
+                    ? Loc.T("Hemen")
+                    : Loc.T("Başlıyor " + ArenaModel.LocalClock(now.AddMinutes(_startIn), offset));
+            }
+
+            // tests/e2e liste ekranini ve acma dugmesini bu satirdan okur (kanvasta DOM yok)
+            if (!app.TournamentsLoading)
+            {
+                string state = $"{list.Count} turnuva, acma dugmesi {(canCreate ? "var" : "yok")}";
+                if (state != _logged)
+                {
+                    _logged = state;
+                    Debug.Log("[Turnuvalar] Liste: " + state);
+                }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    /// <summary>
+    /// Turnuva sayfasi: ad, kalan sure / baslangic, Katil / Duraklat / Devam ve canli puan
+    /// durumu (sira, seri isareti, ad, puan, son 5 oyun). Seri isareti turuncu "×3" etiketidir:
+    /// yerlesik yazi tipinde emoji yok (sohbet dugmesi gibi).
+    /// </summary>
+    public sealed class TournamentView : View
+    {
+        private const int RecentDots = 5;
+        private readonly int _rowCount;
+        private readonly Text _title;
+        private readonly Text _info;
+        private readonly Text _next;
+        private readonly Text _message;
+        private readonly Button _action;
+        private readonly Image _actionFill;
+        private readonly Text _actionText;
+        private readonly List<GameObject> _header = new List<GameObject>();
+        private bool _headerShown = true;
+        private readonly GameObject[][] _rowObjects;
+        private readonly bool[] _rowShown;
+        private readonly Text[] _rank;
+        private readonly Text[] _fire;
+        private readonly Text[] _name;
+        private readonly Text[] _score;
+        private readonly Text[] _paused;
+        private readonly Image[,] _dots;
+        private int _loggedCount = -1;
+
+        public TournamentView(AppController app, Transform parent) : base(app, parent, "Tournament")
+        {
+            _title = Title("", 45);
+            P(_title, 0, 150, 510, 60);
+            // Yatay: eylem dugmesi | bilgi satiri | Geri (tests/e2e "Katil"a (-470, 110)'dan tiklar)
+            _action = UIKit.Button(Root, "Katıl", Theme.Green, Act, -470, 110, 200, 48);
+            P(_action, -130, 270, 230, 56);
+            _actionFill = _action.GetComponent<Image>();
+            _actionText = _action.GetComponentInChildren<Text>();
+            P(UIKit.Button(Root, "Geri", Theme.Panel, app.RequestBack, 500, 110, 120, 48), 130, 270, 230, 56);
+            _info = UIKit.Label(Root, "", 20, Theme.Gray, 0, 110, 640, 40);
+            P(_info, 0, 210, 510, 34);
+            FitInPortrait(_info, 18, 20);
+            _next = UIKit.Label(Root, "", 22, Theme.Yellow, 0, 160, 640, 36, TextAnchor.MiddleCenter, FontStyle.Bold);
+            P(_next, 0, 322, 510, 34);
+            _message = UIKit.Label(Root, "", 24, Theme.Gray, 0, 400);
+            P(_message, 0, 560, 480, 80);
+
+            // Sutunlar (x merkezleri): yatay sira -540, seri -470, ad -250 (sola hizali), puan 0,
+            // son 5 oyun 180..260, duraklatildi 460. Dikey: -232, -185, -50, 90, 150..230 (son 5
+            // ile "Duraklatildi" ayni yerde; duraklatilan satirda noktalar gizlenir).
+            float hy = ScreenLayout.StandingsHeaderY(LayoutOrientation.Landscape);
+            float phy = ScreenLayout.StandingsHeaderY(LayoutOrientation.Portrait);
+            var header = UIKit.Panel(Root, "Header", Theme.Panel);
+            UIKit.Place(header.rectTransform, 0, hy, 1180, 36);
+            P(header, 0, phy, 510, 36);
+            _header.Add(header.gameObject);
+            var cols = new (string text, float x, float w, float px, float pw, TextAnchor align)[]
+            {
+                ("#", -540, 60, -232, 40, TextAnchor.MiddleCenter),
+                ("Seri", -470, 80, -185, 54, TextAnchor.MiddleCenter),
+                ("Oyuncu", -250, 360, -50, 210, TextAnchor.MiddleLeft),
+                ("Puan", 0, 120, 90, 64, TextAnchor.MiddleCenter),
+                ("Son 5", 220, 200, 190, 110, TextAnchor.MiddleCenter),
+            };
+            foreach (var c in cols)
+            {
+                var t = UIKit.Label(Root, c.text, 18, Theme.White, c.x, hy, c.w, 36, c.align, FontStyle.Bold);
+                P(t, c.px, phy, c.pw, 36);
+                _header.Add(t.gameObject);
+            }
+
+            var land = ScreenLayout.Standings(LayoutOrientation.Landscape);
+            var port = ScreenLayout.Standings(LayoutOrientation.Portrait);
+            _rowCount = land.Count;
+            _rowObjects = new GameObject[_rowCount][];
+            _rowShown = new bool[_rowCount];
+            _rank = new Text[_rowCount];
+            _fire = new Text[_rowCount];
+            _name = new Text[_rowCount];
+            _score = new Text[_rowCount];
+            _paused = new Text[_rowCount];
+            _dots = new Image[_rowCount, RecentDots];
+            for (int i = 0; i < _rowCount; i++)
+            {
+                float y = land.Center(i), py = port.Center(i);
+                var bg = UIKit.Image(Root, "Standing " + i, i % 2 == 0 ? Theme.Panel : Theme.Background);
+                UIKit.Place(bg.rectTransform, 0, y, 1180, land.Height);
+                P(bg, 0, py, 510, port.Height);
+                _rank[i] = UIKit.Label(Root, "", 20, Theme.Gray, -540, y, 60, 36, TextAnchor.MiddleCenter, FontStyle.Bold);
+                P(_rank[i], -232, py, 40, 36);
+                _fire[i] = UIKit.Label(Root, "", 20, Theme.Waiting, -470, y, 80, 36, TextAnchor.MiddleCenter, FontStyle.Bold);
+                P(_fire[i], -185, py, 54, 36);
+                _name[i] = UIKit.Label(Root, "", 21, Theme.White, -250, y, 360, 36, TextAnchor.MiddleLeft);
+                P(_name[i], -50, py, 210, 36);
+                FitInPortrait(_name[i], 18, 21);
+                _score[i] = UIKit.Label(Root, "", 22, Theme.White, 0, y, 120, 36, TextAnchor.MiddleCenter, FontStyle.Bold);
+                P(_score[i], 90, py, 64, 36);
+                _paused[i] = UIKit.Label(Root, "Duraklatıldı", 18, Theme.Gray, 460, y, 220, 36);
+                P(_paused[i], 190, py, 120, 36);
+                _rowObjects[i] = new[] { bg.gameObject, _rank[i].gameObject, _fire[i].gameObject, _name[i].gameObject,
+                                         _score[i].gameObject, _paused[i].gameObject };
+                foreach (var go in _rowObjects[i])
+                    go.SetActive(false);
+                for (int d = 0; d < RecentDots; d++)
+                {
+                    var dot = UIKit.Image(Root, "Dot", Theme.Gray, UIKit.Circle);
+                    dot.raycastTarget = false;
+                    UIKit.Place(dot.rectTransform, 180 + d * 20, y, 14, 14);
+                    P(dot, 150 + d * 20, py, 14, 14);
+                    dot.gameObject.SetActive(false);
+                    _dots[i, d] = dot;
+                }
+            }
+        }
+
+        private void Act()
+        {
+            if (App.CanJoinTournament)
+                App.JoinTournament();
+            else if (App.CanToggleArenaPause)
+                App.ToggleArenaPause();
+        }
+
+        public override void OnShow()
+        {
+            UIKit.ClearSelection();
+            _loggedCount = -1;
+        }
+
+        // Son oyunlar: galibiyet yesil, yenilgi kirmizi, beraberlik sari
+        private static Color ResultColor(char r) =>
+            r == 'W' ? Theme.Green : r == 'L' ? Theme.Red : Theme.Yellow;
+
+        public override void Refresh()
+        {
+            var app = App;
+            var t = app.CurrentTournament;
+            System.DateTime now = app.UtcNow();
+            _title.text = t != null ? ArenaModel.DisplayName(t.Creator, Loc.Current) : "";
+            _info.text = ArenaModel.InfoLine(t, now, BrowserClock.OffsetMinutes, Loc.Current);
+            _info.color = t != null && t.IsRunning ? Theme.Green : Theme.Gray;
+
+            // Eylem: Katil (bu baglantida katilmamis kayitli oyuncu) ya da Duraklat / Devam
+            string label = app.CanJoinTournament ? "Katıl"
+                         : app.CanToggleArenaPause ? (app.ArenaPaused ? "Devam" : "Duraklat")
+                         : null;
+            bool showAction = label != null;
+            if (_action.gameObject.activeSelf != showAction)
+                _action.gameObject.SetActive(showAction);
+            if (showAction)
+            {
+                _actionText.text = Loc.T(label);
+                var fill = label == "Duraklat" ? Theme.InputBackground : Theme.Green;
+                _actionFill.color = fill;
+                _actionText.color = Theme.OnColor(fill);
+            }
+
+            // "Siradaki oyun" yalnizca beklenen eslesme bu turnuvadaysa
+            _next.text = app.ArenaPendingTournamentId is int pending && pending == app.CurrentTournamentId
+                ? Loc.T("Sıradaki oyun") + new string('.', 1 + (int)(Time.unscaledTime * 2) % 3)
+                : "";
+
+            var rows = app.Standings;
+            _message.text = Loc.T(app.TournamentError ? "Turnuva yüklenemedi"
+                          : t == null ? "Yükleniyor..."
+                          : rows.Count == 0 ? "Henüz katılan yok" : "");
+            bool header = t != null && rows.Count > 0;
+            if (_headerShown != header)
+            {
+                _headerShown = header;
+                foreach (var go in _header)
+                    go.SetActive(header);
+            }
+
+            bool portrait = Responsive.Current == LayoutOrientation.Portrait;
+            for (int i = 0; i < _rowCount; i++)
+            {
+                bool has = t != null && i < rows.Count;
+                if (_rowShown[i] != has)
+                {
+                    _rowShown[i] = has;
+                    foreach (var go in _rowObjects[i])
+                        go.SetActive(has);
+                }
+                string recent = "";
+                if (has)
+                {
+                    var r = rows[i];
+                    bool me = !app.IsGuest && r.Username == app.Username;
+                    _rank[i].text = (r.Rank > 0 ? r.Rank : i + 1) + ".";
+                    _rank[i].color = i < 3 ? Theme.Yellow : Theme.Gray;
+                    _fire[i].text = r.OnFire ? "×" + System.Math.Max(2, r.Streak) : "";
+                    _name[i].text = r.Username;
+                    _name[i].color = r.Paused ? Theme.Gray : me ? Theme.Hover : Theme.White;
+                    _name[i].fontStyle = me ? FontStyle.Bold : FontStyle.Normal;
+                    _score[i].text = r.Score.ToString();
+                    _score[i].color = i < 3 ? Theme.Yellow : Theme.White;
+                    if (_paused[i].enabled != r.Paused)
+                        _paused[i].enabled = r.Paused;
+                    // Son 5 oyun, eskiden yeniye; dikeyde duraklatilan satirda yerinde "Duraklatildi" yazar
+                    if (!(portrait && r.Paused))
+                        recent = r.Recent.Length > RecentDots ? r.Recent.Substring(r.Recent.Length - RecentDots) : r.Recent;
+                }
+                for (int d = 0; d < RecentDots; d++)
+                {
+                    bool dot = d < recent.Length;
+                    var go = _dots[i, d].gameObject;
+                    if (go.activeSelf != dot)
+                        go.SetActive(dot);
+                    if (dot)
+                        _dots[i, d].color = ResultColor(recent[d]);
+                }
+            }
+
+            // tests/e2e puan durumundaki oyuncu sayisini bu satirdan okur
+            if (t != null && rows.Count != _loggedCount)
+            {
+                _loggedCount = rows.Count;
+                Debug.Log($"[Turnuva] Siralama: {rows.Count} oyuncu (turnuva {t.Id})");
+            }
         }
     }
 }

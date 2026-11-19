@@ -135,6 +135,75 @@ namespace ConnectFourPro.Game
             return null;
         }
 
+        /// <summary>
+        /// Turnuva acma formunun baslangic secenekleri (dakika sonra): hemen, 15 dk adimla
+        /// 1 saate kadar, 1.5 ve 2 saat, sonra saat basi 24 saate kadar.
+        /// </summary>
+        public static readonly int[] StartOptions = BuildStartOptions();
+
+        private static int[] BuildStartOptions()
+        {
+            var list = new List<int> { 0, 15, 30, 45, 60, 90, 120 };
+            for (int m = 180; m <= MaxStartInMinutes; m += 60)
+                list.Add(m);
+            return list.ToArray();
+        }
+
+        /// <summary>Baslangic seciminde bir sonraki (dir &gt; 0) / onceki secenek; uclarda durur.</summary>
+        public static int StepStartIn(int current, int dir)
+        {
+            if (dir > 0)
+            {
+                foreach (int m in StartOptions)
+                    if (m > current)
+                        return m;
+                return StartOptions[StartOptions.Length - 1];
+            }
+            for (int i = StartOptions.Length - 1; i >= 0; i--)
+                if (StartOptions[i] < current)
+                    return StartOptions[i];
+            return StartOptions[0];
+        }
+
+        /// <summary>UTC zamanin yerel saati "SS:dd" (offsetMinutes: tarayicinin UTC farki, dogu +).</summary>
+        public static string LocalClock(DateTime utc, int offsetMinutes) =>
+            utc.AddMinutes(offsetMinutes).ToString("HH:mm", CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// Turnuvanin durum yazisi (Turkce; ekranda Loc.T ile cevrilir): surerken "18:42 kaldı",
+        /// planliyken "Başlıyor 21:00" (yerel saat), bitince "Turnuva bitti" / "İptal edildi".
+        /// </summary>
+        public static string StatusText(TournamentSummary t, DateTime nowUtc, int offsetMinutes)
+        {
+            if (t == null)
+                return "";
+            switch (t.Status)
+            {
+                case Running:
+                    return ClockFormat.Format(SecondsUntil(t.EndsAt, nowUtc)) + " kaldı";
+                case Scheduled:
+                    return t.StartsAt is DateTime s ? "Başlıyor " + LocalClock(s, offsetMinutes) : "Başlıyor";
+                case Finished:
+                    return "Turnuva bitti";
+                case Cancelled:
+                    return "İptal edildi";
+                default:
+                    return "";
+            }
+        }
+
+        /// <summary>Liste satiri / sayfa basligi: "3+2 · 30 dk · 12 oyuncu · 18:42 kaldı" (secili dilde).</summary>
+        public static string InfoLine(TournamentSummary t, DateTime nowUtc, int offsetMinutes, Lang lang)
+        {
+            if (t == null)
+                return "";
+            return string.Join(" · ",
+                "3+2",
+                Loc.T(t.DurationMinutes + " dk", lang),
+                Loc.T(t.Players + " oyuncu", lang),
+                Loc.T(StatusText(t, nowUtc, offsetMinutes), lang));
+        }
+
         /// <summary>Hedefe kalan tam saniye (yukari yuvarlanir, 0'in altina inmez; hedef yoksa 0).</summary>
         public static int SecondsUntil(DateTime? target, DateTime nowUtc)
         {

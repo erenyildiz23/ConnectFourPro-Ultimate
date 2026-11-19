@@ -103,6 +103,8 @@ namespace ConnectFourPro.Game
             _views[AppScreen.Leaderboard] = new LeaderboardView(_app, root);
             _views[AppScreen.History] = new HistoryView(_app, root);
             _views[AppScreen.Replay] = new ReplayView(_app, root);
+            _views[AppScreen.Tournaments] = new TournamentsView(_app, root);
+            _views[AppScreen.Tournament] = new TournamentView(_app, root);
             _views[AppScreen.PlayingAI] = game;
             _views[AppScreen.PlayingOnline] = game;
             _views[AppScreen.Spectating] = game;
