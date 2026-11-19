@@ -18,12 +18,12 @@ jobs:
   cheat-check:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      SERVER_URL: ${{ vars.CONNECT4_PUBLIC_SERVER_URL }}
-      ARENA_CHECK_SECRET: ${{ secrets.ARENA_CHECK_SECRET }}
     steps:
       - name: Ayar kontrolu
         id: cfg
+        env:
+          SERVER_URL: ${{ vars.CONNECT4_PUBLIC_SERVER_URL }}
+          ARENA_CHECK_SECRET: ${{ secrets.ARENA_CHECK_SECRET }}
         run: |
           if [ -z "$SERVER_URL" ] || [ -z "$ARENA_CHECK_SECRET" ]; then
             echo "::notice::CONNECT4_PUBLIC_SERVER_URL degiskeni veya ARENA_CHECK_SECRET secret'i tanimli degil; hile kontrolu atlandi."
@@ -48,15 +48,16 @@ jobs:
           [ -n "$sha" ] || { echo "Pons SHA alinamadi"; exit 1; }
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
-      - name: Cozucu onbellegi
+      - name: Cozucu onbellegi (geri yukle)
         id: solver-cache
         if: steps.cfg.outputs.enabled == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: solver
           key: c4solver-${{ steps.pons.outputs.sha }}
 
       - name: Cozucuyu derle ve acilis kitabini indir
+        id: build
         if: steps.cfg.outputs.enabled == 'true' && steps.solver-cache.outputs.cache-hit != 'true'
         run: |
           git clone https://github.com/PascalPons/connect4 pons-src
@@ -66,9 +67,18 @@ jobs:
           cp pons-src/c4solver solver/c4solver
           curl -fsSL -o solver/7x6.book https://github.com/PascalPons/connect4/releases/download/book/7x6.book
 
+      - name: Cozucu onbellegi (kaydet)
+        if: always() && steps.build.outcome == 'success' && steps.solver-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: solver
+          key: c4solver-${{ steps.pons.outputs.sha }}
+
       - name: Hile kontrolu
         if: steps.cfg.outputs.enabled == 'true'
         env:
+          SERVER_URL: ${{ vars.CONNECT4_PUBLIC_SERVER_URL }}
+          ARENA_CHECK_SECRET: ${{ secrets.ARENA_CHECK_SECRET }}
           GH_TOKEN: ${{ github.token }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
