@@ -8,6 +8,9 @@
 // * Kopma sonrasi socket.io yeniden baglaninca oyuna otomatik geri katilir
 //   (sunucu RECONNECT_GRACE_SECONDS icinde donen oyuncuyu kabul eder, NFR-08).
 //   Seyirci de yeniden baglaninca yayina geri katilir (sunucu guncel durumu yollar).
+// * Arena: katilinan turnuvaya (duraklatilmadiysa) yeniden baglaninca arena_join tekrar
+//   gonderilir (sunucu kopan soketi kuyruktan dusurur; arena_join tekrarlanabilir).
+//   Izlenen turnuvanin puan durumu yayinina da geri donulur.
 
 using System;
 using System.Collections.Generic;
@@ -36,6 +39,12 @@ namespace ConnectFourPro.Net
         /// <summary>Seyirci olarak bir odada; yeniden baglaninca yayina geri katilir.</summary>
         public bool Spectating { get; private set; }
         public bool IsConnected => _transport.IsConnected;
+        /// <summary>Bu baglantida arena_join yapilan turnuva (yoksa null); yeniden baglaninca geri katilir.</summary>
+        public int? ArenaId { get; private set; }
+        /// <summary>Katilinan turnuvada duraklatildi: yeniden baglaninca kuyruga sokulmaz.</summary>
+        public bool ArenaPaused { get; private set; }
+        /// <summary>Puan durumu izlenen turnuva (yoksa null); yeniden baglaninca yayina geri donulur.</summary>
+        public int? WatchedArenaId { get; private set; }
 
         /// <summary>Sunucu olayi (ad, veri) - ana thread'de.</summary>
         public event Action<string, JsonObject> ServerEvent;
@@ -104,6 +113,76 @@ namespace ConnectFourPro.Net
                     _pending.Enqueue(item);
         }
 
+        /// <summary>Arena istekleri icin kimlik (oyun istekleri kendi kimligini verir).</summary>
+        public void SetIdentity(string userId, string authToken)
+        {
+            UserId = userId;
+            AuthToken = authToken;
+        }
+
+        /// <summary>Turnuva acar (kayitli kullanici; sure 15/30/60, baslangic 0-1440 dk sonra).</summary>
+        public void CreateArena(int duration, int startInMinutes)
+        {
+            var payload = Identity();
+            payload["duration"] = duration;
+            payload["start_in_minutes"] = startInMinutes;
+            Send(SocketEvents.ArenaCreate, Json.Serialize(payload));
+        }
+
+        /// <summary>Turnuvaya katilir (uyelik + duraklatmayi kaldirma + suruyorsa kuyruk).</summary>
+        public void JoinArena(int id)
+        {
+            ArenaId = id;
+            ArenaPaused = false;
+            Send(SocketEvents.ArenaJoin, Json.Serialize(ArenaPayload(id, true)));
+        }
+
+        /// <summary>Puan durumunu izler (misafir de izleyebilir; kimlik gerekmez).</summary>
+        public void WatchArena(int id)
+        {
+            WatchedArenaId = id;
+            Send(SocketEvents.ArenaWatch, Json.Serialize(ArenaPayload(id, false)));
+        }
+
+        public void PauseArena(int id)
+        {
+            if (ArenaId == id)
+                ArenaPaused = true;
+            Send(SocketEvents.ArenaPause, Json.Serialize(ArenaPayload(id, true)));
+        }
+
+        public void ResumeArena(int id)
+        {
+            if (ArenaId == id)
+                ArenaPaused = false;
+            Send(SocketEvents.ArenaResume, Json.Serialize(ArenaPayload(id, true)));
+        }
+
+        /// <summary>Sunucunun bildirdigi duraklatma durumu (puan durumu satiri).</summary>
+        public void SetArenaPaused(bool paused) => ArenaPaused = paused;
+
+        /// <summary>Turnuva bitti / iptal: yeniden baglaninca katilinmaz.</summary>
+        public void ForgetArena()
+        {
+            ArenaId = null;
+            ArenaPaused = false;
+        }
+
+        private Dictionary<string, object> ArenaPayload(int id, bool identity)
+        {
+            var payload = identity ? Identity() : new Dictionary<string, object>();
+            payload["tournament_id"] = id;
+            return payload;
+        }
+
+        private bool PendingHas(string evt)
+        {
+            foreach (var item in _pending)
+                if (item.evt == evt)
+                    return true;
+            return false;
+        }
+
         private Dictionary<string, object> Identity()
         {
             var payload = new Dictionary<string, object> { ["user_id"] = UserId };
@@ -164,6 +243,9 @@ namespace ConnectFourPro.Net
             _spectatorRole = false;
             _pending.Clear();
             _connecting = false;
+            ArenaId = null;
+            ArenaPaused = false;
+            WatchedArenaId = null;
             _transport.Disconnect();
             RoomId = null;
             MyPiece = 0;
@@ -207,6 +289,21 @@ namespace ConnectFourPro.Net
                 if (InGame && RejoinToken != null)
                     payload["rejoin_token"] = RejoinToken;
                 _transport.Emit(SocketEvents.JoinGame, Json.Serialize(payload));
+            }
+            // Arena: oyuna geri katildiktan sonra turnuvaya (bekleyen arena istegi yoksa).
+            // Sunucu aktif macta oturan oyuncuyu kuyruga almaz; mac bitince kendisi alir.
+            if (!PendingHas(SocketEvents.ArenaJoin) && !PendingHas(SocketEvents.ArenaWatch)
+                && !PendingHas(SocketEvents.ArenaResume))
+            {
+                bool rejoined = ArenaId != null && !ArenaPaused && UserId != null;
+                if (rejoined)
+                {
+                    Debug.Log("[GameSocket] Turnuvaya yeniden katiliniyor: " + ArenaId);
+                    _transport.Emit(SocketEvents.ArenaJoin, Json.Serialize(ArenaPayload(ArenaId.Value, true)));
+                }
+                // arena_join turnuva odasina da sokar; baska (ya da duraklatilmis) turnuva izlenir
+                if ((WatchedArenaId ?? ArenaId) is int watch && !(rejoined && watch == ArenaId))
+                    _transport.Emit(SocketEvents.ArenaWatch, Json.Serialize(ArenaPayload(watch, false)));
             }
             while (_pending.Count > 0)
             {

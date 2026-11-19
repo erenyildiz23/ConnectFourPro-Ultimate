@@ -236,6 +236,7 @@ namespace ConnectFourPro.Game
             ["Rövanşı Kabul Et"] = "Accept Rematch",
             ["Menü"] = "Menu",
             ["Lobiye Dön"] = "Back to Lobby",
+            ["Turnuvaya Dön"] = "Back to Tournament",
             ["Çıkışı Onayla"] = "Confirm Leave",
             ["< SIRA"] = "< TURN",
             ["CANLI YAYIN"] = "LIVE",

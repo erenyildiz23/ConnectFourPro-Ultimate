@@ -25,6 +25,12 @@ namespace ConnectFourPro.Net
         public const string QuickMatchCancel = "quick_match_cancel";
         // Hazir sohbet: msg_id 0-7 (Game/QuickChat.cs); eski sunucular cevap vermez
         public const string ChatQuick = "chat_quick";
+        // Arena turnuvasi (eski sunucular cevap vermez); kimlik alanlari create_game ile ayni
+        public const string ArenaCreate = "arena_create";
+        public const string ArenaJoin = "arena_join";
+        public const string ArenaWatch = "arena_watch";
+        public const string ArenaPause = "arena_pause";
+        public const string ArenaResume = "arena_resume";
 
         // Sunucu -> istemci
         public const string GameCreated = "game_created";
@@ -47,6 +53,12 @@ namespace ConnectFourPro.Net
         public const string QuickMatchCancelled = "quick_match_cancelled";
         // Hazir sohbet: odadaki herkese (gonderene ve seyircilere de) {room_id, from_piece, msg_id}
         public const string ChatMessage = "chat_message";
+        // Arena: acildi {tournament}, katilindi {tournament_id}, puan durumu
+        // {tournament_id, standings}, durum {tournament_id, status, ends_at}
+        public const string ArenaCreated = "arena_created";
+        public const string ArenaJoined = "arena_joined";
+        public const string ArenaStandings = "arena_standings";
+        public const string ArenaState = "arena_state";
 
         public static readonly string[] ServerEvents =
         {
@@ -54,6 +66,7 @@ namespace ConnectFourPro.Net
             OpponentDisconnected, OpponentReconnected, GameEnded, Error, LatencyPong,
             RematchOffered, RematchUnavailable, RematchStarted,
             QuickMatchWaiting, QuickMatchCancelled, ChatMessage,
+            ArenaCreated, ArenaJoined, ArenaStandings, ArenaState,
         };
     }
 
@@ -208,13 +221,29 @@ namespace ConnectFourPro.Net
         public int EloChangeP2;
         public int? NewRatingP1;
         public int? NewRatingP2;
+        /// <summary>Turnuva oyununda turnuva id'si (game_over.arena); normal oyunda null.</summary>
+        public int? ArenaTournamentId;
+        // Turnuva puanlari kullanici adina gore (p1/p2 degil); normal oyunda bos
+        private Dictionary<string, int> _arenaPoints = new Dictionary<string, int>();
+
+        /// <summary>Kullanicinin bu turnuva oyunundan aldigi puan; yoksa null.</summary>
+        public int? ArenaPointsFor(string username) =>
+            username != null && _arenaPoints.TryGetValue(username, out int p) ? p : (int?)null;
 
         public static GameOverInfo From(JsonObject o)
         {
             var changes = o.GetObject("elo_changes");
             var ratings = o.GetObject("new_ratings");
+            var arena = o.GetObject("arena");
+            var points = new Dictionary<string, int>();
+            var rawPoints = arena.GetObject("points");
+            foreach (string user in rawPoints.Keys)
+                if (rawPoints.GetNullableInt(user) is int p)
+                    points[user] = p;
             return new GameOverInfo
             {
+                ArenaTournamentId = arena.GetNullableInt("tournament_id"),
+                _arenaPoints = points,
                 Winner = o.GetNullableInt("winner") ?? 0,
                 Reason = o.GetString("reason", "normal"),
                 Detail = o.GetString("detail"),
