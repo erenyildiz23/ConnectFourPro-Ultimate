@@ -1102,7 +1102,8 @@ namespace ConnectFourPro.Game
             // ResetToMenu'nun kendi Disconnect'i (WebGL'de senkron gelir) kopma degildir
             if (reason == "io client disconnect")
                 return;
-            _joinPending = false;   // yanitsiz kalan katilma istegi 'Katil'i kilitlemesin
+            _joinPending = false;
+            TournamentCreatePending = false;   // arena_created gelmeyecek: form kilitli kalmasin   // yanitsiz kalan katilma istegi 'Katil'i kilitlemesin
             if (SearchingWithoutRoom)
             {
                 // Sunucu kopan soketi kuyruktan dusurur; yeniden baglaninca kuyruga donulmez
@@ -1642,6 +1643,11 @@ namespace ConnectFourPro.Game
             // code (yeni sunucu) metinden onceliklidir; yoksa eski sunucunun msg alani kullanilir.
             // Gosterilen metin Turkce kalir, ekrana yazilirken Loc.T ile cevrilir.
             string msg = Loc.ServerError(data.GetString("code", ""), data.GetString("msg", ""));
+            if (IsArenaGoneError(data.GetString("code", ""), msg))
+            {
+                OnArenaGone(msg);
+                return;
+            }
             if (SearchingWithoutRoom)
             {
                 // Kuyruga girilemedi (zaten oyunda, misafir adi kullanimda...)
@@ -1931,7 +1937,24 @@ namespace ConnectFourPro.Game
         /// Turnuva oyunu bitti, sunucu yeni eslesme yapacak (rovans yerine "Siradaki oyun").
         /// Duraklatilinca ya da turnuva bitince duser; yeni game_start temizler.
         /// </summary>
-        public bool ArenaNextGamePending => _arenaAwaitingTid != null && !ArenaPaused;
+        public bool ArenaNextGamePending => ArenaPendingTournamentId != null;
+
+        /// <summary>
+        /// Siradaki oyunun beklendigi turnuva (gorunum "Siradaki oyun"u yalnizca o turnuvanin
+        /// sayfasinda gosterir). Duraklatilinca ya da ends_at gecince (yeni eslesme yok) null.
+        /// </summary>
+        public int? ArenaPendingTournamentId
+        {
+            get
+            {
+                if (!(_arenaAwaitingTid is int tid) || ArenaPaused)
+                    return null;
+                TournamentSummary t = CurrentTournament?.Id == tid ? CurrentTournament : FindTournament(tid);
+                if (t?.EndsAt != null && ArenaModel.SecondsUntil(t.EndsAt, UtcNow()) == 0)
+                    return null;
+                return tid;
+            }
+        }
 
         /// <summary>Turnuva acabilir (yalnizca kayitli kullanici).</summary>
         public bool CanCreateTournament => !IsGuest && !string.IsNullOrEmpty(Username);
@@ -2204,6 +2227,30 @@ namespace ConnectFourPro.Game
                 FetchTournament(tid);
             if (Screen == AppScreen.Tournaments)
                 RefreshTournaments();
+        }
+
+        private static bool IsArenaGoneError(string code, string msg) =>
+            code == "arena_over" || code == "arena_not_found"
+            || msg == Loc.ServerCodes["arena_over"] || msg == Loc.ServerCodes["arena_not_found"];
+
+        /// <summary>
+        /// Turnuva bitti / bulunamadi (or. arena_state finished kacirildi, yeniden baglanmada
+        /// arena_join reddedildi): eski katilim ve bekleme durumu silinir, turnuva yeniden
+        /// yuklenir. Hata metni yalnizca turnuva ekranlarinda gosterilir (oyun sonucu ezilmez).
+        /// </summary>
+        private void OnArenaGone(string msg)
+        {
+            Debug.Log("[App] Turnuva hatasi: " + msg);
+            _socket.ForgetArena();
+            ArenaJoinedId = null;
+            ArenaPaused = false;
+            _arenaAwaitingTid = null;
+            if (CurrentTournamentId is int tid)
+                FetchTournament(tid);
+            if (Screen == AppScreen.Tournaments)
+                RefreshTournaments();
+            if (Screen == AppScreen.Tournaments || Screen == AppScreen.Tournament)
+                SetStatus("Hata: " + msg, StatusTone.Bad);
         }
 
         /// <summary>Turnuva oyunundan turnuva sayfasina: soket korunur, oyun durumu temizlenir.</summary>

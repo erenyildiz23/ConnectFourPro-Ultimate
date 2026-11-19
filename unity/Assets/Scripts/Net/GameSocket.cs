@@ -8,9 +8,10 @@
 // * Kopma sonrasi socket.io yeniden baglaninca oyuna otomatik geri katilir
 //   (sunucu RECONNECT_GRACE_SECONDS icinde donen oyuncuyu kabul eder, NFR-08).
 //   Seyirci de yeniden baglaninca yayina geri katilir (sunucu guncel durumu yollar).
-// * Arena: katilinan turnuvaya (duraklatilmadiysa) yeniden baglaninca arena_join tekrar
-//   gonderilir (sunucu kopan soketi kuyruktan dusurur; arena_join tekrarlanabilir).
-//   Izlenen turnuvanin puan durumu yayinina da geri donulur.
+// * Arena: yeniden baglaninca katilinan turnuva once izlenir (arena_watch); taze puan
+//   durumunda oyuncu duraklatilmamissa arena_join tekrar gonderilir (sunucu kopan soketi
+//   kuyruktan dusurur; kopukken uygulanan sunucu duraklatmasi boylece geri alinmaz).
+//   Izlenen baska turnuvanin puan durumu yayinina da geri donulur.
 
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,8 @@ namespace ConnectFourPro.Net
         private bool _connecting;
         // Odaya seyirci olarak katildik; game_over Spectating'i dusurse de rovansta yayina doneriz
         private bool _spectatorRole;
+        // Yeniden baglandik: katilinan turnuvanin taze puan durumu gelince arena_join karar verilir
+        private bool _arenaRejoinPending;
 
         public string RoomId { get; private set; }
         public int MyPiece { get; private set; }
@@ -134,6 +137,7 @@ namespace ConnectFourPro.Net
         {
             ArenaId = id;
             ArenaPaused = false;
+            _arenaRejoinPending = false;
             Send(SocketEvents.ArenaJoin, Json.Serialize(ArenaPayload(id, true)));
         }
 
@@ -147,7 +151,10 @@ namespace ConnectFourPro.Net
         public void PauseArena(int id)
         {
             if (ArenaId == id)
+            {
                 ArenaPaused = true;
+                _arenaRejoinPending = false;
+            }
             Send(SocketEvents.ArenaPause, Json.Serialize(ArenaPayload(id, true)));
         }
 
@@ -161,11 +168,12 @@ namespace ConnectFourPro.Net
         /// <summary>Sunucunun bildirdigi duraklatma durumu (puan durumu satiri).</summary>
         public void SetArenaPaused(bool paused) => ArenaPaused = paused;
 
-        /// <summary>Turnuva bitti / iptal: yeniden baglaninca katilinmaz.</summary>
+        /// <summary>Turnuva bitti / iptal / bulunamadi: yeniden baglaninca katilinmaz.</summary>
         public void ForgetArena()
         {
             ArenaId = null;
             ArenaPaused = false;
+            _arenaRejoinPending = false;
         }
 
         private Dictionary<string, object> ArenaPayload(int id, bool identity)
@@ -173,6 +181,32 @@ namespace ConnectFourPro.Net
             var payload = identity ? Identity() : new Dictionary<string, object>();
             payload["tournament_id"] = id;
             return payload;
+        }
+
+        /// <summary>
+        /// Yeniden baglanmadan sonraki ilk puan durumu: oyuncu sunucuda duraklatilmissa
+        /// (kopukken ilk hamle iptali) duraklatma korunur, degilse kuyruga geri katilinir.
+        /// </summary>
+        private void RejoinArenaIfActive(JsonObject data)
+        {
+            if (!_arenaRejoinPending || !(ArenaId is int id) || data.GetNullableInt("tournament_id") != id)
+                return;
+            _arenaRejoinPending = false;
+            foreach (JsonObject row in data.GetObjectList("standings"))
+            {
+                if (row.GetString("username") != UserId)
+                    continue;
+                if (row.GetBool("paused"))
+                {
+                    ArenaPaused = true;
+                    return;
+                }
+                break;
+            }
+            if (ArenaPaused || !IsConnected)
+                return;
+            Debug.Log("[GameSocket] Turnuvaya yeniden katiliniyor: " + id);
+            _transport.Emit(SocketEvents.ArenaJoin, Json.Serialize(ArenaPayload(id, true)));
         }
 
         private bool PendingHas(string evt)
@@ -246,6 +280,7 @@ namespace ConnectFourPro.Net
             ArenaId = null;
             ArenaPaused = false;
             WatchedArenaId = null;
+            _arenaRejoinPending = false;
             _transport.Disconnect();
             RoomId = null;
             MyPiece = 0;
@@ -290,19 +325,18 @@ namespace ConnectFourPro.Net
                     payload["rejoin_token"] = RejoinToken;
                 _transport.Emit(SocketEvents.JoinGame, Json.Serialize(payload));
             }
-            // Arena: oyuna geri katildiktan sonra turnuvaya (bekleyen arena istegi yoksa).
-            // Sunucu aktif macta oturan oyuncuyu kuyruga almaz; mac bitince kendisi alir.
+            // Arena: oyuna geri katildiktan sonra turnuvaya (bekleyen arena istegi yoksa). Once
+            // izlenir; arena_join taze puan durumunu bekler (OnEvent). Sunucu aktif macta oturan
+            // oyuncuyu kuyruga almaz; mac bitince kendisi alir.
             if (!PendingHas(SocketEvents.ArenaJoin) && !PendingHas(SocketEvents.ArenaWatch)
                 && !PendingHas(SocketEvents.ArenaResume))
             {
-                bool rejoined = ArenaId != null && !ArenaPaused && UserId != null;
-                if (rejoined)
+                if (ArenaId is int joined)
                 {
-                    Debug.Log("[GameSocket] Turnuvaya yeniden katiliniyor: " + ArenaId);
-                    _transport.Emit(SocketEvents.ArenaJoin, Json.Serialize(ArenaPayload(ArenaId.Value, true)));
+                    _transport.Emit(SocketEvents.ArenaWatch, Json.Serialize(ArenaPayload(joined, false)));
+                    _arenaRejoinPending = !ArenaPaused && UserId != null;
                 }
-                // arena_join turnuva odasina da sokar; baska (ya da duraklatilmis) turnuva izlenir
-                if ((WatchedArenaId ?? ArenaId) is int watch && !(rejoined && watch == ArenaId))
+                if (WatchedArenaId is int watch && watch != ArenaId)
                     _transport.Emit(SocketEvents.ArenaWatch, Json.Serialize(ArenaPayload(watch, false)));
             }
             while (_pending.Count > 0)
@@ -368,6 +402,10 @@ namespace ConnectFourPro.Net
             {
                 InGame = false;
                 Spectating = false;
+            }
+            else if (name == SocketEvents.ArenaStandings)
+            {
+                RejoinArenaIfActive(data);
             }
             ServerEvent?.Invoke(name, data);
         }

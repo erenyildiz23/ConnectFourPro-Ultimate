@@ -102,10 +102,41 @@ namespace ConnectFourPro.Tests
 
             _transport.RaiseDisconnected("transport close");
             _transport.RaiseConnected();
+            Assert.That(_transport.EmittedOf("arena_join").Count, Is.EqualTo(1), "once taze siralama beklenir");
+            var watch = _transport.EmittedOf("arena_watch");
+            Assert.That(watch.Count, Is.EqualTo(1), "yeniden baglaninca once izlenir");
+            Assert.That(watch[0].GetInt("tournament_id"), Is.EqualTo(5));
+
+            // Baska turnuvanin siralamasi karar vermez
+            _transport.Receive("arena_standings", "{\"tournament_id\":9,\"standings\":[]}");
+            Assert.That(_transport.EmittedOf("arena_join").Count, Is.EqualTo(1));
+
+            _transport.Receive("arena_standings",
+                "{\"tournament_id\":5,\"standings\":[{\"username\":\"Ali\",\"paused\":false}]}");
             var joins = _transport.EmittedOf("arena_join");
             Assert.That(joins.Count, Is.EqualTo(2));
             Assert.That(joins[1].GetInt("tournament_id"), Is.EqualTo(5));
             Assert.That(joins[1].GetString("token"), Is.EqualTo("tok-1"));
+
+            // Sonraki siralamalar yeniden istek gondermez
+            _transport.Receive("arena_standings",
+                "{\"tournament_id\":5,\"standings\":[{\"username\":\"Ali\",\"paused\":false}]}");
+            Assert.That(_transport.EmittedOf("arena_join").Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ReconnectKeepsServerSidePauseAppliedWhileOffline()
+        {
+            _socket.SetIdentity("Ali", "tok-1");
+            _socket.JoinArena(5);
+            _transport.RaiseConnected();
+            _transport.RaiseDisconnected("transport close");
+            _transport.RaiseConnected();
+            // Kopukken sunucu duraklatti (ilk hamle iptali): arena_join duraklatmayi kaldirmamali
+            _transport.Receive("arena_standings",
+                "{\"tournament_id\":5,\"standings\":[{\"username\":\"Ali\",\"paused\":true}]}");
+            Assert.That(_transport.EmittedOf("arena_join").Count, Is.EqualTo(1));
+            Assert.That(_socket.ArenaPaused, Is.True);
         }
 
         [Test]
@@ -574,8 +605,113 @@ namespace ConnectFourPro.Tests
 
             _transport.RaiseDisconnected("transport close");
             _transport.RaiseConnected();
+            Assert.That(_transport.EmittedOf("arena_join").Count, Is.EqualTo(1), "once taze siralama");
+            _transport.Receive("arena_standings", StandingsAliActive);
             Assert.That(_transport.EmittedOf("arena_join").Count, Is.EqualTo(2));
             Assert.That(_app.Screen, Is.EqualTo(AppScreen.Tournament));
+        }
+
+        [Test]
+        public void ReconnectAfterOfflinePauseDoesNotUnpause()
+        {
+            OpenTournament5AsAli();
+            _app.JoinTournament();
+            _transport.Receive("arena_joined", "{\"tournament_id\":5}");
+            _transport.Receive("arena_standings", StandingsAliActive);
+            _transport.RaiseDisconnected("transport close");
+            _transport.RaiseConnected();
+            _transport.Receive("arena_standings", StandingsAliPaused);
+            Assert.That(_transport.EmittedOf("arena_join").Count, Is.EqualTo(1));
+            Assert.That(_app.ArenaPaused, Is.True);
+        }
+
+        // ---------------------------------------------------------------------
+        // Turnuva hatalari ve bekleme durumu
+        // ---------------------------------------------------------------------
+
+        [Test]
+        public void MissedFinishReconnectArenaOverClearsStaleStateQuietly()
+        {
+            JoinTournament5AndStartGame();
+            _transport.Receive("game_over", ArenaGameOver(1, 2, 0));
+            Assert.That(_app.ArenaNextGamePending, Is.True);
+            string result = _app.Status;
+            // Uygulama arka plandaydi: arena_state finished kacirildi
+            _transport.RaiseDisconnected("transport close");
+            _transport.RaiseConnected();
+            _transport.Receive("arena_standings", StandingsAliActive);
+            Assert.That(_transport.EmittedOf("arena_join").Count, Is.EqualTo(2));
+            int calls = _api.Calls.Count;
+
+            _transport.Receive("error", "{\"msg\":\"Turnuva bitti\",\"code\":\"arena_over\"}");
+            Assert.That(_app.Status, Is.EqualTo(result), "sonuc ekraninda durum satiri ezilmez");
+            Assert.That(_app.ArenaNextGamePending, Is.False);
+            Assert.That(_app.ArenaPendingTournamentId, Is.Null);
+            Assert.That(_app.ArenaJoinedId, Is.Null);
+            Assert.That(_api.Calls.Count, Is.GreaterThan(calls), "turnuva yeniden yuklenir");
+            Assert.That(CallOf("Tournament").Username, Is.EqualTo("5"));
+
+            // Soket de unuttu: sonraki yeniden baglanmalar arena_join gondermez
+            _transport.RaiseDisconnected("transport close");
+            _transport.RaiseConnected();
+            _transport.Receive("arena_standings", StandingsAliActive);
+            Assert.That(_transport.EmittedOf("arena_join").Count, Is.EqualTo(2));
+        }
+
+        [TestCase("arena_over", "Turnuva bitti")]
+        [TestCase("arena_not_found", "Turnuva bulunamadi")]
+        [TestCase(null, "Turnuva bitti")]
+        public void FailedFirstJoinForgetsArenaAndShowsErrorOnTournamentPage(string code, string msg)
+        {
+            OpenTournament5AsAli();
+            _app.JoinTournament();
+            int calls = _api.Calls.Count;
+            string err = code == null
+                ? "{\"msg\":\"" + msg + "\"}"
+                : "{\"msg\":\"" + msg + "\",\"code\":\"" + code + "\"}";
+            _transport.Receive("error", err);
+            Assert.That(_app.Screen, Is.EqualTo(AppScreen.Tournament));
+            Assert.That(_app.Status, Is.EqualTo("Hata: " + msg));
+            Assert.That(_app.Tone, Is.EqualTo(StatusTone.Bad));
+            Assert.That(_app.ArenaJoinedId, Is.Null);
+            Assert.That(_api.Calls.Count, Is.GreaterThan(calls), "turnuva yeniden yuklenir");
+
+            _transport.RaiseDisconnected("transport close");
+            _transport.RaiseConnected();
+            _transport.Receive("arena_standings", StandingsAliActive);
+            Assert.That(_transport.EmittedOf("arena_join").Count, Is.EqualTo(1), "reddedilen turnuvaya yeniden katilinmaz");
+        }
+
+        [Test]
+        public void NextGameNotPendingAfterTournamentEndsAt()
+        {
+            JoinTournament5AndStartGame();
+            _transport.Receive("game_over", ArenaGameOver(1, 2, 0));
+            Assert.That(_app.ArenaNextGamePending, Is.True);
+            Assert.That(_app.ArenaPendingTournamentId, Is.EqualTo(5));
+            _app.UtcNow = () => ArenaNow.AddMinutes(20);   // ends_at 12:30
+            Assert.That(_app.ArenaSecondsLeft, Is.EqualTo(0));
+            Assert.That(_app.ArenaNextGamePending, Is.False, "ends_at'ten sonra eslesme yok");
+            Assert.That(_app.ArenaPendingTournamentId, Is.Null);
+        }
+
+        [Test]
+        public void PendingTournamentIdIsNullWithoutPendingGame()
+        {
+            OpenTournament5AsAli();
+            Assert.That(_app.ArenaPendingTournamentId, Is.Null);
+        }
+
+        [Test]
+        public void ConnectionLostClearsCreatePending()
+        {
+            LoginAsAli();
+            _app.OpenTournaments();
+            _app.CreateTournament(30, 0);
+            _transport.RaiseConnected();
+            Assert.That(_app.TournamentCreatePending, Is.True);
+            _transport.RaiseDisconnected("transport close");
+            Assert.That(_app.TournamentCreatePending, Is.False, "cevap gelmeyecek: form kilitli kalmamali");
         }
 
         [Test]
