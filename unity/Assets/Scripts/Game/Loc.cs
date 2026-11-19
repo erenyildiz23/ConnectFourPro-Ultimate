@@ -131,6 +131,12 @@ namespace ConnectFourPro.Game
             ["rematch_players_only"] = "Sadece oyuncular rovans isteyebilir",
             ["game_in_progress"] = "Oyun devam ediyor",
             ["already_in_game"] = "Zaten bir oyundasiniz",
+            ["not_registered"] = "Turnuva icin kayitli olmalisiniz",
+            ["bad_duration"] = "Gecersiz turnuva suresi",
+            ["bad_start"] = "Gecersiz baslangic zamani",
+            ["arena_limit"] = "Zaten acik bir turnuvaniz var",
+            ["arena_not_found"] = "Turnuva bulunamadi",
+            ["arena_over"] = "Turnuva bitti",
         };
 
         /// <summary>Turkce -> Ingilizce. {n} iceren anahtarlar sablondur.</summary>
@@ -376,6 +382,12 @@ namespace ConnectFourPro.Game
             ["Sadece oyuncular rovans isteyebilir"] = "Only players can request a rematch",
             ["Oyun devam ediyor"] = "Game in progress",
             ["Zaten bir oyundasiniz"] = "You are already in a game",
+            ["Turnuva icin kayitli olmalisiniz"] = "You must be registered to join a tournament",
+            ["Gecersiz turnuva suresi"] = "Invalid tournament duration",
+            ["Gecersiz baslangic zamani"] = "Invalid start time",
+            ["Zaten acik bir turnuvaniz var"] = "You already have an open tournament",
+            ["Turnuva bulunamadi"] = "Tournament not found",
+            ["Turnuva bitti"] = "Tournament is over",
         };
 
         private static readonly Dictionary<string, string> En = new Dictionary<string, string>();

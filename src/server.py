@@ -30,12 +30,14 @@ import secrets
 import string
 import threading
 import time
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Flask, abort, jsonify, redirect, request, send_from_directory
 from flask_socketio import SocketIO, close_room, emit, join_room, leave_room
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
+import arena
 import config
 import database as db
 from game_core import PLAYER1_PIECE, PLAYER2_PIECE, ConnectFourGame, other_player
@@ -217,6 +219,38 @@ def resolve_player(data: Any) -> Tuple[Optional[str], Optional[Dict[str, Any]], 
     return user_id, guest_info(user_id), False, None
 
 
+# =============================================================================
+# ARENA TURNUVASI: serilestirme ve yayin
+# =============================================================================
+
+def _iso(value: Any) -> Optional[str]:
+    return value.isoformat() if isinstance(value, datetime) else value
+
+
+def _serialize_tournament(t: Dict[str, Any], players: int) -> Dict[str, Any]:
+    """Turnuvanin istemciye giden ortak bicimi (REST ve arena_created)."""
+    return {'id': t['id'], 'creator': t['creator'], 'duration_minutes': t['duration_minutes'],
+            'starts_at': _iso(t['starts_at']), 'ends_at': _iso(t['ends_at']),
+            'status': t['status'], 'players': players}
+
+
+def _standings_payload(tid: int) -> List[Dict[str, Any]]:
+    """Sirali puan durumu (rating gonderilmez)."""
+    keys = ('rank', 'username', 'score', 'games_played', 'streak', 'on_fire', 'paused', 'recent')
+    return [{k: row[k] for k in keys} for row in arena.sort_standings(db.get_standings_rows(tid))]
+
+
+def _broadcast_standings(tid: int) -> None:
+    """Puan durumunu turnuva odasina yayar (tek yayin noktasi)."""
+    socketio.emit('arena_standings', {'tournament_id': tid, 'standings': _standings_payload(tid)},
+                  to=f"arena:{tid}")
+
+
+def _tournament_id(data: Any) -> Optional[int]:
+    tid = data.get('tournament_id') if isinstance(data, dict) else None
+    return tid if isinstance(tid, int) and not isinstance(tid, bool) else None
+
+
 # Socket hata mesajlari: 'msg' eski istemciler (pygame) icin Turkce ASCII kalir;
 # 'code' sabittir, Unity istemcisi metni secili dilde kendisi gosterir.
 ERROR_CODES = {
@@ -238,6 +272,12 @@ ERROR_CODES = {
     'Sadece oyuncular rovans isteyebilir': 'rematch_players_only',
     'Oyun devam ediyor': 'game_in_progress',
     'Zaten bir oyundasiniz': 'already_in_game',
+    'Turnuva icin kayitli olmalisiniz': 'not_registered',
+    'Gecersiz turnuva suresi': 'bad_duration',
+    'Gecersiz baslangic zamani': 'bad_start',
+    'Zaten acik bir turnuvaniz var': 'arena_limit',
+    'Turnuva bulunamadi': 'arena_not_found',
+    'Turnuva bitti': 'arena_over',
 }
 
 
@@ -832,6 +872,24 @@ def leaderboard():
     return jsonify(db.get_top_players(limit=limit)), 200
 
 
+@app.route('/tournaments', methods=['GET'])
+def list_tournaments_route():
+    items = []
+    for t in db.list_tournaments(datetime.now(timezone.utc)):
+        items.append(_serialize_tournament(t, len(db.get_standings_rows(t['id']))))
+    return jsonify({'tournaments': items}), 200
+
+
+@app.route('/tournaments/<int:tid>', methods=['GET'])
+def tournament_detail(tid):
+    t = db.get_tournament(tid)
+    if not t:
+        return jsonify({'error': 'Tournament not found'}), 404
+    standings = _standings_payload(tid)
+    return jsonify({'tournament': _serialize_tournament(t, len(standings)),
+                    'standings': standings}), 200
+
+
 @app.route('/active_games', methods=['GET'])
 def active_games():
     games_list = []
@@ -1227,6 +1285,110 @@ def on_quick_match_cancel(data=None):
     with GAMES_LOCK:
         _quick_remove_locked(request.sid)
     emit('quick_match_cancelled', {})
+
+
+# =============================================================================
+# ARENA TURNUVASI: olaylar
+# =============================================================================
+
+def _arena_registered(data: Any) -> Optional[str]:
+    """Kayitli kullanici adi; degilse hatayi gonderip None dondurur."""
+    username, _info, authenticated, error = resolve_player(data)
+    if error:
+        _emit_error(error)
+        return None
+    if not authenticated:
+        _emit_error('Turnuva icin kayitli olmalisiniz')
+        return None
+    return username
+
+
+@socketio.on('arena_create')
+def on_arena_create(data):
+    username = _arena_registered(data)
+    if not username:
+        return
+    now = datetime.now(timezone.utc)
+    duration = data.get('duration')
+    start_in = data.get('start_in_minutes', 0)
+    starts_at, code = arena.validate_create(duration, start_in, now)
+    if code == 'bad_duration':
+        _emit_error('Gecersiz turnuva suresi')
+        return
+    if code:
+        _emit_error('Gecersiz baslangic zamani')
+        return
+    if db.active_tournament_of_creator(username):
+        _emit_error('Zaten acik bir turnuvaniz var')
+        return
+    tid = db.create_tournament(username, duration, starts_at)
+    t = db.get_tournament(tid) if tid else None
+    if not t:
+        _emit_error('Gecersiz istek')
+        return
+    log.info("Arena olusturuldu: #%s (%s, %d dk)", tid, username, duration)
+    emit('arena_created', {'tournament': _serialize_tournament(t, 0)})
+
+
+@socketio.on('arena_join')
+def on_arena_join(data):
+    username = _arena_registered(data)
+    if not username:
+        return
+    tid = _tournament_id(data)
+    if tid is None:
+        _emit_error('Gecersiz istek')
+        return
+    t = db.get_tournament(tid)
+    if not t:
+        _emit_error('Turnuva bulunamadi')
+        return
+    if t['status'] in ('finished', 'cancelled'):
+        _emit_error('Turnuva bitti')
+        return
+    if not db.join_tournament(tid, username):
+        _emit_error('Turnuva bulunamadi')
+        return
+    join_room(f"arena:{tid}")
+    emit('arena_joined', {'tournament_id': tid})
+    _broadcast_standings(tid)
+
+
+@socketio.on('arena_watch')
+def on_arena_watch(data):
+    tid = _tournament_id(data)
+    if tid is None:
+        _emit_error('Gecersiz istek')
+        return
+    if not db.get_tournament(tid):
+        _emit_error('Turnuva bulunamadi')
+        return
+    join_room(f"arena:{tid}")
+    emit('arena_standings', {'tournament_id': tid, 'standings': _standings_payload(tid)})
+
+
+def _arena_set_paused(data: Any, paused: bool) -> None:
+    username = _arena_registered(data)
+    if not username:
+        return
+    tid = _tournament_id(data)
+    if tid is None:
+        _emit_error('Gecersiz istek')
+        return
+    if not db.set_player_paused(tid, username, paused):
+        _emit_error('Turnuva bulunamadi')
+        return
+    _broadcast_standings(tid)
+
+
+@socketio.on('arena_pause')
+def on_arena_pause(data):
+    _arena_set_paused(data, True)
+
+
+@socketio.on('arena_resume')
+def on_arena_resume(data):
+    _arena_set_paused(data, False)
 
 
 @socketio.on('chat_quick')
