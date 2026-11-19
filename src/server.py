@@ -1074,6 +1074,41 @@ def tournament_detail(tid):
                     'standings': standings}), 200
 
 
+@app.route('/tournaments/unchecked', methods=['GET'])
+def tournaments_unchecked():
+    # Hile taramasi bekleyen bitmis turnuvalar (veritabani yoksa bos liste)
+    return jsonify({'tournament_ids': db.finished_unchecked_tournaments()}), 200
+
+
+@app.route('/tournaments/<int:tid>/games', methods=['GET'])
+def tournament_games_route(tid):
+    t = db.get_tournament(tid)
+    if not t:
+        return jsonify({'error': 'Tournament not found'}), 404
+    if t['status'] != 'finished':
+        return jsonify({'error': 'Tournament not finished'}), 409
+    return jsonify({'games': db.tournament_games(tid)}), 200
+
+
+@app.route('/tournaments/<int:tid>/checked', methods=['POST'])
+def tournament_mark_checked(tid):
+    # Sir her istekte okunur (testler degistirebilsin); degeri asla loglama
+    secret = config.ARENA_CHECK_SECRET
+    if not secret:
+        return jsonify({'error': 'Arena check secret not configured'}), 503
+    given = request.headers.get('X-Arena-Check-Secret', '')
+    if not hmac.compare_digest(given.encode('utf-8'), secret.encode('utf-8')):
+        return jsonify({'error': 'Forbidden'}), 403
+    t = db.get_tournament(tid)
+    if not t:
+        return jsonify({'error': 'Tournament not found'}), 404
+    if t['status'] != 'finished':
+        return jsonify({'error': 'Tournament not finished'}), 409
+    if not db.mark_cheat_checked(tid):
+        return jsonify({'error': 'Could not mark tournament'}), 500
+    return jsonify({'ok': True}), 200
+
+
 @app.route('/active_games', methods=['GET'])
 def active_games():
     games_list = []
