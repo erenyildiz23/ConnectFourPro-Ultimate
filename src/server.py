@@ -324,7 +324,8 @@ def _parse_time_control(value: Any) -> Optional[str]:
 
 
 def _new_room(p1_sid: str, p1_uid: str, p1_info: dict, p1_auth: bool = False,
-              time_control: Optional[str] = None, quick: bool = False) -> Dict[str, Any]:
+              time_control: Optional[str] = None, quick: bool = False,
+              tournament_id: Optional[int] = None) -> Dict[str, Any]:
     now = time.time()
     tc = TIME_CONTROLS.get(time_control) if time_control else None
     return {
@@ -352,6 +353,8 @@ def _new_room(p1_sid: str, p1_uid: str, p1_info: dict, p1_auth: bool = False,
         # first_move_abort_at: ilk hamle bu zamana kadar gelmezse oyun puansiz iptal (None = yok)
         'quick': quick,
         'first_move_abort_at': None,
+        # Arena turnuvasi oyunu (None = turnuva disi): puanlanir, rovans yoktur
+        'tournament_id': tournament_id,
     }
 
 
@@ -517,13 +520,15 @@ def _seat_second_player(room: dict, sid: str, uid: str, info: dict, auth: bool) 
 
 
 def _emit_game_start(room: dict) -> None:
-    """Iki oyuncuya game_start gonderir (her biri rakibinin adini/ELO'sunu gorur)."""
+    """Iki oyuncuya game_start gonderir (her biri rakibinin adini/ELO'sunu gorur).
+    socketio.emit: arena eslestirmesi istek baglami disinda (arka plan dongusu) da cagirir."""
     p1_info, p2_info = room['p1_info'], room['p2_info']
     for sid, opponent in ((room['p1_sid'], p2_info), (room['p2_sid'], p1_info)):
-        emit('game_start', {
+        socketio.emit('game_start', {
             'msg': 'Oyun Basladi!', 'p1_info': p1_info, 'p2_info': p2_info,
             'opponent_name': opponent.get('username', ''),
             'opponent_elo': opponent.get('rating', config.DEFAULT_RATING),
+            'tournament_id': room.get('tournament_id'),
             **_clock_fields(room),
         }, to=sid)
 
@@ -569,12 +574,19 @@ def _finish_game(room_id: str, room: dict, reason: str = 'normal',
 
     # Sadece iki kimligi de token ile dogrulanmis oyuncular puanlanir/kaydedilir
     rated = room['p1_auth'] and room['p2_auth']
+    # Turnuva oyunu, turnuva hala suruyorsa (ARENAS'ta) sayilir: ends_at sonrasi eslestirme
+    # kapali olsa da sayilir. Turnuva bittikten sonra biten oyun normal puanli oyundur.
+    tid = room.get('tournament_id')
+    if tid is not None:
+        with ARENAS_LOCK:
+            if tid not in ARENAS or not (rated and p2_uid):
+                tid = None
     if rated and winner_uid and loser_uid:
         change = db.update_elo_by_username(str(winner_uid), str(loser_uid))['winner_change']
         winner_key = 'p1' if game.winner == PLAYER1_PIECE else 'p2'
         loser_key = 'p2' if winner_key == 'p1' else 'p1'
         elo_changes[winner_key], elo_changes[loser_key] = change, -change
-        db.record_game(str(p1_uid), str(p2_uid), str(winner_uid), moves, reason)
+        db.record_game(str(p1_uid), str(p2_uid), str(winner_uid), moves, reason, tournament_id=tid)
 
         if change:  # Misafir oyunlarinda ELO bildirimi gonderilmez
             for key, piece in (('p1', PLAYER1_PIECE), ('p2', PLAYER2_PIECE)):
@@ -587,7 +599,8 @@ def _finish_game(room_id: str, room: dict, reason: str = 'normal',
                         'winner': piece == game.winner,
                     }, to=sid)
     elif rated and game.winner is None and p2_uid:
-        db.record_game(str(p1_uid), str(p2_uid), None, moves, reason)  # Beraberlik (FR-10)
+        db.record_game(str(p1_uid), str(p2_uid), None, moves, reason,
+                       tournament_id=tid)  # Beraberlik (FR-10)
 
     result = {
         'winner': game.winner,
@@ -599,17 +612,28 @@ def _finish_game(room_id: str, room: dict, reason: str = 'normal',
         # Eski istemciler `reason`a bakar; ayrinti ('timeout', 'disconnect', 'leave') ek bilgidir
         'detail': detail,
     }
+    arena_rows = None
+    if tid is not None:
+        # Hukmen galibiyet de galibiyettir (spec 3a); puanlar kullanici adina gore
+        arena_rows, result['arena'] = _arena_score(tid, room, game.winner)
     room['result'] = result   # Oyuncu yokken biten oyuna sonradan donenlere game_joined'da verilir
     socketio.emit('game_over', result, to=room_id)
+    if arena_rows is not None:
+        _broadcast_standings(tid)
+        _arena_requeue_locked(tid, room, (PLAYER1_PIECE, PLAYER2_PIECE), arena_rows)
 
 
-def _abort_game(room_id: str, room: dict) -> None:
+def _abort_game(room_id: str, room: dict, culprit: Optional[int] = None) -> None:
     """
     Ilk hamle gelmedi: oyun kazanansiz ve puansiz biter (reason 'aborted'). ELO degismez,
     oyun veritabanina kaydedilmez (sonuc da kayip da yok). GAMES_LOCK tutulurken cagrilir.
     Eski istemciler bilinmeyen reason'u kazanansiz sonuc (berabere) gibi gosterir.
+    Turnuva oyununda puan/oyun sayisi degismez; sorumlu (culprit: pencere dolarken sirasi
+    gelen ya da pencerede ayrilan) duraklatilir, rakibi kuyruga doner (spec 3a).
     """
     game: ConnectFourGame = room['game']
+    if culprit is None:
+        culprit = game.current_player
     _clock_settle(room)
     game.game_over = True
     game.winner = None
@@ -625,6 +649,14 @@ def _abort_game(room_id: str, room: dict) -> None:
     }
     room['result'] = result
     socketio.emit('game_over', result, to=room_id)
+    tid = room.get('tournament_id')
+    with ARENAS_LOCK:
+        if tid not in ARENAS:
+            tid = None   # Turnuva bittiyse duraklatma/kuyruk anlamsiz
+    if tid is not None:
+        db.set_player_paused(tid, str(_uid_of(room, culprit)), True)
+        _broadcast_standings(tid)
+        _arena_requeue_locked(tid, room, (other_player(culprit),), db.get_standings_rows(tid))
 
 
 def _forfeit_after_grace(room_id: str, piece: int, disconnected_at: float) -> None:
@@ -714,6 +746,10 @@ def cleanup_old_games() -> int:
 # surec yeniden baslarsa _load_arenas_from_db() ile geri yuklenir.
 ARENAS: Dict[int, Dict[str, Any]] = {}
 ARENAS_LOCK = threading.RLock()
+# (turnuva, kullanici) -> sid: arena_join/arena_resume yapan bagli uye (ARENAS_LOCK altinda).
+# Turnuva baslayinca bunlar kuyruga alinir; soket kopunca kayit silinir.
+# Kilit sirasi: GAMES_LOCK tutulurken ARENAS_LOCK alinabilir, tersi asla.
+ARENA_SIDS: Dict[Tuple[int, str], str] = {}
 ARENA_SCAN_INTERVAL = 10.0   # sn: DB'den aday turnuva listesini yenileme araligi
 _arena_scan_at = 0.0         # son tarama (time.monotonic); 0 = hic taranmadi
 _arena_candidates: List[Dict[str, Any]] = []
@@ -759,6 +795,8 @@ def _arena_finish(tid: int, status: str, ends_at: Any) -> None:
         return
     with ARENAS_LOCK:
         ARENAS.pop(tid, None)
+        for key in [k for k in ARENA_SIDS if k[0] == tid]:
+            del ARENA_SIDS[key]
     _emit_arena_state(tid, status, ends_at)
 
 
@@ -816,6 +854,7 @@ def _arena_start_or_skip(t: Dict[str, Any], now: datetime) -> None:
                            'ends_at': t['ends_at'], 'starts_at': t['starts_at'],
                            'pairing': True}
         _emit_arena_state(tid, 'running', t['ends_at'])
+        _arena_enqueue_waiting(tid)
 
 
 def enforce_arena_lifecycle() -> None:
@@ -1183,6 +1222,8 @@ def on_disconnect():
                     **_clock_fields(room),
                 }, to=room_id)
                 socketio.start_background_task(_forfeit_after_grace, room_id, piece, now)
+    # Kuyruktaki oyuncu kuyruktan duser; duraklatma bayragi degismez (donunce arena_join)
+    _arena_remove_sid(sid, forget=True)
 
 
 @socketio.on('create_game')
@@ -1193,6 +1234,10 @@ def on_create_game(data):
         return
 
     with GAMES_LOCK:
+        # Bir oyuncu ayni anda tek yerde: aktif mac ya da arena kuyrugu oda kuramaz
+        if _seated_in_active_game(request.sid) or _arena_queued_tid(request.sid) is not None:
+            _emit_error('Zaten bir oyundasiniz')
+            return
         # Kullanicinin onceki bekleyen odasi varsa sil (tek bekleyen oda kurali).
         # Misafir adi kanit olmadigindan baska baglantinin odasina dokunulmaz.
         existing = get_user_waiting_game(user_id, authenticated)
@@ -1278,6 +1323,7 @@ def on_join_game(data):
             room[f'{key}_sid'] = request.sid
             if not game.game_over:
                 _quick_remove_locked(request.sid)   # Aktif koltuga donen soket kuyruktan cikar
+                _arena_remove_sid(request.sid)
             join_room(room_id)
             if was_disconnected and not game.game_over and own_piece != game.current_player:
                 _start_turn_clock(room)   # Bekleyen oyuncu doneni karsilayinca hemen suresiz kalmasin
@@ -1287,6 +1333,7 @@ def on_join_game(data):
                 'room_id': room_id, 'player_piece': own_piece, 'role': 'player',
                 'rejoined': True, 'current_state': game.to_dict(), 'opponent_info': opponent_info,
                 'rejoin_token': room[f'{key}_rejoin'], 'game_no': room['game_no'],
+                'tournament_id': room.get('tournament_id'),
                 **_clock_fields(room),
             }
             if game.game_over:
@@ -1296,6 +1343,12 @@ def on_join_game(data):
                 # Saat alanlari: duraklayan saat yeniden isler; herkes (seyirci dahil) esitlenir
                 emit('opponent_reconnected', {'msg': 'Rakip geri dondu', **_clock_fields(room)},
                      to=room_id, include_self=False)
+            return
+
+        # Arena kuyrugundaki ya da aktif mactaki soket ikinci koltuga oturamaz
+        if room['p2_uid'] is None and (_seated_in_active_game(request.sid)
+                                       or _arena_queued_tid(request.sid) is not None):
+            _emit_error('Zaten bir oyundasiniz')
             return
 
         join_room(room_id)
@@ -1388,7 +1441,7 @@ def on_quick_match_join(data):
 
     sid = request.sid
     with GAMES_LOCK:
-        if _seated_in_active_game(sid):
+        if _seated_in_active_game(sid) or _arena_queued_tid(sid) is not None:
             _emit_error('Zaten bir oyundasiniz')
             return
         # Tek bekleyen oda kurali (create_game ile ayni): kendi bekleyen odasi silinir;
@@ -1430,6 +1483,196 @@ def on_quick_match_cancel(data=None):
     with GAMES_LOCK:
         _quick_remove_locked(request.sid)
     emit('quick_match_cancelled', {})
+
+
+# =============================================================================
+# ARENA TURNUVASI: kuyruk ve eslestirme
+# =============================================================================
+# ARENAS[tid]['queue']: {'sid', 'username', 'info', 'auth'} kayitlari (QUICK_QUEUE gibi).
+# Bir oyuncu ayni anda tek yerde bulunur: arena kuyrugu / arena oyunu, hizli eslesme
+# kuyrugu ve normal oda birbirini dislar.
+
+ARENA_TIME_CONTROL = '3+2'
+
+
+def _arena_queued_tid(sid: str, username: Optional[str] = None) -> Optional[int]:
+    """Soketin (ya da verilirse kullanicinin) bekledigi arena kuyrugunun turnuva id'si."""
+    with ARENAS_LOCK:
+        for tid, a in ARENAS.items():
+            if any(e['sid'] == sid or (username and e['username'] == username) for e in a['queue']):
+                return tid
+    return None
+
+
+def _arena_remove_sid(sid: str, forget: bool = False) -> None:
+    """Soketi tum arena kuyruklarindan cikarir; forget ise ARENA_SIDS kayitlarini da siler."""
+    with ARENAS_LOCK:
+        for a in ARENAS.values():
+            a['queue'][:] = [e for e in a['queue'] if e['sid'] != sid]
+        if forget:
+            for key in [k for k, v in ARENA_SIDS.items() if v == sid]:
+                del ARENA_SIDS[key]
+
+
+def _user_in_active_game(username: str) -> bool:
+    """Kayitli kullanici (hangi soketten olursa olsun) baslamis ve bitmemis bir macta koltuk
+    tutuyor mu? Kopup donmesi beklenen koltuk da sayilir. GAMES_LOCK altinda cagrilir."""
+    return any(room['p2_uid'] is not None and not room['game'].game_over
+               and ((room['p1_uid'] == username and room['p1_auth'])
+                    or (room['p2_uid'] == username and room['p2_auth']))
+               for room in GAMES.values())
+
+
+def _arena_enqueue_locked(tid: int, sid: str, username: str, info: dict) -> List[int]:
+    """
+    Uyeyi turnuva kuyruguna alir (eslestirmez). Aktif macta oturan ya da eslestirmesi kapali
+    turnuvada girmez. Baska turnuvalarin kuyrugundan cikarilir: cikarildigi turnuvalarin
+    id'leri doner, cagiran bunlari duraklatir (_arena_pause_moved). Hizli eslesme kuyrugundan
+    ve kendi bekleyen odasindan da cikar. GAMES_LOCK altinda cagrilir.
+    """
+    if _seated_in_active_game(sid) or _user_in_active_game(username):
+        return []
+    moved = []
+    with ARENAS_LOCK:
+        a = ARENAS.get(tid)
+        if not a or not a['pairing']:
+            return []
+        for other_tid, other in ARENAS.items():
+            if other_tid == tid:
+                continue
+            before = len(other['queue'])
+            other['queue'][:] = [e for e in other['queue']
+                                 if e['sid'] != sid and e['username'] != username]
+            if len(other['queue']) != before:
+                moved.append(other_tid)
+        queue = a['queue']
+        if not any(e['sid'] == sid and e['username'] == username for e in queue):
+            # Ayni kullanicinin eski soketi (yenileme / ikinci cihaz) yerini yenisine birakir
+            queue[:] = [e for e in queue if e['sid'] != sid and e['username'] != username]
+            queue.append({'sid': sid, 'username': username, 'info': info, 'auth': True})
+    if _quick_remove_locked(sid):
+        socketio.emit('quick_match_cancelled', {}, to=sid)
+    existing = get_user_waiting_game(username, True)
+    if existing:
+        _drop_waiting_room(existing)
+    return moved
+
+
+def _arena_pause_moved(username: str, tids: List[int]) -> None:
+    """Baska turnuvanin kuyruguna gecen oyuncuyu eski turnuvalarda duraklatir (spec 3a)."""
+    for tid in tids:
+        db.set_player_paused(tid, username, True)
+        _broadcast_standings(tid)
+
+
+def _arena_start_game(tid: int, p1: Dict[str, Any], p2: Dict[str, Any]) -> None:
+    """Iki kuyruk kaydindan turnuva odasi kurar (3+2, ilk hamle iptali gecerli, puanli).
+    Istek baglami disinda da calisir (socketio.emit). GAMES_LOCK altinda cagrilir."""
+    room_id = generate_room_id()
+    while room_id in GAMES:
+        room_id = generate_room_id()
+    room = _new_room(p1['sid'], p1['username'], p1['info'], True, ARENA_TIME_CONTROL,
+                     quick=True, tournament_id=tid)
+    _seat_second_player(room, p2['sid'], p2['username'], p2['info'], True)
+    GAMES[room_id] = room
+    log.info("Oda %s: arena #%s eslesmesi %s - %s", room_id, tid, p1['username'], p2['username'])
+    for piece, entry, opponent in ((PLAYER1_PIECE, p1, p2), (PLAYER2_PIECE, p2, p1)):
+        _quick_remove_locked(entry['sid'])
+        CONNECTED_USERS[entry['sid']] = entry['username']
+        socketio.server.enter_room(entry['sid'], room_id, namespace='/')
+        socketio.emit('game_joined', {'room_id': room_id, 'player_piece': piece, 'role': 'player',
+                                      'opponent_info': opponent['info'],
+                                      'rejoin_token': room[f'{_seat_key(piece)}_rejoin'],
+                                      'quick': True, 'tournament_id': tid,
+                                      **_clock_fields(room)}, to=entry['sid'])
+    _emit_game_start(room)
+
+
+def _arena_pair_locked(tid: int) -> None:
+    """Kuyrukta en az iki oyuncu oldukca pick_pair ile eslestirir (art arda ayni rakip
+    yalnizca baska aday yoksa); last_opponent guncellenir. Bu arada aktif maca oturmus
+    kayitlar kuyruktan duser. GAMES_LOCK ve ARENAS_LOCK altinda cagrilir."""
+    a = ARENAS.get(tid)
+    if not a or not a['pairing']:
+        return
+    queue = a['queue']
+    queue[:] = [e for e in queue
+                if not (_seated_in_active_game(e['sid']) or _user_in_active_game(e['username']))]
+    while True:
+        pair = arena.pick_pair([e['username'] for e in queue], a['last_opponent'])
+        if not pair:
+            return
+        first = next(e for e in queue if e['username'] == pair[0])
+        second = next(e for e in queue if e['username'] == pair[1])
+        queue.remove(first)
+        queue.remove(second)
+        a['last_opponent'][first['username']] = second['username']
+        a['last_opponent'][second['username']] = first['username']
+        _arena_start_game(tid, first, second)
+
+
+def _arena_enqueue(tid: int, sid: str, username: str) -> None:
+    """Istek isleyicisinden: kuyruga alir, eslestirir, onceki turnuvalari duraklatir."""
+    info = get_user_info(username)
+    with GAMES_LOCK:
+        moved = _arena_enqueue_locked(tid, sid, username, info)
+        with ARENAS_LOCK:
+            _arena_pair_locked(tid)
+    _arena_pause_moved(username, moved)
+
+
+def _arena_requeue_locked(tid: int, room: dict, pieces: Tuple[int, ...],
+                          rows: List[Dict[str, Any]]) -> None:
+    """Biten/iptal edilen turnuva oyunundan sonra bagli ve duraklatmamis oyunculari kuyruga
+    geri alir (eslestirme kapaliysa almaz) ve eslestirir. GAMES_LOCK altinda cagrilir."""
+    with ARENAS_LOCK:
+        a = ARENAS.get(tid)
+        if not a or not a['pairing']:
+            return
+    paused = {r['username'] for r in rows if r.get('paused')}
+    for piece in pieces:
+        sid, user = _sid_of(room, piece), _uid_of(room, piece)
+        if not sid or piece in room['disconnected'] or user is None or str(user) in paused:
+            continue
+        moved = _arena_enqueue_locked(tid, sid, str(user), get_user_info(user))
+        _arena_pause_moved(str(user), moved)
+    with ARENAS_LOCK:
+        _arena_pair_locked(tid)
+
+
+def _arena_score(tid: int, room: dict,
+                 winner: Optional[int]) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Iki oyuncunun turnuva puanini/serisini isler. (oyun oncesi puan durumu satirlari,
+    game_over'a eklenen arena alani) dondurur. GAMES_LOCK altinda cagrilir."""
+    rows = db.get_standings_rows(tid)
+    streaks = {r['username']: r.get('streak') or 0 for r in rows}
+    points: Dict[str, int] = {}
+    for piece in (PLAYER1_PIECE, PLAYER2_PIECE):
+        user = str(_uid_of(room, piece))
+        outcome = 'D' if winner is None else ('W' if winner == piece else 'L')
+        pts, new_streak = arena.score_result(outcome, streaks.get(user, 0))
+        db.apply_tournament_result(tid, user, pts, new_streak, outcome)
+        points[user] = pts
+    return rows, {'tournament_id': tid, 'points': points}
+
+
+def _arena_enqueue_waiting(tid: int) -> None:
+    """Turnuva baslayinca: once arena_join yapmis, hala bagli, duraklatmamis ve baska bir
+    kuyrukta beklemeyen uyeleri kuyruga alir ve eslestirir. Kilit disinda cagrilir."""
+    with ARENAS_LOCK:
+        waiting = [(user, sid) for (t, user), sid in ARENA_SIDS.items() if t == tid]
+    if not waiting:
+        return
+    rows = {r['username']: r for r in db.get_standings_rows(tid)}
+    waiting = [(u, s) for u, s in waiting if u in rows and not rows[u].get('paused')]
+    infos = {u: get_user_info(u) for u, _ in waiting}
+    with GAMES_LOCK:
+        for user, sid in waiting:
+            if _arena_queued_tid(sid, user) is not None:
+                continue   # baska turnuvada siradaysa oraya dokunulmaz
+            _arena_enqueue_locked(tid, sid, user, infos[user])
+        with ARENAS_LOCK:
+            _arena_pair_locked(tid)
 
 
 # =============================================================================
@@ -1495,8 +1738,12 @@ def on_arena_join(data):
         _emit_error('Turnuva bulunamadi')
         return
     join_room(f"arena:{tid}")
+    with ARENAS_LOCK:
+        ARENA_SIDS[(tid, username)] = request.sid   # baslamadiysa baslayinca kuyruga alinir
     emit('arena_joined', {'tournament_id': tid})
     _broadcast_standings(tid)
+    # join_tournament duraklatmayi kaldirir: katilma = devam. Turnuva suruyorsa kuyruga girer.
+    _arena_enqueue(tid, request.sid, username)
 
 
 @socketio.on('arena_watch')
@@ -1523,7 +1770,16 @@ def _arena_set_paused(data: Any, paused: bool) -> None:
     if not db.set_player_paused(tid, username, paused):
         _emit_error('Turnuva bulunamadi')
         return
+    with ARENAS_LOCK:
+        if paused:
+            a = ARENAS.get(tid)
+            if a:
+                a['queue'][:] = [e for e in a['queue'] if e['username'] != username]
+        else:
+            ARENA_SIDS[(tid, username)] = request.sid
     _broadcast_standings(tid)
+    if not paused:
+        _arena_enqueue(tid, request.sid, username)
 
 
 @socketio.on('arena_pause')
@@ -1652,7 +1908,7 @@ def on_leave_game(data):
             if _first_move_pending(room):
                 # Hizli macta ilk hamleden once ayrilmak kopmayla ayni sonucu verir: puansiz iptal
                 log.info("Oda %s: oyuncu %s ilk hamleden once ayrildi, iptal", room_id, piece)
-                _abort_game(room_id, room)
+                _abort_game(room_id, room, culprit=piece)
                 return {'ok': True}
             log.info("Oda %s: oyuncu %s oyunu terk etti", room_id, piece)
             _finish_game(room_id, room, reason='forfeit', forfeit_loser=piece, detail='leave')
@@ -1671,6 +1927,8 @@ def on_rematch_request(data=None):
         if room is None:
             _emit_error('Oda bulunamadi')
             return
+        if room.get('tournament_id') is not None:
+            return   # Turnuva oyununda rovans yok: oyuncu kuyruga doner (sessizce yok sayilir)
         piece = _piece_of(room, request.sid)
         if piece is None:
             _emit_error('Sadece oyuncular rovans isteyebilir')
@@ -1724,6 +1982,8 @@ def _start_rematch(room_id: str, room: dict) -> None:
         sid = room[f'{key}_sid']
         if sid and _quick_remove_locked(sid):
             socketio.emit('quick_match_cancelled', {}, to=sid)
+        if sid:
+            _arena_remove_sid(sid)
 
     p1_info, p2_info = room['p1_info'], room['p2_info']
     for piece, opponent in ((PLAYER1_PIECE, p2_info), (PLAYER2_PIECE, p1_info)):
