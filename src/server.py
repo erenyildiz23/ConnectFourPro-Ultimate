@@ -1222,8 +1222,9 @@ def on_disconnect():
                     **_clock_fields(room),
                 }, to=room_id)
                 socketio.start_background_task(_forfeit_after_grace, room_id, piece, now)
-    # Kuyruktaki oyuncu kuyruktan duser; duraklatma bayragi degismez (donunce arena_join)
-    _arena_remove_sid(sid, forget=True)
+        # Kuyruktaki oyuncu kuyruktan duser; duraklatma bayragi degismez (donunce arena_join).
+        # GAMES_LOCK icinde: eslestirme (GAMES_LOCK altinda) kopuk soketi goremez.
+        _arena_remove_sid(sid, forget=True)
 
 
 @socketio.on('create_game')
@@ -1235,7 +1236,7 @@ def on_create_game(data):
 
     with GAMES_LOCK:
         # Bir oyuncu ayni anda tek yerde: aktif mac ya da arena kuyrugu oda kuramaz
-        if _seated_in_active_game(request.sid) or _arena_queued_tid(request.sid) is not None:
+        if _busy_elsewhere(request.sid, user_id, authenticated):
             _emit_error('Zaten bir oyundasiniz')
             return
         # Kullanicinin onceki bekleyen odasi varsa sil (tek bekleyen oda kurali).
@@ -1346,8 +1347,7 @@ def on_join_game(data):
             return
 
         # Arena kuyrugundaki ya da aktif mactaki soket ikinci koltuga oturamaz
-        if room['p2_uid'] is None and (_seated_in_active_game(request.sid)
-                                       or _arena_queued_tid(request.sid) is not None):
+        if room['p2_uid'] is None and _busy_elsewhere(request.sid, user_id, authenticated):
             _emit_error('Zaten bir oyundasiniz')
             return
 
@@ -1407,8 +1407,10 @@ def _seated_in_active_game(sid: str) -> bool:
 def _quick_pair_locked() -> None:
     """Kuyrukta iki oyuncu varsa ilk ikisini eslestirir: ilk giren P1, ikincisi P2.
     Iki tarafa da game_joined (quick: True) ve game_start gider. GAMES_LOCK altinda cagrilir."""
-    # Bu arada aktif bir maca oturan soket (or. rovans) eslestirilmez, kuyruktan duser
-    for entry in [e for e in QUICK_QUEUE if _seated_in_active_game(e['sid'])]:
+    # Bu arada aktif bir maca oturan soket (or. rovans) ya da baska cihazdan maca oturan
+    # kayitli kullanici (or. arena) eslestirilmez, kuyruktan duser
+    for entry in [e for e in QUICK_QUEUE if _seated_in_active_game(e['sid'])
+                  or (e['auth'] and _user_in_active_game(e['uid']))]:
         _quick_remove_locked(entry['sid'])
         emit('quick_match_cancelled', {}, to=entry['sid'])
     while len(QUICK_QUEUE) >= 2:
@@ -1441,7 +1443,7 @@ def on_quick_match_join(data):
 
     sid = request.sid
     with GAMES_LOCK:
-        if _seated_in_active_game(sid) or _arena_queued_tid(sid) is not None:
+        if _busy_elsewhere(sid, user_id, authenticated):
             _emit_error('Zaten bir oyundasiniz')
             return
         # Tek bekleyen oda kurali (create_game ile ayni): kendi bekleyen odasi silinir;
@@ -1495,7 +1497,7 @@ def on_quick_match_cancel(data=None):
 ARENA_TIME_CONTROL = '3+2'
 
 
-def _arena_queued_tid(sid: str, username: Optional[str] = None) -> Optional[int]:
+def _arena_queued_tid(sid: Optional[str], username: Optional[str] = None) -> Optional[int]:
     """Soketin (ya da verilirse kullanicinin) bekledigi arena kuyrugunun turnuva id'si."""
     with ARENAS_LOCK:
         for tid, a in ARENAS.items():
@@ -1512,6 +1514,16 @@ def _arena_remove_sid(sid: str, forget: bool = False) -> None:
         if forget:
             for key in [k for k, v in ARENA_SIDS.items() if v == sid]:
                 del ARENA_SIDS[key]
+
+
+def _busy_elsewhere(sid: str, username: Optional[str], authenticated: bool) -> bool:
+    """Oyuncu baska bir yerde mi (aktif mac / arena kuyrugu)? Soket her zaman, kayitli
+    kullanici ayrica adiyla da (ikinci cihaz) denetlenir: bir oyuncu ayni anda iki macta
+    olamaz (spec 5). GAMES_LOCK altinda cagrilir."""
+    if _seated_in_active_game(sid) or _arena_queued_tid(sid) is not None:
+        return True
+    return bool(authenticated and username
+                and (_user_in_active_game(username) or _arena_queued_tid(None, username) is not None))
 
 
 def _user_in_active_game(username: str) -> bool:
@@ -1535,7 +1547,7 @@ def _arena_enqueue_locked(tid: int, sid: str, username: str, info: dict) -> List
     moved = []
     with ARENAS_LOCK:
         a = ARENAS.get(tid)
-        if not a or not a['pairing']:
+        if not a or not _arena_pairing_open(a):
             return []
         for other_tid, other in ARENAS.items():
             if other_tid == tid:
@@ -1550,8 +1562,12 @@ def _arena_enqueue_locked(tid: int, sid: str, username: str, info: dict) -> List
             # Ayni kullanicinin eski soketi (yenileme / ikinci cihaz) yerini yenisine birakir
             queue[:] = [e for e in queue if e['sid'] != sid and e['username'] != username]
             queue.append({'sid': sid, 'username': username, 'info': info, 'auth': True})
-    if _quick_remove_locked(sid):
-        socketio.emit('quick_match_cancelled', {}, to=sid)
+    # Bu soketin ve ayni kayitli kullanicinin (baska cihaz) hizli eslesme kayitlari duser
+    dropped = [e['sid'] for e in QUICK_QUEUE
+               if e['sid'] == sid or (e['auth'] and e['uid'] == username)]
+    QUICK_QUEUE[:] = [e for e in QUICK_QUEUE if e['sid'] not in dropped]
+    for old_sid in dropped:
+        socketio.emit('quick_match_cancelled', {}, to=old_sid)
     existing = get_user_waiting_game(username, True)
     if existing:
         _drop_waiting_room(existing)
@@ -1563,6 +1579,26 @@ def _arena_pause_moved(username: str, tids: List[int]) -> None:
     for tid in tids:
         db.set_player_paused(tid, username, True)
         _broadcast_standings(tid)
+
+
+def _arena_pairing_open(a: Dict[str, Any]) -> bool:
+    """Eslestirme acik mi: yasam dongusu durdurmadi ve ends_at gecmedi (dongunun bir
+    sonraki turunu beklemeden; spec 3a: ends_at'ten sonra yeni eslesme yok)."""
+    return bool(a['pairing']) and _utcnow() < a['ends_at']
+
+
+def _arena_leave_others(tid: int, username: str) -> List[int]:
+    """tid'de maca oturan kullanici diger turnuvalarda duraklar (spec 3a): o turnuvalarin
+    kuyruklarindan ve ARENA_SIDS'ten cikarilir; duraklatilacak turnuva id'leri doner.
+    ARENAS_LOCK altinda cagrilir."""
+    others = {t for (t, u) in ARENA_SIDS if u == username and t != tid}
+    for key in [(t, username) for t in others]:
+        del ARENA_SIDS[key]
+    for other_tid, other in ARENAS.items():
+        if other_tid != tid and any(e['username'] == username for e in other['queue']):
+            other['queue'][:] = [e for e in other['queue'] if e['username'] != username]
+            others.add(other_tid)
+    return sorted(others)
 
 
 def _arena_start_game(tid: int, p1: Dict[str, Any], p2: Dict[str, Any]) -> None:
@@ -1588,20 +1624,23 @@ def _arena_start_game(tid: int, p1: Dict[str, Any], p2: Dict[str, Any]) -> None:
     _emit_game_start(room)
 
 
-def _arena_pair_locked(tid: int) -> None:
+def _arena_pair_locked(tid: int) -> List[Tuple[str, List[int]]]:
     """Kuyrukta en az iki oyuncu oldukca pick_pair ile eslestirir (art arda ayni rakip
     yalnizca baska aday yoksa); last_opponent guncellenir. Bu arada aktif maca oturmus
-    kayitlar kuyruktan duser. GAMES_LOCK ve ARENAS_LOCK altinda cagrilir."""
+    kayitlar kuyruktan duser. Eslesen oyuncunun diger turnuvalari icin (kullanici,
+    [turnuva]) listesi doner; cagiran ARENAS_LOCK disinda _arena_pause_moved ile duraklatir
+    (bkz. _arena_pair). GAMES_LOCK ve ARENAS_LOCK altinda cagrilir."""
+    pauses: List[Tuple[str, List[int]]] = []
     a = ARENAS.get(tid)
-    if not a or not a['pairing']:
-        return
+    if not a or not _arena_pairing_open(a):
+        return pauses
     queue = a['queue']
     queue[:] = [e for e in queue
                 if not (_seated_in_active_game(e['sid']) or _user_in_active_game(e['username']))]
     while True:
         pair = arena.pick_pair([e['username'] for e in queue], a['last_opponent'])
         if not pair:
-            return
+            return pauses
         first = next(e for e in queue if e['username'] == pair[0])
         second = next(e for e in queue if e['username'] == pair[1])
         queue.remove(first)
@@ -1609,6 +1648,20 @@ def _arena_pair_locked(tid: int) -> None:
         a['last_opponent'][first['username']] = second['username']
         a['last_opponent'][second['username']] = first['username']
         _arena_start_game(tid, first, second)
+        for e in (first, second):
+            others = _arena_leave_others(tid, e['username'])
+            if others:
+                pauses.append((e['username'], others))
+
+
+def _arena_pair(tid: int) -> None:
+    """Eslestirir ve eslesenleri diger turnuvalarda duraklatir (DB, ARENAS_LOCK disinda).
+    GAMES_LOCK tutularak ya da tutulmadan cagrilabilir."""
+    with GAMES_LOCK:
+        with ARENAS_LOCK:
+            pauses = _arena_pair_locked(tid)
+    for username, tids in pauses:
+        _arena_pause_moved(username, tids)
 
 
 def _arena_enqueue(tid: int, sid: str, username: str) -> None:
@@ -1617,8 +1670,9 @@ def _arena_enqueue(tid: int, sid: str, username: str) -> None:
     with GAMES_LOCK:
         moved = _arena_enqueue_locked(tid, sid, username, info)
         with ARENAS_LOCK:
-            _arena_pair_locked(tid)
-    _arena_pause_moved(username, moved)
+            pauses = _arena_pair_locked(tid)
+    for user, tids in [(username, moved)] + pauses:
+        _arena_pause_moved(user, tids)
 
 
 def _arena_requeue_locked(tid: int, room: dict, pieces: Tuple[int, ...],
@@ -1627,7 +1681,7 @@ def _arena_requeue_locked(tid: int, room: dict, pieces: Tuple[int, ...],
     geri alir (eslestirme kapaliysa almaz) ve eslestirir. GAMES_LOCK altinda cagrilir."""
     with ARENAS_LOCK:
         a = ARENAS.get(tid)
-        if not a or not a['pairing']:
+        if not a or not _arena_pairing_open(a):
             return
     paused = {r['username'] for r in rows if r.get('paused')}
     for piece in pieces:
@@ -1636,8 +1690,7 @@ def _arena_requeue_locked(tid: int, room: dict, pieces: Tuple[int, ...],
             continue
         moved = _arena_enqueue_locked(tid, sid, str(user), get_user_info(user))
         _arena_pause_moved(str(user), moved)
-    with ARENAS_LOCK:
-        _arena_pair_locked(tid)
+    _arena_pair(tid)
 
 
 def _arena_score(tid: int, room: dict,
@@ -1668,11 +1721,14 @@ def _arena_enqueue_waiting(tid: int) -> None:
     infos = {u: get_user_info(u) for u, _ in waiting}
     with GAMES_LOCK:
         for user, sid in waiting:
-            if _arena_queued_tid(sid, user) is not None:
+            with ARENAS_LOCK:
+                # Anlik goruntuden sonra (DB cagrilari sirasinda) kopan ya da yeniden
+                # baglanan soket: kopma temizligi kaydi sildi/degistirdi, eski sid alinmaz
+                current = ARENA_SIDS.get((tid, user))
+            if current != sid or _arena_queued_tid(sid, user) is not None:
                 continue   # baska turnuvada siradaysa oraya dokunulmaz
             _arena_enqueue_locked(tid, sid, user, infos[user])
-        with ARENAS_LOCK:
-            _arena_pair_locked(tid)
+        _arena_pair(tid)
 
 
 # =============================================================================

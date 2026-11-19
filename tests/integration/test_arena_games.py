@@ -171,15 +171,137 @@ def hand_arena(server, tid=1, queue=(), pairing=True):
                               'pairing': pairing}
 
 
-def hand_pair(server, sio, fake_db, names=('alice', 'bob')):
+def hand_pair(server, sio, fake_db, names=('alice', 'bob'), setup=None):
     clients = [sio() for _ in names]
-    sids = [sid_of(server, c, n) for c, n in zip(clients, names, strict=True)]
+    # Misafir adi kayitli adla cakismasin (sahte kayitli kullanicilar icin)
+    sids = [sid_of(server, c, f"g_{n}") for c, n in zip(clients, names, strict=True)]
     for n in names:
         fake_db.row(n)
     hand_arena(server, 1, [entry(s, n) for s, n in zip(sids, names, strict=True)])
-    with server.GAMES_LOCK, server.ARENAS_LOCK:
-        server._arena_pair_locked(1)
+    if setup:
+        setup(sids)
+    server._arena_pair(1)
     return clients, sids
+
+
+@pytest.fixture
+def registered(server, monkeypatch):
+    """Veritabansiz kayitli kullanici: token gecerli, get_user_by_username sahte."""
+    names = {'alice', 'bob', 'carol'}
+
+    def fake_user(name):
+        return {'username': name, 'rating': 1200, 'wins': 0, 'losses': 0} if name in names else None
+
+    monkeypatch.setattr(server.db, 'get_user_by_username', fake_user)
+    return lambda name: {'token': server.issue_session_token(name)}
+
+
+class TestPerUserExclusivity:
+    def test_second_socket_refused_while_seated_in_arena_game(self, server, sio, arena_env,
+                                                              fake_db, registered):
+        (a, b), _ = hand_pair(server, sio, fake_db)
+        a.wait_for('game_joined')
+        host = sio()
+        host.emit('create_game', identity('host9'))
+        room_id = host.wait_for('game_created')['room_id']
+        dev2 = sio()
+        for event, data in (('quick_match_join', registered('alice')),
+                            ('create_game', registered('alice')),
+                            ('join_game', {'room_id': room_id, **registered('alice')})):
+            dev2.clear()
+            dev2.emit(event, data)
+            assert dev2.wait_for('error')['code'] == 'already_in_game', event
+        assert server.QUICK_QUEUE == [] and server.GAMES[room_id]['p2_uid'] is None
+
+    def test_second_socket_refused_while_username_in_arena_queue(self, server, sio, arena_env,
+                                                                 no_database, registered):
+        c = sio()
+        sid = sid_of(server, c, 'g_alice')
+        hand_arena(server, 1, [entry(sid, 'alice')])
+        dev2 = sio()
+        dev2.emit('quick_match_join', registered('alice'))
+        assert dev2.wait_for('error')['code'] == 'already_in_game'
+        assert server.QUICK_QUEUE == []
+
+    def test_quick_pair_drops_entry_of_user_in_arena_game(self, server, sio, arena_env,
+                                                          fake_db, registered):
+        (a, b), _ = hand_pair(server, sio, fake_db)
+        a.wait_for('game_joined')
+        dev2 = sio()
+        dev2_sid = sid_of(server, dev2, 'g_dev2')
+        with server.GAMES_LOCK:   # cihaz 2 kaydi arena eslesmesinden once kuyruga girmisti
+            server.QUICK_QUEUE.append({'sid': dev2_sid, 'uid': 'alice', 'auth': True,
+                                       'info': {'username': 'alice', 'rating': 1200}})
+        g = sio()
+        g.emit('quick_match_join', identity('guest9'))
+        g.wait_for('quick_match_waiting')
+        assert g.events('game_joined') == [] and dev2.events('game_joined') == []
+        assert [e['uid'] for e in server.QUICK_QUEUE] == ['guest9']
+
+    def test_arena_enqueue_removes_same_user_quick_entry(self, server, sio, arena_env,
+                                                         no_database):
+        c, dev2 = sio(), sio()
+        sid = sid_of(server, c, 'g_alice')
+        dev2_sid = sid_of(server, dev2, 'g_dev2')
+        hand_arena(server, 1)
+        with server.GAMES_LOCK:
+            server.QUICK_QUEUE.append({'sid': dev2_sid, 'uid': 'alice', 'auth': True,
+                                       'info': {'username': 'alice', 'rating': 1200}})
+            server._arena_enqueue_locked(1, sid, 'alice', {'username': 'alice'})
+        assert server.QUICK_QUEUE == []
+        assert dev2.wait_for('quick_match_cancelled') == {}
+        assert queue_names(server, 1) == ['alice']
+
+
+class TestRacesAndCutoff:
+    def test_disconnect_during_start_snapshot_not_enqueued(self, server, sio, arena_env,
+                                                           fake_db, monkeypatch):
+        a, b = sio(), sio()
+        sa, sb = sid_of(server, a, 'g_alice'), sid_of(server, b, 'g_bob')
+        fake_db.row('alice')
+        fake_db.row('bob')
+        hand_arena(server, 1)
+        with server.ARENAS_LOCK:
+            server.ARENA_SIDS[(1, 'alice')] = sa
+            server.ARENA_SIDS[(1, 'bob')] = sb
+        real = fake_db.get_standings_rows
+        fired = []
+
+        def rows_then_disconnect(tid):
+            out = real(tid)
+            if not fired:
+                fired.append(1)
+                a.disconnect()   # anlik goruntu ile kuyruga alma arasinda kopma
+            return out
+
+        monkeypatch.setattr(server.db, 'get_standings_rows', rows_then_disconnect)
+        server._arena_enqueue_waiting(1)
+        assert fired and queue_names(server, 1) == ['bob']
+        assert b.events('game_joined') == []
+
+    def test_no_pairing_after_ends_at_before_tick(self, server, sio, arena_env, fake_db):
+        arena_env['now'] = T0 + timedelta(minutes=15)   # yasam dongusu henuz calismadi
+        (a, b), _ = hand_pair(server, sio, fake_db)
+        assert a.events('game_joined') == [] and b.events('game_joined') == []
+
+    def test_no_requeue_after_ends_at_before_tick(self, server, sio, arena_env, fake_db):
+        (a, b), _ = hand_pair(server, sio, fake_db)
+        room_id = a.wait_for('game_joined')['room_id']
+        arena_env['now'] = T0 + timedelta(minutes=15, seconds=1)
+        play(room_id, a, b, P1_VERTICAL_WIN)
+        assert a.wait_for('game_over')['arena']['points'] == {'alice': 2, 'bob': 0}
+        assert queue_names(server, 1) == [] and len(a.events('game_joined')) == 1
+
+    def test_pairing_pauses_other_tournaments(self, server, sio, arena_env, fake_db):
+        def setup(sids):
+            hand_arena(server, 2, [entry(sids[1], 'bob')])   # el ile: bob 2'de de sirada
+            with server.ARENAS_LOCK:
+                server.ARENA_SIDS[(3, 'alice')] = sids[0]   # 3 henuz baslamadi
+                server.ARENA_SIDS[(1, 'alice')] = sids[0]
+        (a, b), _ = hand_pair(server, sio, fake_db, setup=setup)
+        a.wait_for('game_joined')
+        assert sorted(fake_db.paused_calls) == [(2, 'bob', True), (3, 'alice', True)]
+        assert queue_names(server, 2) == []
 
 
 class TestArenaNoDb:
