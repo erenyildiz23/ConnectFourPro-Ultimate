@@ -754,7 +754,9 @@ def _arena_live_games(tid: int) -> int:
 
 
 def _arena_finish(tid: int, status: str, ends_at: Any) -> None:
-    db.set_tournament_status(tid, status)
+    # Yazma basarisizsa ARENAS'ta birakilir ve yayin yapilmaz; sonraki tur yeniden dener
+    if not db.set_tournament_status(tid, status):
+        return
     with ARENAS_LOCK:
         ARENAS.pop(tid, None)
     _emit_arena_state(tid, status, ends_at)
@@ -766,11 +768,20 @@ def _arena_tick_running(tid: int, now: datetime) -> None:
         info = dict(a) if a else None
     if not info:
         return
-    # Uye sayisi yalnizca iptal/bitis kararinda gerekir; her sn sorgu atmamak icin
-    # bekleme suresi dolmadan MIN_PLAYERS varsayilir.
+    # Uye sayisi yalnizca bekleme suresi dolunca ve kadro henuz tamamlanmadiysa sorgulanir.
+    # Bitis anlarinda lifecycle_action uye sayisina bakmaz. Sorgu hatasi (None) iptal
+    # sayilmaz: o tur karar verilmez. Uyeler ayrilmadigi icin quorum bir kez saglanirsa yeter.
     players = arena.MIN_PLAYERS
-    if now >= info['ends_at'] or now >= info['started_at'] + arena.START_WAIT:
-        players = len(db.get_standings_rows(tid))
+    if (now < info['ends_at'] and not info.get('quorum')
+            and now >= info['started_at'] + arena.START_WAIT):
+        count = db.count_tournament_players(tid)
+        if count is None:
+            return
+        if count >= arena.MIN_PLAYERS:
+            with ARENAS_LOCK:
+                if tid in ARENAS:
+                    ARENAS[tid]['quorum'] = True
+        players = count
     action = arena.lifecycle_action('running', now, info['starts_at'], info['ends_at'],
                                     info['started_at'], players, _arena_live_games(tid))
     if action == 'finish':
@@ -783,6 +794,28 @@ def _arena_tick_running(tid: int, now: datetime) -> None:
                 ARENAS[tid]['pairing'] = False
                 ARENAS[tid]['queue'] = []
         _emit_arena_state(tid, 'running', info['ends_at'])
+
+
+def _arena_start_or_skip(t: Dict[str, Any], now: datetime) -> None:
+    """Planli turnuvayi baslatir; sunucu tum turnuva boyunca uyuduysa dogrudan sonlandirir."""
+    tid = t['id']
+    if now >= t['ends_at']:
+        count = db.count_tournament_players(tid)
+        if count is None:
+            return
+        status = 'finished' if count >= arena.MIN_PLAYERS else 'cancelled'
+        if db.set_tournament_status(tid, status):
+            t['status'] = status
+            _emit_arena_state(tid, status, t['ends_at'])
+        return
+    # Bekleme suresi gercek baslangictan sayilir (spec 3a): started_at = simdi
+    if db.set_tournament_status(tid, 'running', started_at=now):
+        t['status'] = 'running'
+        with ARENAS_LOCK:
+            ARENAS[tid] = {'queue': [], 'last_opponent': {}, 'started_at': now,
+                           'ends_at': t['ends_at'], 'starts_at': t['starts_at'],
+                           'pairing': True}
+        _emit_arena_state(tid, 'running', t['ends_at'])
 
 
 def enforce_arena_lifecycle() -> None:
@@ -803,14 +836,7 @@ def enforce_arena_lifecycle() -> None:
         if arena.lifecycle_action('scheduled', now, t['starts_at'], t['ends_at'],
                                   None, 0, 0) != 'start':
             continue
-        # Bekleme suresi gercek baslangictan sayilir (spec 3a): started_at = simdi
-        if db.set_tournament_status(tid, 'running', started_at=now):
-            t['status'] = 'running'
-            with ARENAS_LOCK:
-                ARENAS[tid] = {'queue': [], 'last_opponent': {}, 'started_at': now,
-                               'ends_at': t['ends_at'], 'starts_at': t['starts_at'],
-                               'pairing': True}
-            _emit_arena_state(tid, 'running', t['ends_at'])
+        _arena_start_or_skip(t, now)
     with ARENAS_LOCK:
         running = list(ARENAS)
     for tid in running:
@@ -1731,6 +1757,7 @@ def main() -> None:
     log.info("Veritabani: %s", "bagli" if db_ok else "YOK (sadece misafir modu)")
     log.info("Yeniden baglanma suresi: %ds", config.RECONNECT_GRACE_SECONDS)
     log.info("=" * 50)
+    _load_arenas_from_db()
     start_cleanup_thread()
     socketio.run(app, host=config.SERVER_HOST, port=config.SERVER_PORT,
                  debug=False, allow_unsafe_werkzeug=True)

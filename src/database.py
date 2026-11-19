@@ -588,6 +588,20 @@ def set_player_paused(tid: int, username: str, paused: bool) -> bool:
         return False
 
 
+def count_tournament_players(tid: int) -> Optional[int]:
+    """Turnuva uye sayisi; DB yoksa ya da hata olursa None (0 ile karistirilmaz)."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return None
+            c.execute('SELECT COUNT(*) AS n FROM tournament_players WHERE tournament_id = %s', (tid,))
+            row = c.fetchone()
+            return int(row['n']) if row else None
+    except Exception as e:
+        log.error("count_tournament_players hatasi: %s", e)
+        return None
+
+
 def get_standings_rows(tid: int) -> List[Dict[str, Any]]:
     """Turnuva katilimcilari: puana gore azalan, esitlikte katilma sirasi."""
     try:
