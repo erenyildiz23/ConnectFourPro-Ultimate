@@ -1,0 +1,78 @@
+name: Arena hile kontrolu
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Issue acma ve isaretleme yapma, yalnizca raporla'
+        type: boolean
+        default: false
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  cheat-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SERVER_URL: ${{ vars.CONNECT4_PUBLIC_SERVER_URL }}
+      ARENA_CHECK_SECRET: ${{ secrets.ARENA_CHECK_SECRET }}
+    steps:
+      - name: Ayar kontrolu
+        id: cfg
+        run: |
+          if [ -z "$SERVER_URL" ] || [ -z "$ARENA_CHECK_SECRET" ]; then
+            echo "::notice::CONNECT4_PUBLIC_SERVER_URL degiskeni veya ARENA_CHECK_SECRET secret'i tanimli degil; hile kontrolu atlandi."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.enabled == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.cfg.outputs.enabled == 'true'
+        with:
+          python-version: '3.12'
+
+      - name: Pons commit SHA
+        id: pons
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          sha=$(git ls-remote https://github.com/PascalPons/connect4 HEAD | cut -f1)
+          [ -n "$sha" ] || { echo "Pons SHA alinamadi"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Cozucu onbellegi
+        id: solver-cache
+        if: steps.cfg.outputs.enabled == 'true'
+        uses: actions/cache@v4
+        with:
+          path: solver
+          key: c4solver-${{ steps.pons.outputs.sha }}
+
+      - name: Cozucuyu derle ve acilis kitabini indir
+        if: steps.cfg.outputs.enabled == 'true' && steps.solver-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/PascalPons/connect4 pons-src
+          git -C pons-src checkout "${{ steps.pons.outputs.sha }}"
+          make -C pons-src
+          mkdir -p solver
+          cp pons-src/c4solver solver/c4solver
+          curl -fsSL -o solver/7x6.book https://github.com/PascalPons/connect4/releases/download/book/7x6.book
+
+      - name: Hile kontrolu
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          chmod +x solver/c4solver
+          args=(--server "$SERVER_URL" --solver-dir solver)
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          python scripts/arena_cheat_check.py "${args[@]}"
