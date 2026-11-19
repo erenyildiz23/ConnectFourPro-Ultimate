@@ -240,6 +240,11 @@ def _standings_payload(tid: int) -> List[Dict[str, Any]]:
     return [{k: row[k] for k in keys} for row in arena.sort_standings(db.get_standings_rows(tid))]
 
 
+def _utcnow() -> datetime:
+    """Simdiki UTC zamani (testler bunu monkeypatch ile ileri sarar)."""
+    return datetime.now(timezone.utc)
+
+
 def _broadcast_standings(tid: int) -> None:
     """Puan durumunu turnuva odasina yayar (tek yayin noktasi)."""
     socketio.emit('arena_standings', {'tournament_id': tid, 'standings': _standings_payload(tid)},
@@ -702,6 +707,116 @@ def cleanup_old_games() -> int:
     return len(to_delete)
 
 
+# =============================================================================
+# ARENA: YASAM DONGUSU
+# =============================================================================
+# Bellek ici onbellek: yalnizca 'running' turnuvalar. Kalici durum DB'dedir;
+# surec yeniden baslarsa _load_arenas_from_db() ile geri yuklenir.
+ARENAS: Dict[int, Dict[str, Any]] = {}
+ARENAS_LOCK = threading.RLock()
+ARENA_SCAN_INTERVAL = 10.0   # sn: DB'den aday turnuva listesini yenileme araligi
+_arena_scan_at = 0.0         # son tarama (time.monotonic); 0 = hic taranmadi
+_arena_candidates: List[Dict[str, Any]] = []
+
+
+def _emit_arena_state(tid: int, status: str, ends_at: Any) -> None:
+    socketio.emit('arena_state', {'tournament_id': tid, 'status': status,
+                                  'ends_at': _iso(ends_at)}, to=f"arena:{tid}")
+
+
+def _adopt_running(t: Dict[str, Any], now: datetime) -> None:
+    """Calisan turnuvayi ARENAS'a ekler; started_at bos ise simdiyi yazar (uyurken baslama)."""
+    started_at = t.get('started_at')
+    if started_at is None:
+        started_at = now
+        db.set_tournament_status(t['id'], 'running', started_at=now)
+    with ARENAS_LOCK:
+        if t['id'] in ARENAS:
+            return
+        ARENAS[t['id']] = {'queue': [], 'last_opponent': {}, 'started_at': started_at,
+                           'ends_at': t['ends_at'], 'starts_at': t['starts_at'],
+                           'pairing': now < t['ends_at']}
+
+
+def _load_arenas_from_db() -> None:
+    """'running' turnuvalari DB'den yukler (acilista / ilk turda). Kuyruk bos baslar:
+    oyuncular arena_join ile yeniden baglaninca siraya girer."""
+    now = _utcnow()
+    for t in db.list_tournaments(now):
+        if t['status'] == 'running':
+            _adopt_running(t, now)
+
+
+def _arena_live_games(tid: int) -> int:
+    with GAMES_LOCK:
+        return sum(1 for r in GAMES.values()
+                   if r.get('tournament_id') == tid and not r['game'].game_over)
+
+
+def _arena_finish(tid: int, status: str, ends_at: Any) -> None:
+    db.set_tournament_status(tid, status)
+    with ARENAS_LOCK:
+        ARENAS.pop(tid, None)
+    _emit_arena_state(tid, status, ends_at)
+
+
+def _arena_tick_running(tid: int, now: datetime) -> None:
+    with ARENAS_LOCK:
+        a = ARENAS.get(tid)
+        info = dict(a) if a else None
+    if not info:
+        return
+    # Uye sayisi yalnizca iptal/bitis kararinda gerekir; her sn sorgu atmamak icin
+    # bekleme suresi dolmadan MIN_PLAYERS varsayilir.
+    players = arena.MIN_PLAYERS
+    if now >= info['ends_at'] or now >= info['started_at'] + arena.START_WAIT:
+        players = len(db.get_standings_rows(tid))
+    action = arena.lifecycle_action('running', now, info['starts_at'], info['ends_at'],
+                                    info['started_at'], players, _arena_live_games(tid))
+    if action == 'finish':
+        _arena_finish(tid, 'finished', info['ends_at'])
+    elif action == 'cancel':
+        _arena_finish(tid, 'cancelled', info['ends_at'])
+    elif action == 'stop_pairing' and info['pairing']:
+        with ARENAS_LOCK:
+            if tid in ARENAS:
+                ARENAS[tid]['pairing'] = False
+                ARENAS[tid]['queue'] = []
+        _emit_arena_state(tid, 'running', info['ends_at'])
+
+
+def enforce_arena_lifecycle() -> None:
+    """Her sn cagrilir: planli turnuvayi baslatir, calisani durdurur/bitirir/iptal eder."""
+    global _arena_scan_at, _arena_candidates
+    now = _utcnow()
+    mono = time.monotonic()
+    if _arena_scan_at == 0.0 or mono - _arena_scan_at >= ARENA_SCAN_INTERVAL:
+        _arena_scan_at = mono or 1e-9
+        _arena_candidates = db.list_tournaments(now)
+        for t in _arena_candidates:
+            if t['status'] == 'running':
+                _adopt_running(t, now)   # ilk turda / DB gec geldiyse geri yukleme
+    for t in _arena_candidates:
+        tid = t['id']
+        if t['status'] != 'scheduled' or tid in ARENAS:
+            continue
+        if arena.lifecycle_action('scheduled', now, t['starts_at'], t['ends_at'],
+                                  None, 0, 0) != 'start':
+            continue
+        # Bekleme suresi gercek baslangictan sayilir (spec 3a): started_at = simdi
+        if db.set_tournament_status(tid, 'running', started_at=now):
+            t['status'] = 'running'
+            with ARENAS_LOCK:
+                ARENAS[tid] = {'queue': [], 'last_opponent': {}, 'started_at': now,
+                               'ends_at': t['ends_at'], 'starts_at': t['starts_at'],
+                               'pairing': True}
+            _emit_arena_state(tid, 'running', t['ends_at'])
+    with ARENAS_LOCK:
+        running = list(ARENAS)
+    for tid in running:
+        _arena_tick_running(tid, now)
+
+
 def start_cleanup_thread() -> None:
     def cleanup_loop():
         while True:
@@ -719,6 +834,10 @@ def start_cleanup_thread() -> None:
                 enforce_move_deadlines()
             except Exception:
                 log.exception("Hamle suresi denetimi hatasi")
+            try:
+                enforce_arena_lifecycle()
+            except Exception:
+                log.exception("Arena yasam dongusu hatasi")
 
     socketio.start_background_task(cleanup_loop)
     log.info("Arka plan temizlik gorevi basladi")
@@ -875,7 +994,7 @@ def leaderboard():
 @app.route('/tournaments', methods=['GET'])
 def list_tournaments_route():
     items = []
-    for t in db.list_tournaments(datetime.now(timezone.utc)):
+    for t in db.list_tournaments(_utcnow()):
         items.append(_serialize_tournament(t, len(db.get_standings_rows(t['id']))))
     return jsonify({'tournaments': items}), 200
 
@@ -1308,7 +1427,7 @@ def on_arena_create(data):
     username = _arena_registered(data)
     if not username:
         return
-    now = datetime.now(timezone.utc)
+    now = _utcnow()
     duration = data.get('duration')
     start_in = data.get('start_in_minutes', 0)
     starts_at, code = arena.validate_create(duration, start_in, now)
