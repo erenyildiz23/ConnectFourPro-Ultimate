@@ -198,7 +198,9 @@ namespace ConnectFourPro.Game
             _active?.Refresh();
 
             // Esc: ekrandaki Geri/Iptal/Menu butonu gibi (canli online oyunda ilk basis onay ister)
-            if (Keys.BackPressed() && _app.Screen != AppScreen.Login && _app.Screen != AppScreen.Menu)
+            // Ekran once kendi icinde kapatabilecegi bir seyi kapatir (or. turnuva acma formu)
+            if (Keys.BackPressed() && _app.Screen != AppScreen.Login && _app.Screen != AppScreen.Menu
+                && (_active == null || !_active.HandleBack()))
                 _app.RequestBack();
 
             // Biten online oyunun tekrarinda rovans mesajlari durum cubugunda gorunur

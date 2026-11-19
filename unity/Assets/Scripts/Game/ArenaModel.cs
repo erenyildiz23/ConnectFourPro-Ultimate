@@ -204,6 +204,71 @@ namespace ConnectFourPro.Game
                 Loc.T(StatusText(t, nowUtc, offsetMinutes), lang));
         }
 
+        /// <summary>
+        /// Liste ekraninin sirasi: suren, sonra planli (baslangici yakin olan once), sonra biten
+        /// (en yeni once), en sonda digerleri. Sunucu starts_at'e gore siralar ve son 7 gunun
+        /// bitenlerini de gonderir; eski bitenler katilinabilir turnuvalari gorunur satirlardan
+        /// itmesin. Girdi degismez; esitlikte id sirasi korunur.
+        /// </summary>
+        public static List<TournamentSummary> SortForList(List<TournamentSummary> list)
+        {
+            var result = list == null ? new List<TournamentSummary>() : new List<TournamentSummary>(list);
+            result.Sort((a, b) =>
+            {
+                int ga = ListGroup(a), gb = ListGroup(b);
+                if (ga != gb)
+                    return ga.CompareTo(gb);
+                // Bitenler: en yeni (ends_at) once; digerleri: baslangici erken olan once.
+                // Zamani bilinmeyen grubun sonuna gider.
+                bool finished = ga == 2;
+                DateTime? ta = finished ? a.EndsAt : a.StartsAt;
+                DateTime? tb = finished ? b.EndsAt : b.StartsAt;
+                int c;
+                if (ta == null || tb == null)
+                    c = (ta == null).CompareTo(tb == null);
+                else
+                    c = finished ? tb.Value.CompareTo(ta.Value) : ta.Value.CompareTo(tb.Value);
+                return c != 0 ? c : a.Id.CompareTo(b.Id);
+            });
+            return result;
+        }
+
+        private static int ListGroup(TournamentSummary t) =>
+            t.IsRunning ? 0 : t.IsScheduled ? 1 : t.Status == Finished ? 2 : 3;
+
+        /// <summary>
+        /// Puan durumunda gosterilecek satirlar (en fazla slots). Yerel oyuncu gorunur satirlarin
+        /// disindaysa son satira kendi satiri (gercek sirasiyla) konur.
+        /// </summary>
+        public static List<StandingRow> VisibleStandings(List<StandingRow> rows, string me, int slots)
+        {
+            var result = new List<StandingRow>();
+            if (rows == null || slots <= 0)
+                return result;
+            for (int i = 0; i < rows.Count && i < slots; i++)
+                result.Add(rows[i]);
+            if (rows.Count <= slots || string.IsNullOrEmpty(me))
+                return result;
+            for (int i = slots; i < rows.Count; i++)
+            {
+                if (rows[i].Username != me)
+                    continue;
+                result[slots - 1] = rows[i];
+                break;
+            }
+            return result;
+        }
+
+        /// <summary>Uzun metni en fazla maxChars karaktere kisaltir (sonu "...").</summary>
+        public static string Clip(string text, int maxChars)
+        {
+            if (string.IsNullOrEmpty(text))
+                return "";
+            if (text.Length <= maxChars || maxChars < 4)
+                return text;
+            return text.Substring(0, maxChars - 3) + "...";
+        }
+
         /// <summary>Hedefe kalan tam saniye (yukari yuvarlanir, 0'in altina inmez; hedef yoksa 0).</summary>
         public static int SecondsUntil(DateTime? target, DateTime nowUtc)
         {

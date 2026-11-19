@@ -41,6 +41,12 @@ namespace ConnectFourPro.UI
         {
         }
 
+        /// <summary>
+        /// Esc: ekran kendi icinde bir seyi kapatirsa (or. acik form) true doner ve
+        /// AppController.RequestBack cagrilmaz.
+        /// </summary>
+        public virtual bool HandleBack() => false;
+
         /// <summary>Ekran yonu degisince cagrilir (Responsive.Apply'dan sonra).</summary>
         public virtual void OnLayoutChanged(LayoutOrientation o)
         {
@@ -1213,6 +1219,9 @@ namespace ConnectFourPro.UI
         private int _duration = ArenaModel.Durations[0];
         private int _startIn;
         private string _logged;
+        // Gosterilen sira (ArenaModel.SortForList); satir dugmeleri bu listeden okur
+        private List<TournamentSummary> _sorted = new List<TournamentSummary>();
+        private int _sortedVersion = -1;
 
         public TournamentsView(AppController app, Transform parent) : base(app, parent, "Tournaments")
         {
@@ -1250,6 +1259,9 @@ namespace ConnectFourPro.UI
                 _rowInfo[i] = UIKit.Label(Root, "", 19, Theme.Gray, 150, y, 450, 40, TextAnchor.MiddleLeft);
                 P(_rowInfo[i], -60, py + 15, 380, 26);
                 FitInPortrait(_rowInfo[i], 18, 19);
+                // Sigmayan yazi alttaki satira tasmaz: ikinci satir kesilir
+                _rowName[i].verticalOverflow = VerticalWrapMode.Truncate;
+                _rowInfo[i].verticalOverflow = VerticalWrapMode.Truncate;
                 int row = i;
                 var action = UIKit.Button(Root, "Katıl", Theme.Green, () => Act(row), 500, y, 120, 40, 18);
                 P(action, 190, py, 110, 48);
@@ -1329,9 +1341,17 @@ namespace ConnectFourPro.UI
         private bool Joinable(TournamentSummary t) =>
             App.CanCreateTournament && !t.IsOver && App.ArenaJoinedId != t.Id;
 
+        public override bool HandleBack()
+        {
+            if (!_formOpen)
+                return false;
+            SetFormOpen(false);
+            return true;
+        }
+
         private void Act(int row)
         {
-            var list = App.Tournaments;
+            var list = _sorted;
             if (row >= list.Count)
                 return;
             var t = list[row];
@@ -1357,13 +1377,19 @@ namespace ConnectFourPro.UI
             if (_formOpen && !canCreate)
                 SetFormOpen(false);
 
-            var list = app.Tournaments;
+            if (_sortedVersion != app.TournamentsVersion)
+            {
+                _sortedVersion = app.TournamentsVersion;
+                _sorted = ArenaModel.SortForList(app.Tournaments);
+            }
+            var list = _sorted;
             _message.text = Loc.T(app.TournamentsError ? "Sunucuya bağlanılamadı"
                           : list.Count > 0 ? ""
                           : app.TournamentsLoading ? "Yükleniyor..." : "Henüz turnuva yok");
 
             System.DateTime now = app.UtcNow();
             int offset = BrowserClock.OffsetMinutes;
+            bool portrait = Responsive.Current == LayoutOrientation.Portrait;
             for (int i = 0; i < _rowCount; i++)
             {
                 bool has = i < list.Count;
@@ -1376,7 +1402,7 @@ namespace ConnectFourPro.UI
                 if (!has)
                     continue;
                 var t = list[i];
-                _rowName[i].text = ArenaModel.DisplayName(t.Creator, Loc.Current);
+                _rowName[i].text = ArenaModel.DisplayName(ArenaModel.Clip(t.Creator, portrait ? 14 : 20), Loc.Current);
                 _rowName[i].color = t.IsOver ? Theme.Gray : Theme.White;
                 _rowInfo[i].text = ArenaModel.InfoLine(t, now, offset, Loc.Current);
                 _rowInfo[i].color = t.IsRunning ? Theme.Green : Theme.Gray;
@@ -1443,6 +1469,10 @@ namespace ConnectFourPro.UI
         private readonly Text[] _paused;
         private readonly Image[,] _dots;
         private int _loggedCount = -1;
+        // Gosterilen satirlar: kendi satiri gorunur alanin disindaysa son yuvada
+        private List<StandingRow> _visible = new List<StandingRow>();
+        private int _visibleVersion = -1;
+        private string _visibleUser;
 
         public TournamentView(AppController app, Transform parent) : base(app, parent, "Tournament")
         {
@@ -1510,6 +1540,7 @@ namespace ConnectFourPro.UI
                 _name[i] = UIKit.Label(Root, "", 21, Theme.White, -250, y, 360, 36, TextAnchor.MiddleLeft);
                 P(_name[i], -50, py, 210, 36);
                 FitInPortrait(_name[i], 18, 21);
+                _name[i].verticalOverflow = VerticalWrapMode.Truncate;   // uzun ad alt satira tasmaz
                 _score[i] = UIKit.Label(Root, "", 22, Theme.White, 0, y, 120, 36, TextAnchor.MiddleCenter, FontStyle.Bold);
                 P(_score[i], 90, py, 64, 36);
                 _paused[i] = UIKit.Label(Root, "Duraklatıldı", 18, Theme.Gray, 460, y, 220, 36);
@@ -1589,10 +1620,17 @@ namespace ConnectFourPro.UI
                     go.SetActive(header);
             }
 
+            string me = app.IsGuest ? null : app.Username;
+            if (_visibleVersion != app.StandingsVersion || _visibleUser != me)
+            {
+                _visibleVersion = app.StandingsVersion;
+                _visibleUser = me;
+                _visible = ArenaModel.VisibleStandings(rows, me, _rowCount);
+            }
             bool portrait = Responsive.Current == LayoutOrientation.Portrait;
             for (int i = 0; i < _rowCount; i++)
             {
-                bool has = t != null && i < rows.Count;
+                bool has = t != null && i < _visible.Count;
                 if (_rowShown[i] != has)
                 {
                     _rowShown[i] = has;
@@ -1602,16 +1640,17 @@ namespace ConnectFourPro.UI
                 string recent = "";
                 if (has)
                 {
-                    var r = rows[i];
-                    bool me = !app.IsGuest && r.Username == app.Username;
-                    _rank[i].text = (r.Rank > 0 ? r.Rank : i + 1) + ".";
-                    _rank[i].color = i < 3 ? Theme.Yellow : Theme.Gray;
+                    var r = _visible[i];
+                    bool mine = me != null && r.Username == me;
+                    int rank = r.Rank > 0 ? r.Rank : i + 1;
+                    _rank[i].text = rank + ".";
+                    _rank[i].color = mine ? Theme.Hover : rank <= 3 ? Theme.Yellow : Theme.Gray;
                     _fire[i].text = r.OnFire ? "×" + System.Math.Max(2, r.Streak) : "";
-                    _name[i].text = r.Username;
-                    _name[i].color = r.Paused ? Theme.Gray : me ? Theme.Hover : Theme.White;
-                    _name[i].fontStyle = me ? FontStyle.Bold : FontStyle.Normal;
+                    _name[i].text = ArenaModel.Clip(r.Username, portrait ? 16 : 20);
+                    _name[i].color = r.Paused ? Theme.Gray : mine ? Theme.Hover : Theme.White;
+                    _name[i].fontStyle = mine ? FontStyle.Bold : FontStyle.Normal;
                     _score[i].text = r.Score.ToString();
-                    _score[i].color = i < 3 ? Theme.Yellow : Theme.White;
+                    _score[i].color = mine ? Theme.Hover : rank <= 3 ? Theme.Yellow : Theme.White;
                     if (_paused[i].enabled != r.Paused)
                         _paused[i].enabled = r.Paused;
                     // Son 5 oyun, eskiden yeniye; dikeyde duraklatilan satirda yerinde "Duraklatildi" yazar

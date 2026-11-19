@@ -11,7 +11,8 @@
 //
 // Arena adimi (5f) iki kayitli test kullanicisi ister: sunucunun veritabani olmali
 // (CI: postgres servisi). Kullanicilar /signup ile rastgele ad ve sifreyle kaydedilir;
-// yalnizca yerel sunucuya (localhost) karsi calisir. Veritabani yoksa adim atlanir.
+// yalnizca yerel sunucuya (localhost) karsi calisir. Veritabani yoksa adim atlanir;
+// E2E_REQUIRE_DB=1 iken (CI) atlama yerine test basarisiz olur.
 //
 // Arayuz canvas'a cizildigi icin DOM yoktur. Tiklamalar Unity tarafindaki
 // yerlesimden hesaplanir (UI/UIKit.cs Place: 1280x720 referans, ust-orta
@@ -411,8 +412,11 @@ try {
   const userA = localServer ? await signupTestUser('A') : { ok: false, status: 'yerel olmayan sunucu' };
   const userB = userA.ok ? await signupTestUser('B') : userA;
   if (!userA.ok || !userB.ok) {
-    console.log(`::notice::Arena adimi atlandi: test kullanicisi kaydedilemedi (${userA.ok ? userB.status : userA.status}; ` +
-                'sunucunun veritabani yok ya da sunucu yerel degil)');
+    const why = `test kullanicisi kaydedilemedi (${userA.ok ? userB.status : userA.status}; ` +
+                'sunucunun veritabani yok ya da sunucu yerel degil)';
+    // CI (E2E_REQUIRE_DB=1) veritabaniyla calisir: atlama orada hata sayilir
+    if (process.env.E2E_REQUIRE_DB === '1') check(false, 'arena: ' + why);
+    else console.log(`::notice::Arena adimi atlandi: ${why}`);
   } else {
     const ta = await openGame('ArenaA');
     check(await loginAs(ta, userA), `arena: A (${userA.name}) giris yapti`);
