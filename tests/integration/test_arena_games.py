@@ -33,6 +33,8 @@ def arena_env(server, monkeypatch):
     monkeypatch.setattr(server.config, 'MOVE_TIME_GRACE_SECONDS', NET)
     monkeypatch.setattr(server.config, 'CLOCK_START_DELAY_SECONDS', DELAY)
     monkeypatch.setattr(server.config, 'FIRST_MOVE_ABORT_SECONDS', ABORT)
+    # Siradaki oyun beklemesi testlerde kapali (beklemenin kendisi ayri testlerde)
+    monkeypatch.setattr(server.arena, 'ARENA_NEXT_GAME_DELAY', 0)
 
     def reset():
         with server.GAMES_LOCK:
@@ -178,6 +180,9 @@ def hand_pair(server, sio, fake_db, names=('alice', 'bob'), setup=None):
     for n in names:
         fake_db.row(n)
     hand_arena(server, 1, [entry(s, n) for s, n in zip(sids, names, strict=True)])
+    with server.ARENAS_LOCK:   # uretimde kuyruga yalnizca arena_join/arena_resume ile girilir
+        for s, n in zip(sids, names, strict=True):
+            server.ARENA_SIDS[(1, n)] = s
     if setup:
         setup(sids)
     server._arena_pair(1)
@@ -413,6 +418,72 @@ class TestArenaNoDb:
         assert queue_names(server, 1) == [] and len(a.events('game_joined')) == 1
 
 
+class TestNextGameDelay:
+    """Spec 8.3: sonuc ekrani ve "Siradaki oyun" icin kisa bekleme, sonra yeniden eslesme."""
+
+    def test_requeue_waits_before_next_game(self, server, sio, arena_env, fake_db, monkeypatch):
+        monkeypatch.setattr(server.arena, 'ARENA_NEXT_GAME_DELAY', 0.4)
+        (a, b), _ = hand_pair(server, sio, fake_db)
+        room_id = a.wait_for('game_joined')['room_id']
+        play(room_id, a, b, P1_VERTICAL_WIN)
+        a.wait_for('game_over')
+        b.wait_for('game_over')
+        assert queue_names(server, 1) == []
+        assert len(a.events('game_joined')) == 1 and len(b.events('game_joined')) == 1
+        assert wait_until(lambda: len(a.events('game_joined')) == 2
+                          and len(b.events('game_joined')) == 2)
+        assert a.events('game_joined')[1]['room_id'] != room_id
+
+    def test_default_delay_is_short_pause(self, server):
+        import arena
+        assert arena.ARENA_NEXT_GAME_DELAY == 4
+
+    @pytest.mark.parametrize('change', ['paused', 'new_sid', 'pairing_closed', 'gone', 'seated'])
+    def test_delayed_requeue_rechecks_state(self, server, sio, arena_env, fake_db, change):
+        a, b = sio(), sio()
+        sa, sb = sid_of(server, a, 'g_alice'), sid_of(server, b, 'g_bob')
+        fake_db.row('alice')
+        fake_db.row('bob')
+        hand_arena(server, 1)
+        with server.ARENAS_LOCK:
+            server.ARENA_SIDS[(1, 'alice')] = sa
+            server.ARENA_SIDS[(1, 'bob')] = sb
+        # Bekleme sirasinda alice'in durumu degisti
+        if change == 'paused':
+            fake_db.row('alice')['paused'] = True
+        elif change == 'new_sid':
+            with server.ARENAS_LOCK:
+                server.ARENA_SIDS[(1, 'alice')] = 'baska-soket'
+        elif change == 'pairing_closed':
+            arena_env['now'] = T0 + timedelta(minutes=15)
+        elif change == 'gone':
+            with server.ARENAS_LOCK:
+                del server.ARENA_SIDS[(1, 'alice')]
+        elif change == 'seated':
+            host = sio()
+            host.emit('create_game', identity('carol'))
+            rid = host.wait_for('game_created')['room_id']
+            with server.GAMES_LOCK:
+                server._seat_second_player(server.GAMES[rid], sa, 'alice',
+                                           {'username': 'alice'}, True)
+        server._arena_requeue_now(1, [('alice', sa), ('bob', sb)])
+        expected = [] if change == 'pairing_closed' else ['bob']
+        assert queue_names(server, 1) == expected
+        assert a.events('game_joined') == [] and b.events('game_joined') == []
+
+    def test_delayed_requeue_pairs_when_unchanged(self, server, sio, arena_env, fake_db):
+        a, b = sio(), sio()
+        sa, sb = sid_of(server, a, 'g_alice'), sid_of(server, b, 'g_bob')
+        fake_db.row('alice')
+        fake_db.row('bob')
+        hand_arena(server, 1)
+        with server.ARENAS_LOCK:
+            server.ARENA_SIDS[(1, 'alice')] = sa
+            server.ARENA_SIDS[(1, 'bob')] = sb
+        server._arena_requeue_now(1, [('alice', sa), ('bob', sb)])
+        assert a.wait_for('game_joined')['room_id'] == b.wait_for('game_joined')['room_id']
+
+
 def _seats(clients, names, room_joined):
     """(p1 istemci, p1 adi, p2 istemci, p2 adi)."""
     by_piece = {}
@@ -574,6 +645,19 @@ class TestArenaGames:
         assert rows[p2.name]['score'] == 0 and rows[p2.name]['games_played'] == 1
         new_room, *_ = next_game([a, b], 2)   # ikisi de kuyruga dondu, yeniden eslesti
         assert new_room != room_id
+
+    def test_next_game_after_delay_skips_player_paused_meanwhile(self, server, sio, http,
+                                                                database, arena_env, monkeypatch):
+        monkeypatch.setattr(server.arena, 'ARENA_NEXT_GAME_DELAY', 0.5)
+        tid, (a, b) = self._start_two(server, sio, http, database, arena_env)
+        room_id, p1, p2 = next_game([a, b], 1)
+        play(room_id, p1.c, p2.c, P1_VERTICAL_WIN)
+        p1.c.wait_for('game_over')
+        assert queue_names(server, tid) == []   # bekleme: hemen eslesme yok
+        p2.c.emit('arena_pause', {'token': p2.token, 'tournament_id': tid})
+        assert wait_until(lambda: standings(database, tid)[p2.name]['paused'] is True)
+        assert wait_until(lambda: queue_names(server, tid) == [p1.name])
+        assert len(p1.games()) == 1 and len(p2.games()) == 1
 
     def test_streak_third_win_four_points(self, server, sio, http, database, arena_env):
         tid, (a, b) = self._start_two(server, sio, http, database, arena_env)

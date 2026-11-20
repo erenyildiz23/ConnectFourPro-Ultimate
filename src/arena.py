@@ -11,6 +11,7 @@ FINISH_GRACE = timedelta(minutes=15)
 LIST_KEEP = timedelta(days=7)
 
 STREAK_ON = 2  # bu seriden itibaren puanlar cift
+ARENA_NEXT_GAME_DELAY = 4  # sn: oyun bitince siradaki eslesmeden once bekleme (spec 8.3)
 
 
 def score_result(outcome: str, streak: int) -> Tuple[int, int]:

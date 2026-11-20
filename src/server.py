@@ -1745,20 +1745,64 @@ def _arena_enqueue(tid: int, sid: str, username: str) -> None:
 
 def _arena_requeue_locked(tid: int, room: dict, pieces: Tuple[int, ...],
                           rows: List[Dict[str, Any]]) -> None:
-    """Biten/iptal edilen turnuva oyunundan sonra bagli ve duraklatmamis oyunculari kuyruga
-    geri alir (eslestirme kapaliysa almaz) ve eslestirir. GAMES_LOCK altinda cagrilir."""
+    """Biten/iptal edilen turnuva oyunundan sonra bagli ve duraklatmamis oyunculari
+    arena.ARENA_NEXT_GAME_DELAY sn sonra kuyruga geri alir ve eslestirir (spec 8.3: sonuc
+    ekrani ve "Siradaki oyun" gorunsun). Eslestirme kapaliysa almaz. Bekleme arka plan
+    gorevindedir; sure 0 ise hemen islenir. GAMES_LOCK altinda cagrilir."""
     with ARENAS_LOCK:
         a = ARENAS.get(tid)
         if not a or not _arena_pairing_open(a):
             return
     paused = {r['username'] for r in rows if r.get('paused')}
+    entries = []
     for piece in pieces:
         sid, user = _sid_of(room, piece), _uid_of(room, piece)
         if not sid or piece in room['disconnected'] or user is None or str(user) in paused:
             continue
-        moved = _arena_enqueue_locked(tid, sid, str(user), get_user_info(user))
-        _arena_pause_moved(str(user), moved)
-    _arena_pair(tid)
+        entries.append((str(user), sid))
+    if not entries:
+        return
+    if arena.ARENA_NEXT_GAME_DELAY <= 0:
+        _arena_requeue_now(tid, entries)
+    else:
+        socketio.start_background_task(_arena_requeue_later, tid, entries)
+
+
+def _arena_requeue_later(tid: int, entries: List[Tuple[str, str]]) -> None:
+    """Arka plan gorevi: siradaki oyun beklemesinden sonra kuyruga alir."""
+    socketio.sleep(arena.ARENA_NEXT_GAME_DELAY)
+    try:
+        _arena_requeue_now(tid, entries)
+    except Exception:
+        log.exception("Arena #%s: siradaki oyun eslestirmesi basarisiz", tid)
+
+
+def _arena_requeue_now(tid: int, entries: List[Tuple[str, str]]) -> None:
+    """(kullanici, sid) kayitlarini, bekleme sirasinda degisen durumu yeniden denetleyerek
+    kuyruga alir ve eslestirir: turnuva hala ARENAS'ta ve eslestirmesi acik, oyuncu
+    duraklatmamis, sid hala kayitli ARENA_SIDS soketi, oyuncu baska yerde (mac, baska
+    turnuva kuyrugu, hizli eslesme, bekleyen oda) degil. Kilit sirasi GAMES_LOCK ->
+    ARENAS_LOCK; GAMES_LOCK tutularak ya da tutulmadan cagrilabilir."""
+    rows = {r['username']: r for r in db.get_standings_rows(tid)}
+    entries = [(u, s) for u, s in entries if u in rows and not rows[u].get('paused')]
+    infos = {u: get_user_info(u) for u, _ in entries}
+    moves: List[Tuple[str, List[int]]] = []
+    with GAMES_LOCK:
+        for user, sid in entries:
+            with ARENAS_LOCK:
+                a = ARENAS.get(tid)
+                if not a or not _arena_pairing_open(a):
+                    return
+                if ARENA_SIDS.get((tid, user)) != sid:
+                    continue   # koptu, yeniden baglandi ya da turnuvadan cikti
+            if (_busy_elsewhere(sid, user, True)
+                    or any(e['sid'] == sid or (e['auth'] and e['uid'] == user) for e in QUICK_QUEUE)
+                    or get_user_waiting_game(user, True)):
+                continue
+            moves.append((user, _arena_enqueue_locked(tid, sid, user, infos[user])))
+        _arena_pair(tid)
+    for user, tids in moves:
+        _arena_pause_moved(user, tids)
 
 
 def _arena_score(tid: int, room: dict,
