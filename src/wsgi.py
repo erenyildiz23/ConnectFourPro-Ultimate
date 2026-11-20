@@ -26,7 +26,8 @@ _bootstrapped = False
 
 
 def bootstrap() -> bool:
-    """Tablolari kurar ve oda temizligini baslatir; surec basina yalnizca bir kez calisir."""
+    """Tablolari kurar, suren turnuvalari yukler ve oda temizligini baslatir; surec basina
+    yalnizca bir kez calisir."""
     global _bootstrapped
     with _bootstrap_lock:
         if _bootstrapped:
@@ -35,6 +36,9 @@ def bootstrap() -> bool:
     db_ok = db.init_db()
     log.info("CONNECT FOUR PRO SERVER v3.0 (gunicorn)")
     log.info("Veritabani: %s", "bagli" if db_ok else "YOK (sadece misafir modu)")
+    # Suren arena turnuvalari hemen yuklenir: yeniden baglanan oyuncunun arena_join'i
+    # yasam dongusunun ilk turunu beklemeden kuyruga girer (server.main() ile ayni)
+    server._load_arenas_from_db()
     server.start_cleanup_thread()
     return True
 

@@ -761,22 +761,42 @@ def _emit_arena_state(tid: int, status: str, ends_at: Any) -> None:
 
 
 def _adopt_running(t: Dict[str, Any], now: datetime) -> None:
-    """Calisan turnuvayi ARENAS'a ekler; started_at bos ise simdiyi yazar (uyurken baslama)."""
+    """Calisan turnuvayi ARENAS'a ekler; started_at bos ise simdiyi yazar (uyurken baslama).
+    Yeni eklenen ve eslestirmesi acik turnuvada, benimsemeden once arena_join/arena_resume
+    yapmis (ARENA_SIDS) bagli uyeler hemen kuyruga alinir. Kilit disinda cagrilir."""
+    with ARENAS_LOCK:
+        if t['id'] in ARENAS:
+            return
     started_at = t.get('started_at')
     if started_at is None:
         started_at = now
         db.set_tournament_status(t['id'], 'running', started_at=now)
     with ARENAS_LOCK:
         if t['id'] in ARENAS:
-            return
+            return   # DB yazimi sirasinda baska bir istek benimsedi
         ARENAS[t['id']] = {'queue': [], 'last_opponent': {}, 'started_at': started_at,
                            'ends_at': t['ends_at'], 'starts_at': t['starts_at'],
                            'pairing': now < t['ends_at']}
+        pairing = ARENAS[t['id']]['pairing']
+    if pairing:
+        _arena_enqueue_waiting(t['id'])
+
+
+def _arena_adopt_if_running(tid: int, t: Optional[Dict[str, Any]] = None) -> None:
+    """Istek isleyicisinden: suren turnuva henuz benimsenmediyse (yeniden baslama/uyanma,
+    yasam dongusunun ilk turundan once) hemen ARENAS'a alir. Kilit disinda cagrilir."""
+    with ARENAS_LOCK:
+        if tid in ARENAS:
+            return
+    if t is None:
+        t = db.get_tournament(tid)
+    if t and t['status'] == 'running':
+        _adopt_running(t, _utcnow())
 
 
 def _load_arenas_from_db() -> None:
-    """'running' turnuvalari DB'den yukler (acilista / ilk turda). Kuyruk bos baslar:
-    oyuncular arena_join ile yeniden baglaninca siraya girer."""
+    """'running' turnuvalari DB'den yukler (acilista: server.main() ve wsgi.bootstrap()).
+    Kuyruk bos baslar: oyuncular arena_join ile yeniden baglaninca siraya girer."""
     now = _utcnow()
     for t in db.list_tournaments(now):
         if t['status'] == 'running':
@@ -1833,6 +1853,7 @@ def on_arena_join(data):
         ARENA_SIDS[(tid, username)] = request.sid   # baslamadiysa baslayinca kuyruga alinir
     emit('arena_joined', {'tournament_id': tid})
     _broadcast_standings(tid)
+    _arena_adopt_if_running(tid, t)   # yeniden baslamadan sonra ilk turu beklemeden
     # join_tournament duraklatmayi kaldirir: katilma = devam. Turnuva suruyorsa kuyruga girer.
     _arena_enqueue(tid, request.sid, username)
 
@@ -1870,6 +1891,7 @@ def _arena_set_paused(data: Any, paused: bool) -> None:
             ARENA_SIDS[(tid, username)] = request.sid
     _broadcast_standings(tid)
     if not paused:
+        _arena_adopt_if_running(tid)
         _arena_enqueue(tid, request.sid, username)
 
 

@@ -413,6 +413,68 @@ class TestArenaNoDb:
         assert queue_names(server, 1) == [] and len(a.events('game_joined')) == 1
 
 
+def running_tournament(tid=1):
+    return {'id': tid, 'creator': 'host', 'duration_minutes': 15, 'starts_at': T0,
+            'ends_at': T0 + timedelta(minutes=15), 'started_at': T0, 'status': 'running',
+            'players': 2}
+
+
+@pytest.fixture
+def running_db(server, fake_db, monkeypatch):
+    """Veritabansiz 'running' turnuva #1 (sunucu yeniden baslamis: ARENAS bos)."""
+    t = running_tournament()
+    monkeypatch.setattr(server.db, 'get_tournament', lambda tid: dict(t) if tid == 1 else None)
+    monkeypatch.setattr(server.db, 'list_tournaments', lambda now: [dict(t)])
+    monkeypatch.setattr(server.db, 'set_tournament_status', lambda *a, **k: True)
+    monkeypatch.setattr(server.db, 'count_tournament_players', lambda tid: len(fake_db.rows))
+
+    def join(tid, name):
+        fake_db.row(name)['paused'] = False
+        return True
+
+    monkeypatch.setattr(server.db, 'join_tournament', join)
+    return fake_db
+
+
+class TestAdoptAfterRestart:
+    """Yeniden baslama / uyanma: ARENAS bos iken gelen arena_join kaybolmamali."""
+
+    def test_join_before_first_tick_is_paired(self, server, sio, arena_env, running_db,
+                                              registered):
+        arena_env['now'] = T0 + timedelta(minutes=1)
+        a, b = sio(), sio()
+        for c, name in ((a, 'alice'), (b, 'bob')):
+            c.emit('arena_join', {**registered(name), 'tournament_id': 1})
+            c.wait_for('arena_joined')
+        arena_env['tick'](T0 + timedelta(minutes=1))
+        ja, jb = a.wait_for('game_joined'), b.wait_for('game_joined')
+        assert ja['tournament_id'] == 1 and ja['room_id'] == jb['room_id']
+
+    def test_tick_adoption_drains_registered_sids(self, server, sio, arena_env, running_db):
+        a, b = sio(), sio()
+        sa, sb = sid_of(server, a, 'g_alice'), sid_of(server, b, 'g_bob')
+        running_db.row('alice')
+        running_db.row('bob')
+        with server.ARENAS_LOCK:   # arena_join benimsemeden once islendi
+            server.ARENA_SIDS[(1, 'alice')] = sa
+            server.ARENA_SIDS[(1, 'bob')] = sb
+        arena_env['tick'](T0 + timedelta(minutes=1))
+        ja, jb = a.wait_for('game_joined'), b.wait_for('game_joined')
+        assert ja['room_id'] == jb['room_id']
+
+    def test_tick_adoption_after_ends_at_does_not_pair(self, server, sio, arena_env, running_db):
+        a, b = sio(), sio()
+        sa, sb = sid_of(server, a, 'g_alice'), sid_of(server, b, 'g_bob')
+        running_db.row('alice')
+        running_db.row('bob')
+        with server.ARENAS_LOCK:
+            server.ARENA_SIDS[(1, 'alice')] = sa
+            server.ARENA_SIDS[(1, 'bob')] = sb
+        # ends_at gecti: benimseme eslestirmeyi kapali kurar, kimse eslesmez
+        arena_env['tick'](T0 + timedelta(minutes=15, seconds=1))
+        assert a.events('game_joined') == [] and b.events('game_joined') == []
+
+
 # =============================================================================
 # VERITABANLI TESTLER
 # =============================================================================
@@ -426,6 +488,22 @@ class TestArenaGames:
             p.join(tid)
         arena_env['tick'](T0)   # baslar; once katilanlar kuyruga alinip eslesir
         return tid, players
+
+    def test_rejoin_after_restart_before_tick_is_paired(self, server, sio, http, database,
+                                                       arena_env):
+        tid = make_tournament(database, http)
+        arena_env['tick'](T0)   # kimse yokken baslar
+        assert database.get_tournament(tid)['status'] == 'running'
+        with server.ARENAS_LOCK:   # surec yeniden basladi / uyandi: bellek bos
+            server.ARENAS.clear()
+            server.ARENA_SIDS.clear()
+        arena_env['now'] = T0 + timedelta(minutes=1)
+        a, b = Player(sio, http, 'alice'), Player(sio, http, 'bob')
+        a.join(tid)
+        b.join(tid)
+        room_id, *_ = next_game([a, b], 1)
+        arena_env['tick'](T0 + timedelta(minutes=1))
+        assert len(a.games()) == 1 and server.GAMES[room_id]['tournament_id'] == tid
 
     def test_two_joined_players_get_paired_3plus2(self, server, sio, http, database, arena_env):
         tid, (a, b) = self._start_two(server, sio, http, database, arena_env)
