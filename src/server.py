@@ -619,8 +619,21 @@ def _finish_game(room_id: str, room: dict, reason: str = 'normal',
     room['result'] = result   # Oyuncu yokken biten oyuna sonradan donenlere game_joined'da verilir
     socketio.emit('game_over', result, to=room_id)
     if arena_rows is not None:
+        if detail == 'timeout' and forfeit_loser is not None and _moves_by(game, forfeit_loser) == 0:
+            # Bu oyunda hic hamle yapmadan suresi biten (AFK, or. P2) duraklatilir; yoksa her
+            # yeni eslesmede rakibin suresini bosa harcar. Ilk hamle iptaliyle ayni yol.
+            afk = str(_uid_of(room, forfeit_loser))
+            if db.set_player_paused(tid, afk, True):
+                arena_rows = [dict(r, paused=True) if r['username'] == afk else r
+                              for r in arena_rows]
         _broadcast_standings(tid)
         _arena_requeue_locked(tid, room, (PLAYER1_PIECE, PLAYER2_PIECE), arena_rows)
+
+
+def _moves_by(game: ConnectFourGame, piece: int) -> int:
+    """Oyuncunun bu oyunda yaptigi hamle sayisi (P1 cift, P2 tek sirali hamleler)."""
+    n = len(game.move_history)
+    return (n + 1) // 2 if piece == PLAYER1_PIECE else n // 2
 
 
 def _abort_game(room_id: str, room: dict, culprit: Optional[int] = None) -> None:

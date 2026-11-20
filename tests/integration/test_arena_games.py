@@ -413,6 +413,55 @@ class TestArenaNoDb:
         assert queue_names(server, 1) == [] and len(a.events('game_joined')) == 1
 
 
+def _seats(clients, names, room_joined):
+    """(p1 istemci, p1 adi, p2 istemci, p2 adi)."""
+    by_piece = {}
+    for c, n, j in zip(clients, names, room_joined, strict=True):
+        by_piece[j['player_piece']] = (c, n)
+    return (*by_piece[1], *by_piece[2])
+
+
+class TestAfkTimeout:
+    """Hic hamle yapmadan suresi biten turnuva oyuncusu duraklatilir (P2 AFK dongusu)."""
+
+    @staticmethod
+    def _moves(server, room_id, seq):
+        """seq: (istemci, sutun, tas) hamleleri; her biri sunucuda islenene kadar beklenir."""
+        for n, (c, col, piece) in enumerate(seq, start=1):
+            move(c, room_id, col, piece)
+            assert wait_until(lambda n=n: len(server.GAMES[room_id]['game'].move_history) == n)
+
+    def test_p2_times_out_without_moving_is_paused(self, server, sio, arena_env, fake_db):
+        (a, b), _ = hand_pair(server, sio, fake_db)
+        joined = [a.wait_for('game_joined'), b.wait_for('game_joined')]
+        room_id = joined[0]['room_id']
+        c1, n1, c2, n2 = _seats((a, b), ('alice', 'bob'), joined)
+        self._moves(server, room_id, [(c1, 3, 1)])
+        arena_env['mono'].advance(1000)
+        assert server.enforce_move_deadlines() == 1
+        over = c1.wait_for('game_over')
+        assert over['reason'] == 'forfeit' and over['detail'] == 'timeout'
+        assert over['arena']['points'] == {n1: 2, n2: 0}   # sure yenilgisi yine sayilir
+        assert fake_db.paused_calls == [(1, n2, True)]
+        assert fake_db.rows[n2]['paused'] is True
+        assert wait_until(lambda: queue_names(server, 1) == [n1])
+        assert len(c2.events('game_joined')) == 1
+
+    def test_timeout_after_moving_is_not_paused(self, server, sio, arena_env, fake_db):
+        (a, b), _ = hand_pair(server, sio, fake_db)
+        joined = [a.wait_for('game_joined'), b.wait_for('game_joined')]
+        room_id = joined[0]['room_id']
+        c1, n1, c2, n2 = _seats((a, b), ('alice', 'bob'), joined)
+        self._moves(server, room_id, [(c1, 3, 1), (c2, 4, 2), (c1, 3, 1)])
+        arena_env['mono'].advance(1000)   # P2 bir hamle yapmisti: normal sure yenilgisi
+        assert server.enforce_move_deadlines() == 1
+        assert c1.wait_for('game_over')['detail'] == 'timeout'
+        assert fake_db.paused_calls == []
+        # Ikisi de kuyruga doner ve yeniden eslesir
+        assert wait_until(lambda: len(a.events('game_joined')) == 2
+                          and len(b.events('game_joined')) == 2)
+
+
 def running_tournament(tid=1):
     return {'id': tid, 'creator': 'host', 'duration_minutes': 15, 'starts_at': T0,
             'ends_at': T0 + timedelta(minutes=15), 'started_at': T0, 'status': 'running',
@@ -575,6 +624,19 @@ class TestArenaGames:
         assert all(r['games_played'] == 0 and r['score'] == 0 for r in rows.values())
         assert database.tournament_games(tid) == []
         assert queue_names(server, tid) == [p2.name]
+
+    def test_p2_timeout_without_moving_pauses_p2(self, server, sio, http, database, arena_env):
+        tid, (a, b) = self._start_two(server, sio, http, database, arena_env)
+        room_id, p1, p2 = next_game([a, b], 1)
+        move(p1.c, room_id, 3, 1)
+        p2.c.wait_for('move_made')
+        arena_env['mono'].advance(1000)
+        assert server.enforce_move_deadlines() == 1
+        over = p1.c.wait_for('game_over')
+        assert over['detail'] == 'timeout' and over['arena']['points'] == {p1.name: 2, p2.name: 0}
+        rows = standings(database, tid)
+        assert rows[p2.name]['paused'] is True and rows[p1.name]['paused'] is False
+        assert wait_until(lambda: queue_names(server, tid) == [p1.name])
 
     def test_no_rematch_in_arena(self, server, sio, http, database, arena_env):
         tid, (a, b) = self._start_two(server, sio, http, database, arena_env)
