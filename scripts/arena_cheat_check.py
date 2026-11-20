@@ -1,0 +1,294 @@
+"""Arena gece hile kontrolu.
+
+Kontrol edilmemis turnuvalarin oyunlarini sunucudan alir, her oyuncunun kritik hamlelerini
+kusursuz cozucuyle (c4solver -a) degerlendirir; esik asilirsa GitHub issue acar ve turnuvayi
+"kontrol edildi" diye isaretler. Bu bir otomatik sinyaldir, kanit degildir.
+
+Kullanim:
+    python scripts/arena_cheat_check.py --server https://... --solver-dir <c4solver ve 7x6.book dizini> [--dry-run]
+Ortam: ARENA_CHECK_SECRET (isaretleme uc noktasi icin), GH_TOKEN (gh icin).
+Yalnizca standart kutuphane kullanir.
+
+Adil rapor kurali: yalnizca "kritik" pozisyonlardaki hamleler sayilir (skor isaretleri birden
+fazla olan, ilk BOOK_PLIES yarim hamleden sonraki pozisyonlar). Tek hamlelik taktikler kritik
+sayilmaz: sirasi gelenin aninda kazanan hamlesi varsa ya da rakibin aninda kazanma tehdidi
+(engellemek zorunlu) varsa o pozisyon disarida birakilir. Sonucu bozan (skor isaretini
+dusuren) hamlelerin hepsi yalnizca rakibe aninda galibiyet verdigi icin kaybettiriyorsa
+("tehdidin altina oynama") o pozisyon da disarida birakilir. Cunku bu hamleleri bulmak her
+insan oyuncu icin kolaydir ve haksiz rapor uretir.
+"""
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+from typing import Dict, List, Optional, Tuple
+
+BOOK_PLIES = 4      # ilk yarim hamleler (acilis) sayilmaz
+MIN_GAMES = 3
+MIN_CRITICAL = 20
+HTTP_TIMEOUT = 60
+WARMUP_TIMEOUT = 90    # Render ucretsiz sunucusu uyuyabilir; soguk acilis uzun surer
+WARMUP_TRIES = 4
+WARMUP_PAUSE = 10
+GH_TIMEOUT = 60
+
+
+class Oracle:
+    """Kusursuz cozucu (c4solver -a); benchmarks/ai_quality_benchmark.py'deki Oracle ile ayni protokol."""
+
+    def __init__(self, solver_dir: str):
+        exe = os.path.join(solver_dir, 'c4solver')
+        if not os.path.exists(exe):
+            raise SystemExit(f"Cozucu bulunamadi: {exe}")
+        # 7x6.book cozucunun calisma dizininde olmali
+        self.proc = subprocess.Popen([exe, '-a'], cwd=solver_dir, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=subprocess.DEVNULL, text=True, bufsize=1,
+                                     env={'PATH': os.environ.get('PATH', '')})    # sirlar cozucuye gecmesin
+        self.cache: Dict[str, List[Optional[int]]] = {}
+
+    def scores(self, moves: List[int]) -> List[Optional[int]]:
+        seq = ''.join(str(c + 1) for c in moves)
+        if seq not in self.cache:
+            self.proc.stdin.write(seq + '\n')
+            self.proc.stdin.flush()
+            parts = self.proc.stdout.readline().split()
+            values = parts[1:] if seq else parts
+            if len(values) != 7:
+                raise RuntimeError(f"cozucu gecersiz cevap verdi ({len(values)} skor): {seq!r}")
+            try:
+                self.cache[seq] = [None if v == '-1000' else int(v) for v in values]
+            except ValueError as e:
+                raise RuntimeError(f"cozucu sayisal olmayan cevap verdi: {seq!r}") from e
+        return self.cache[seq]
+
+    def close(self):
+        try:
+            self.proc.stdin.close()
+            self.proc.wait(timeout=5)
+        except Exception:
+            self.proc.kill()
+
+
+def _sign(x: int) -> int:
+    return (x > 0) - (x < 0)
+
+
+def valid_moves(moves) -> bool:
+    """Her sutun 0..6 tamsayi ve hicbir sutunda 6'dan fazla tas yok."""
+    if not isinstance(moves, list):
+        return False
+    heights = [0] * 7
+    for c in moves:
+        if type(c) is not int or not 0 <= c <= 6:
+            return False
+        heights[c] += 1
+        if heights[c] > 6:
+            return False
+    return True
+
+
+def _grid(moves: List[int]) -> List[List[int]]:
+    """Sutun listeleri; her tas 0 (player1) ya da 1 (player2)."""
+    cols: List[List[int]] = [[] for _ in range(7)]
+    for i, c in enumerate(moves):
+        cols[c].append(i % 2)
+    return cols
+
+
+def _wins_by_drop(cols: List[List[int]], col: int, player: int) -> bool:
+    """player 'col' sutununa tas atarsa 4'lu yapar mi (7x6, yercekimi)."""
+    row = len(cols[col])
+    if row >= 6:
+        return False
+
+    def at(c, r):
+        if c == col and r == row:
+            return player
+        return cols[c][r] if 0 <= c < 7 and 0 <= r < len(cols[c]) else None
+
+    for dc, dr in ((1, 0), (0, 1), (1, 1), (1, -1)):
+        n = 1
+        for sign in (1, -1):
+            c, r = col + sign * dc, row + sign * dr
+            while 0 <= c < 7 and 0 <= r < 6 and at(c, r) == player:
+                n += 1
+                c, r = c + sign * dc, r + sign * dr
+        if n >= 4:
+            return True
+    return False
+
+
+def has_immediate_win(cols: List[List[int]], player: int) -> bool:
+    return any(_wins_by_drop(cols, c, player) for c in range(7))
+
+
+def is_tactical_position(moves: List[int], mover: int) -> bool:
+    """Sirasi gelenin aninda galibiyeti var ya da rakibin aninda galibiyet tehdidi (engelleme) var."""
+    cols = _grid(moves)
+    return has_immediate_win(cols, mover) or has_immediate_win(cols, 1 - mover)
+
+
+def hands_immediate_win(moves: List[int], col: int) -> bool:
+    """Sirasi gelen 'col' sutununa oynarsa rakibin aninda kazanan hamlesi olur mu?"""
+    mover = len(moves) % 2
+    return has_immediate_win(_grid(list(moves) + [col]), 1 - mover)
+
+
+def critical_moves(oracle, moves: List[int]) -> List[Tuple[int, bool]]:
+    """(ply_index, dogru_mu) listesi; yalnizca ply >= BOOK_PLIES ve kritik pozisyonlar."""
+    out = []
+    for i in range(BOOK_PLIES, len(moves)):
+        if is_tactical_position(moves[:i], i % 2):
+            continue    # tek hamlelik taktik: adil rapor icin sayilmaz
+        scores = oracle.scores(moves[:i])
+        signs = {_sign(s) for s in scores if s is not None}
+        if len(signs) <= 1:
+            continue    # zorunlu pozisyon
+        best = max(signs)
+        losing = [c for c, s in enumerate(scores) if s is not None and _sign(s) < best]
+        if all(hands_immediate_win(moves[:i], c) for c in losing):
+            continue    # yalnizca "tehdidin altina oynama" hatasi: insan icin kolay karar
+        chosen = scores[moves[i]]
+        out.append((i, chosen is not None and _sign(chosen) == best))
+    return out
+
+
+def evaluate_player(oracle, games: List[Dict], username: str) -> Dict:
+    played = critical = correct = 0
+    for g in games:
+        if g['player1'] == username:
+            parity = 0
+        elif g['player2'] == username:
+            parity = 1
+        else:
+            continue
+        if not valid_moves(g.get('moves')):
+            print(f"Uyari: oyun {g.get('game_id')} gecersiz hamleler icerdigi icin atlandi", file=sys.stderr)
+            continue
+        played += 1
+        for ply, ok in critical_moves(oracle, g['moves']):
+            if ply % 2 == parity:
+                critical += 1
+                correct += ok
+    return {'games': played, 'critical': critical, 'correct': correct,
+            'flagged': played >= MIN_GAMES and critical >= MIN_CRITICAL and correct == critical}
+
+
+# ---- Ag ve gh yardimcilari (testlerde taklit edilir) ----
+
+def http_get_json(url: str, timeout: int = HTTP_TIMEOUT):
+    with urllib.request.urlopen(url, timeout=timeout) as resp:
+        return json.loads(resp.read().decode('utf-8'))
+
+
+def fetch_unchecked(server: str) -> List[int]:
+    """Ilk istek: sunucu uyaniyor olabilir; uzun zaman asimi ve yeniden deneme."""
+    last = None
+    for attempt in range(WARMUP_TRIES):
+        try:
+            return http_get_json(f"{server}/tournaments/unchecked", timeout=WARMUP_TIMEOUT)['tournament_ids']
+        except Exception as e:
+            last = e
+            print(f"Sunucu yanit vermedi ({attempt + 1}/{WARMUP_TRIES}): {e}", file=sys.stderr)
+            if attempt + 1 < WARMUP_TRIES:
+                time.sleep(WARMUP_PAUSE)
+    raise last
+
+
+def http_post_checked(url: str, secret: str) -> None:
+    req = urllib.request.Request(url, data=b'{}', method='POST',
+                                 headers={'X-Arena-Check-Secret': secret, 'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"isaretleme basarisiz: HTTP {resp.status}")
+
+
+def run_gh(args: List[str]) -> str:
+    res = subprocess.run(['gh'] + args, capture_output=True, text=True, timeout=GH_TIMEOUT)
+    if res.returncode != 0:
+        raise RuntimeError(f"gh {' '.join(args[:2])} basarisiz: {res.stderr.strip()}")
+    return res.stdout
+
+
+def issue_title(tid: int, username: str) -> str:
+    return f"Arena #{tid}: {username} kritik hamlelerin %100'\u00fc"
+
+
+def issue_body(tid: int, username: str, r: Dict) -> str:
+    return (f"Turnuva: #{tid}\nOyuncu: {username}\n\n"
+            f"- Oyun sayısı: {r['games']}\n- Kritik hamle: {r['critical']}\n- Doğru kritik hamle: {r['correct']}\n\n"
+            "Bu otomatik bir sinyaldir, kanıt değildir. Sahibi tarafından gözden geçirilmelidir.")
+
+
+def _issue_exists(title: str) -> bool:
+    out = run_gh(['issue', 'list', '--state', 'all', '--search', f'"{title}" in:title',
+                  '--json', 'title', '--limit', '100'])
+    return any(i.get('title') == title for i in json.loads(out or '[]'))
+
+
+def _process_tournament(server, tid, oracle, secret, dry_run) -> None:
+    games = http_get_json(f"{server}/tournaments/{tid}/games", timeout=HTTP_TIMEOUT)['games']
+    players = sorted({p for g in games for p in (g['player1'], g['player2'])})
+    for user in players:
+        r = evaluate_player(oracle, games, user)
+        print(f"Turnuva {tid} / {user}: {r}")
+        if not r['flagged']:
+            continue
+        title = issue_title(tid, user)
+        if dry_run:
+            print(f"[dry-run] issue acilacak: {title}")
+        elif _issue_exists(title):
+            print(f"Issue zaten var, atlandi: {title}")
+        else:
+            run_gh(['issue', 'create', '--title', title, '--body', issue_body(tid, user, r)])
+            print(f"Issue acildi: {title}")
+    if dry_run:
+        print(f"[dry-run] turnuva {tid} isaretlenmeyecek")
+    else:
+        http_post_checked(f"{server}/tournaments/{tid}/checked", secret)
+        print(f"Turnuva {tid} kontrol edildi olarak isaretlendi")
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument('--server', required=True)
+    ap.add_argument('--solver-dir', required=True)
+    ap.add_argument('--dry-run', action='store_true')
+    args = ap.parse_args(argv)
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(errors='replace')    # diakritikli baslik konsolu cokertmesin
+    server = args.server.rstrip('/')
+    secret = os.environ.get('ARENA_CHECK_SECRET', '')
+    if not secret and not args.dry_run:
+        print("ARENA_CHECK_SECRET tanimli degil", file=sys.stderr)
+        return 2
+    try:
+        ids = fetch_unchecked(server)
+    except Exception as e:
+        print(f"Turnuva listesi alinamadi: {e}", file=sys.stderr)
+        return 1
+    if not ids:
+        print("Kontrol edilecek turnuva yok")
+        return 0
+    oracle = Oracle(args.solver_dir)
+    failed = False
+    try:
+        for tid in ids:
+            try:
+                _process_tournament(server, tid, oracle, secret, args.dry_run)
+            except Exception as e:    # turnuva isaretlenmez, sonraki gece tekrar denenir
+                failed = True
+                print(f"Turnuva {tid} islenemedi, isaretlenmedi: {e}", file=sys.stderr)
+    finally:
+        oracle.close()
+    return 1 if failed else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

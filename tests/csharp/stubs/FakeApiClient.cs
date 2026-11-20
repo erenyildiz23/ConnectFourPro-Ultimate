@@ -57,5 +57,9 @@ namespace ConnectFourPro.Net
         public void User(string username, Action<ApiResponse> done) => Calls.Add(new Call(nameof(User), username, null, done));
         public void History(string username, Action<ApiResponse> done) => Calls.Add(new Call(nameof(History), username, null, done));
         public void Health(Action<ApiResponse> done) => Calls.Add(new Call(nameof(Health), null, null, done));
+        public void Tournaments(Action<ApiResponse> done) => Calls.Add(new Call(nameof(Tournaments), null, null, done));
+        // Turnuva id'si Username alaninda (metin olarak) kaydedilir
+        public void Tournament(int id, Action<ApiResponse> done) =>
+            Calls.Add(new Call(nameof(Tournament), id.ToString(System.Globalization.CultureInfo.InvariantCulture), null, done));
     }
 }

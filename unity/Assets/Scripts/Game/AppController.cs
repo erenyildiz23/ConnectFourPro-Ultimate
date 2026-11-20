@@ -4,7 +4,8 @@
 // =============================================================================
 //
 // Ekranlar: Giris/Kayit, Ana Menu, AI zorluk secimi, Online Lobi, Rakip bekleme,
-// Oyun (AI / Online / Seyirci), Liderlik Tablosu, Mac Gecmisi.
+// Oyun (AI / Online / Seyirci), Liderlik Tablosu, Mac Gecmisi, Arena turnuva listesi
+// ve turnuva sayfasi.
 //
 // Cizim UI katmanindadir (UI/*View.cs); bu sinif yalnizca durumu tutar ve
 // degistirir. Tum geri cagrilar (REST, Socket.IO, AI) Unity ana thread'inde
@@ -32,6 +33,10 @@ namespace ConnectFourPro.Game
         Leaderboard,
         History,
         Replay,
+        /// <summary>Arena turnuvalari listesi (misafir de gorur).</summary>
+        Tournaments,
+        /// <summary>Tek turnuvanin sayfasi: puan durumu, katil / duraklat.</summary>
+        Tournament,
     }
 
     public enum StatusTone
@@ -199,6 +204,10 @@ namespace ConnectFourPro.Game
         public bool LeaderboardError { get; private set; }
         public List<HistoryEntry> HistoryData { get; private set; }
         public bool HistoryError { get; private set; }
+
+        // Arena turnuvasi (alanlar asagida "Arena turnuvasi" bolumunde)
+        /// <summary>Simdiki UTC zaman (kalan sure hesabi; testler sabitler).</summary>
+        public Func<DateTime> UtcNow = () => DateTime.UtcNow;
 
         // Mac tekrari: acik tekrar (yoksa null) ve geri donulecek ekran
         public ReplayModel Replay { get; private set; }
@@ -1077,6 +1086,7 @@ namespace ConnectFourPro.Game
         private void ConnectionFailed()
         {
             _joinPending = false;
+            TournamentCreatePending = false;
             if (QuickMatchSearching)
             {
                 EndQuickMatch("Sunucuya bağlanılamadı!", StatusTone.Bad);
@@ -1092,7 +1102,8 @@ namespace ConnectFourPro.Game
             // ResetToMenu'nun kendi Disconnect'i (WebGL'de senkron gelir) kopma degildir
             if (reason == "io client disconnect")
                 return;
-            _joinPending = false;   // yanitsiz kalan katilma istegi 'Katil'i kilitlemesin
+            _joinPending = false;
+            TournamentCreatePending = false;   // arena_created gelmeyecek: form kilitli kalmasin   // yanitsiz kalan katilma istegi 'Katil'i kilitlemesin
             if (SearchingWithoutRoom)
             {
                 // Sunucu kopan soketi kuyruktan dusurur; yeniden baglaninca kuyruga donulmez
@@ -1138,6 +1149,8 @@ namespace ConnectFourPro.Game
             _rematchSupported = false;
             Rematch = RematchState.None;
             ClearChatBubble();
+            ArenaGameTournamentId = null;
+            LastArenaPoints = null;
         }
 
         /// <summary>Sunucunun sonucu geldi (son tasin animasyonu henuz bitmemis olabilir).</summary>
@@ -1163,6 +1176,10 @@ namespace ConnectFourPro.Game
                 case SocketEvents.QuickMatchWaiting: OnQuickMatchWaiting(); break;
                 case SocketEvents.QuickMatchCancelled: OnQuickMatchCancelled(); break;
                 case SocketEvents.ChatMessage: OnChatMessage(data); break;
+                case SocketEvents.ArenaCreated: OnArenaCreated(data); break;
+                case SocketEvents.ArenaJoined: OnArenaJoined(data); break;
+                case SocketEvents.ArenaStandings: OnArenaStandings(data); break;
+                case SocketEvents.ArenaState: OnArenaState(data); break;
             }
         }
 
@@ -1203,6 +1220,8 @@ namespace ConnectFourPro.Game
             }
 
             IsSpectator = false;
+            if (data.GetNullableInt("tournament_id") is int arenaTid)
+                ArenaGameTournamentId = arenaTid;   // eslesmenin game_start'i da tasir
             var opponent = data.GetObject("opponent_info");
             OpponentName = opponent.GetString("username", "Rakip");
             OpponentElo = opponent.GetInt("rating", UserInfo.DefaultRating);
@@ -1264,6 +1283,11 @@ namespace ConnectFourPro.Game
             ResetOnlineGame();
             Replay = null;   // rovans tekrar izlenirken basladi
             IsSpectator = false;
+            // Turnuva oyunu: siradaki eslesme geldi; turnuva sayfasindan da buraya gecilir
+            ArenaGameTournamentId = data.GetNullableInt("tournament_id");
+            _arenaAwaitingTid = null;
+            if (ArenaGameTournamentId is int arenaTid)
+                EnsureTournament(arenaTid);
             bool rematch = data.GetBool("rematch");
             // Rovansta koltuklar yer degistirir; ilk oyunda tas game_created/game_joined'dan gelir
             MyPiece = data.GetInt("player_piece", MyPiece);
@@ -1356,7 +1380,8 @@ namespace ConnectFourPro.Game
             _turnSecondsLeft = null;
             StopChessClock();   // biten oyunun saati son haliyle donar (Game.GameOver'dan once)
             _clockPausedPiece = 0;
-            if (info.HasDetailField)
+            // Turnuva oyununda rovans yok (sunucu rematch_request'i yok sayar)
+            if (info.HasDetailField && ArenaGameTournamentId == null)
                 _rematchSupported = true;
             // Rakip ayrildi / koptu: rovans istenemez
             if (!IsSpectator && w == MyPiece && (info.Detail == "leave" || info.Detail == "disconnect"))
@@ -1391,6 +1416,13 @@ namespace ConnectFourPro.Game
                     if (newRating != null)
                         UserElo = newRating.Value;
                 }
+            }
+
+            if (ArenaGameTournamentId is int arenaTid && !IsSpectator)
+            {
+                // Sunucu duraklatmadiysa (ilk hamle iptali) bir sonraki eslesmeyi kendisi yapar
+                _arenaAwaitingTid = arenaTid;
+                LastArenaPoints = info.ArenaPointsFor(Username);
             }
 
             var (msg, tone) = ResultText(w, forfeit, info.Detail);
@@ -1442,7 +1474,7 @@ namespace ConnectFourPro.Game
         /// <summary>Biten online oyunda (oyuncu, sunucu destekliyor, rakip hala odada) rovans istenebilir.</summary>
         public bool CanRequestRematch =>
             Screen == AppScreen.PlayingOnline && !IsSpectator && Game.GameOver && _rematchSupported
-            && RoomId != null && _socket.IsConnected
+            && ArenaGameTournamentId == null && RoomId != null && _socket.IsConnected
             && (Rematch == RematchState.None || Rematch == RematchState.OfferedByOpponent);
 
         /// <summary>Rovans butonunun yazisi.</summary>
@@ -1607,9 +1639,15 @@ namespace ConnectFourPro.Game
         private void OnServerError(JsonObject data)
         {
             _joinPending = false;
+            TournamentCreatePending = false;   // arena_create reddedildi (arena_limit, bad_start...)
             // code (yeni sunucu) metinden onceliklidir; yoksa eski sunucunun msg alani kullanilir.
             // Gosterilen metin Turkce kalir, ekrana yazilirken Loc.T ile cevrilir.
             string msg = Loc.ServerError(data.GetString("code", ""), data.GetString("msg", ""));
+            if (IsArenaGoneError(data.GetString("code", ""), msg))
+            {
+                OnArenaGone(msg);
+                return;
+            }
             if (SearchingWithoutRoom)
             {
                 // Kuyruga girilemedi (zaten oyunda, misafir adi kullanimda...)
@@ -1747,6 +1785,26 @@ namespace ConnectFourPro.Game
                 SetStatus("Oyundan çıkmak hükmen yenilgi sayılır. Onaylamak için tekrar basın.", StatusTone.Bad);
                 return;
             }
+            if (InArenaGame)
+            {
+                // Turnuva oyunundan turnuva sayfasina: baglanti korunur (sunucu kopan soketi
+                // kuyruktan dusurur). Suren oyunu terk eden hukmen kaybeder ve duraklatilir.
+                bool forfeit = !Game.GameOver && !_sessionDead;
+                int tid = ArenaGameTournamentId.Value;
+                ReturnToTournament(tid);
+                if (forfeit)
+                {
+                    if (ArenaJoinedId == tid)
+                        ArenaPaused = true;
+                    _socket.PauseArena(tid);
+                }
+                return;
+            }
+            if (Screen == AppScreen.Tournament)
+            {
+                OpenTournaments();
+                return;
+            }
             bool online = Screen == AppScreen.Waiting || Screen == AppScreen.PlayingOnline || Screen == AppScreen.Spectating;
             LeaveSession(online ? AppScreen.Lobby : AppScreen.Menu);
         }
@@ -1754,6 +1812,7 @@ namespace ConnectFourPro.Game
         /// <summary>Oyun ekranindaki geri butonunun yazisi.</summary>
         public string BackLabel =>
             LeaveConfirmPending ? "Çıkışı Onayla"
+            : InArenaGame ? "Turnuvaya Dön"
             : Screen == AppScreen.PlayingOnline || Screen == AppScreen.Spectating ? "Lobiye Dön"
             : "Menü";
 
@@ -1833,9 +1892,400 @@ namespace ConnectFourPro.Game
 
         private void ClearChatBubble() => _chatBubble = null;
 
+        // =====================================================================
+        // Arena turnuvasi
+        // =====================================================================
+
+        /// <summary>Turnuva listesi (GET /tournaments); eski sunucuda bos + TournamentsError.</summary>
+        public List<TournamentSummary> Tournaments { get; private set; } = new List<TournamentSummary>();
+        /// <summary>Liste her degistiginde artar (gorunum satirlari yeniden kurar).</summary>
+        public int TournamentsVersion { get; private set; }
+        public bool TournamentsLoading { get; private set; }
+        public bool TournamentsError { get; private set; }
+
+        /// <summary>Acik turnuva sayfasinin id'si (yoksa null).</summary>
+        public int? CurrentTournamentId { get; private set; }
+        /// <summary>Acik turnuva (yuklenene ya da bulunamazsa null).</summary>
+        public TournamentSummary CurrentTournament { get; private set; }
+        /// <summary>Acik turnuva yuklenemedi (bilinmeyen id / eski sunucu / ag hatasi).</summary>
+        public bool TournamentError { get; private set; }
+        /// <summary>Acik turnuvanin puan durumu (sunucu siralamasiyla).</summary>
+        public List<StandingRow> Standings { get; private set; } = new List<StandingRow>();
+        /// <summary>Puan durumu her degistiginde artar.</summary>
+        public int StandingsVersion { get; private set; }
+
+        /// <summary>Bu baglantida katilinan (arena_joined) turnuva; yoksa null.</summary>
+        public int? ArenaJoinedId { get; private set; }
+        /// <summary>Katilinan turnuvada duraklatildi (yerel istek ya da sunucunun puan durumu).</summary>
+        public bool ArenaPaused { get; private set; }
+        /// <summary>arena_create gonderildi, cevap bekleniyor (cift gonderim olmaz).</summary>
+        public bool TournamentCreatePending { get; private set; }
+
+        /// <summary>Ekrandaki (ya da son) online oyunun turnuva id'si; normal oyunda null.</summary>
+        public int? ArenaGameTournamentId { get; private set; }
+        /// <summary>Son turnuva oyunundan yerel oyuncunun aldigi puan (game_over.arena); yoksa null.</summary>
+        public int? LastArenaPoints { get; private set; }
+        // Turnuva oyunu bitti, sunucunun yeni eslesmesi bekleniyor (turnuva id'si)
+        private int? _arenaAwaitingTid;
+        // GET /tournaments/<id> istekleri: gec gelen eski yanit yeni sayfaya yazilmaz
+        private int _tournamentFetchEpoch;
+
+        /// <summary>Online oyun ekraninda bir turnuva oyunu (oyuncu olarak).</summary>
+        public bool InArenaGame => ArenaGameTournamentId != null && OnOnlineGameScreen && !IsSpectator;
+
+        /// <summary>
+        /// Turnuva oyunu bitti, sunucu yeni eslesme yapacak (rovans yerine "Siradaki oyun").
+        /// Duraklatilinca ya da turnuva bitince duser; yeni game_start temizler.
+        /// </summary>
+        public bool ArenaNextGamePending => ArenaPendingTournamentId != null;
+
+        /// <summary>
+        /// Siradaki oyunun beklendigi turnuva (gorunum "Siradaki oyun"u yalnizca o turnuvanin
+        /// sayfasinda gosterir). Duraklatilinca ya da ends_at gecince (yeni eslesme yok) null.
+        /// </summary>
+        public int? ArenaPendingTournamentId
+        {
+            get
+            {
+                if (!(_arenaAwaitingTid is int tid) || ArenaPaused)
+                    return null;
+                TournamentSummary t = CurrentTournament?.Id == tid ? CurrentTournament : FindTournament(tid);
+                if (t?.EndsAt != null && ArenaModel.SecondsUntil(t.EndsAt, UtcNow()) == 0)
+                    return null;
+                return tid;
+            }
+        }
+
+        /// <summary>Turnuva acabilir (yalnizca kayitli kullanici).</summary>
+        public bool CanCreateTournament => !IsGuest && !string.IsNullOrEmpty(Username);
+
+        /// <summary>Acik turnuvaya katilabilir: kayitli, turnuva bitmemis, bu baglantida katilinmamis.</summary>
+        public bool CanJoinTournament =>
+            CanCreateTournament && CurrentTournament != null && !CurrentTournament.IsOver
+            && ArenaJoinedId != CurrentTournament.Id;
+
+        /// <summary>Duraklat / Devam et dugmesi: acik turnuvaya bu baglantida katilinmis.</summary>
+        public bool CanToggleArenaPause =>
+            ArenaJoinedId != null && CurrentTournamentId == ArenaJoinedId
+            && CurrentTournament != null && !CurrentTournament.IsOver;
+
+        /// <summary>Yerel oyuncunun puan durumu satiri (uye degilse null).</summary>
+        public StandingRow MyStanding
+        {
+            get
+            {
+                if (IsGuest || string.IsNullOrEmpty(Username))
+                    return null;
+                foreach (StandingRow row in Standings)
+                    if (row.Username == Username)
+                        return row;
+                return null;
+            }
+        }
+
+        /// <summary>Yerel oyuncu acik turnuvanin uyesi (puan durumunda).</summary>
+        public bool IsArenaMember => MyStanding != null;
+
+        /// <summary>Acik turnuvanin bitisine kalan saniye (UTC; 0'in altina inmez, bilinmiyorsa 0).</summary>
+        public int ArenaSecondsLeft => ArenaModel.SecondsUntil(CurrentTournament?.EndsAt, UtcNow());
+
+        /// <summary>Planlanmis turnuvanin baslamasina kalan saniye (0'in altina inmez).</summary>
+        public int ArenaSecondsToStart => ArenaModel.SecondsUntil(CurrentTournament?.StartsAt, UtcNow());
+
+        /// <summary>Menudeki "Turnuvalar": liste ekrani (soket acilmaz).</summary>
+        public void OpenTournaments()
+        {
+            SetScreen(AppScreen.Tournaments);
+            SetStatus("");
+            RefreshTournaments();
+        }
+
+        public void RefreshTournaments()
+        {
+            TournamentsLoading = true;
+            _api.Tournaments(r =>
+            {
+                TournamentsLoading = false;
+                if (!r.Ok)
+                {
+                    // Eski sunucu (404) ya da ag hatasi: bos liste, hata durumu
+                    TournamentsError = true;
+                    Tournaments = new List<TournamentSummary>();
+                    TournamentsVersion++;
+                    return;
+                }
+                TournamentsError = false;
+                Tournaments = ArenaModel.ParseTournaments(r.BodyObject);
+                TournamentsVersion++;
+            });
+        }
+
+        /// <summary>Turnuva sayfasi: ayrinti REST'ten, canli puan durumu arena_watch ile.</summary>
+        public void OpenTournament(int id)
+        {
+            if (CurrentTournamentId != id)
+                SelectTournament(id);
+            TournamentError = false;
+            SetScreen(AppScreen.Tournament);
+            SetStatus("");
+            FetchTournament(id);
+            _socket.WatchArena(id);
+        }
+
+        private void SelectTournament(int id)
+        {
+            CurrentTournamentId = id;
+            CurrentTournament = FindTournament(id);
+            Standings = new List<StandingRow>();
+            StandingsVersion++;
+        }
+
+        private TournamentSummary FindTournament(int id)
+        {
+            foreach (TournamentSummary t in Tournaments)
+                if (t.Id == id)
+                    return t;
+            return null;
+        }
+
+        /// <summary>Turnuva oyunu baska bir turnuvadan geldiyse sayfa verisini ona cevirir.</summary>
+        private void EnsureTournament(int id)
+        {
+            if (CurrentTournamentId == id)
+                return;
+            SelectTournament(id);
+            TournamentError = false;
+            FetchTournament(id);
+        }
+
+        private void FetchTournament(int id)
+        {
+            int epoch = ++_tournamentFetchEpoch;
+            _api.Tournament(id, r =>
+            {
+                if (epoch != _tournamentFetchEpoch || CurrentTournamentId != id)
+                    return;   // bu arada baska sayfa acildi
+                var body = r.BodyObject;
+                var t = body.GetObject("tournament");
+                if (!r.Ok || !t.Has("id"))
+                {
+                    // Bilinmeyen id / eski sunucu / ag hatasi: eldeki veri (varsa) korunur
+                    TournamentError = CurrentTournament == null;
+                    return;
+                }
+                TournamentError = false;
+                CurrentTournament = TournamentSummary.From(t);
+                ReplaceInList(CurrentTournament);
+                ApplyStandings(id, ArenaModel.ParseStandings(body));
+            });
+        }
+
+        private void ReplaceInList(TournamentSummary t)
+        {
+            for (int i = 0; i < Tournaments.Count; i++)
+            {
+                if (Tournaments[i].Id != t.Id)
+                    continue;
+                Tournaments[i] = t;
+                TournamentsVersion++;
+                return;
+            }
+        }
+
+        /// <summary>Turnuva acma formunun gonderimi (sure 15/30/60 dk, baslangic 0-1440 dk sonra).</summary>
+        public void CreateTournament(int durationMinutes, int startInMinutes)
+        {
+            if (!CanCreateTournament)
+            {
+                SetStatus("Hata: " + Loc.ServerError("not_registered", ""), StatusTone.Bad);
+                return;
+            }
+            if (TournamentCreatePending)
+                return;
+            if (!ArenaModel.IsValidDuration(durationMinutes))
+            {
+                SetStatus("Hata: " + Loc.ServerError("bad_duration", ""), StatusTone.Bad);
+                return;
+            }
+            if (!ArenaModel.IsValidStartIn(startInMinutes))
+            {
+                SetStatus("Hata: " + Loc.ServerError("bad_start", ""), StatusTone.Bad);
+                return;
+            }
+            TournamentCreatePending = true;
+            Debug.Log($"[App] Turnuva aciliyor: {durationMinutes} dk, {startInMinutes} dk sonra");
+            _socket.SetIdentity(Username, _authToken);
+            _socket.CreateArena(durationMinutes, startInMinutes);
+        }
+
+        /// <summary>Acik turnuvaya katilir (kayitli kullanici).</summary>
+        public void JoinTournament()
+        {
+            if (!CanJoinTournament)
+                return;
+            Debug.Log("[App] Turnuvaya katiliniyor: " + CurrentTournament.Id);
+            _socket.SetIdentity(Username, _authToken);
+            _socket.JoinArena(CurrentTournament.Id);
+        }
+
+        /// <summary>Katilinan turnuvada duraklat / devam et.</summary>
+        public void ToggleArenaPause()
+        {
+            if (!(ArenaJoinedId is int id))
+                return;
+            _socket.SetIdentity(Username, _authToken);
+            ArenaPaused = !ArenaPaused;
+            if (ArenaPaused)
+                _socket.PauseArena(id);
+            else
+                _socket.ResumeArena(id);
+        }
+
+        private void OnArenaCreated(JsonObject data)
+        {
+            TournamentCreatePending = false;
+            var o = data.GetObject("tournament");
+            if (!o.Has("id"))
+                return;
+            var t = TournamentSummary.From(o);
+            Debug.Log("[App] Turnuva acildi: " + t.Id);
+            if (FindTournament(t.Id) == null)
+            {
+                Tournaments.Insert(0, t);
+                TournamentsVersion++;
+            }
+            // Oyun surerken gelen cevap ekrani degistirmez (liste yine guncellenir)
+            if (Screen == AppScreen.Tournaments || Screen == AppScreen.Tournament)
+                OpenTournament(t.Id);
+        }
+
+        private void OnArenaJoined(JsonObject data)
+        {
+            if (!(data.GetNullableInt("tournament_id") is int tid))
+                return;
+            ArenaJoinedId = tid;
+            ArenaPaused = false;
+        }
+
+        private void OnArenaStandings(JsonObject data)
+        {
+            if (data.GetNullableInt("tournament_id") is int tid)
+                ApplyStandings(tid, ArenaModel.ParseStandings(data));
+        }
+
+        private void ApplyStandings(int tid, List<StandingRow> rows)
+        {
+            if (tid == CurrentTournamentId)
+            {
+                Standings = rows;
+                StandingsVersion++;
+                if (CurrentTournament != null)
+                    CurrentTournament.Players = rows.Count;
+            }
+            if (tid != ArenaJoinedId || IsGuest)
+                return;
+            // Sunucu duraklatabilir (ilk hamleyi yapmayan oyuncu): yeniden baglanmada kuyruga girilmez
+            foreach (StandingRow row in rows)
+            {
+                if (row.Username != Username)
+                    continue;
+                ArenaPaused = row.Paused;
+                _socket.SetArenaPaused(row.Paused);
+                break;
+            }
+        }
+
+        private void OnArenaState(JsonObject data)
+        {
+            if (!(data.GetNullableInt("tournament_id") is int tid))
+                return;
+            string status = data.GetString("status", "");
+            DateTime? endsAt = ArenaModel.ParseUtc(data.GetString("ends_at"));
+            foreach (TournamentSummary t in new[] { CurrentTournament, FindTournament(tid) })
+            {
+                if (t == null || t.Id != tid)
+                    continue;
+                if (status.Length > 0)
+                    t.Status = status;
+                if (endsAt != null)
+                    t.EndsAt = endsAt;
+            }
+            TournamentsVersion++;
+            if (status != ArenaModel.Finished && status != ArenaModel.Cancelled)
+                return;
+            Debug.Log($"[App] Turnuva {tid}: {status}");
+            if (_arenaAwaitingTid == tid)
+                _arenaAwaitingTid = null;
+            if (ArenaJoinedId == tid)
+            {
+                ArenaJoinedId = null;
+                ArenaPaused = false;
+                _socket.ForgetArena();
+            }
+            // Son puan durumu / liste sunucudan yenilenir
+            if (CurrentTournamentId == tid)
+                FetchTournament(tid);
+            if (Screen == AppScreen.Tournaments)
+                RefreshTournaments();
+        }
+
+        private static bool IsArenaGoneError(string code, string msg) =>
+            code == "arena_over" || code == "arena_not_found"
+            || msg == Loc.ServerCodes["arena_over"] || msg == Loc.ServerCodes["arena_not_found"];
+
+        /// <summary>
+        /// Turnuva bitti / bulunamadi (or. arena_state finished kacirildi, yeniden baglanmada
+        /// arena_join reddedildi): eski katilim ve bekleme durumu silinir, turnuva yeniden
+        /// yuklenir. Hata metni yalnizca turnuva ekranlarinda gosterilir (oyun sonucu ezilmez).
+        /// </summary>
+        private void OnArenaGone(string msg)
+        {
+            Debug.Log("[App] Turnuva hatasi: " + msg);
+            _socket.ForgetArena();
+            ArenaJoinedId = null;
+            ArenaPaused = false;
+            _arenaAwaitingTid = null;
+            if (CurrentTournamentId is int tid)
+                FetchTournament(tid);
+            if (Screen == AppScreen.Tournaments)
+                RefreshTournaments();
+            if (Screen == AppScreen.Tournaments || Screen == AppScreen.Tournament)
+                SetStatus("Hata: " + msg, StatusTone.Bad);
+        }
+
+        /// <summary>Turnuva oyunundan turnuva sayfasina: soket korunur, oyun durumu temizlenir.</summary>
+        private void ReturnToTournament(int tid)
+        {
+            ClearGameSession();
+            if (OnOnlineGameScreen)
+                _socket.LeaveGame();   // bitmis koltuk birakilir; suren oyunda hukmen yenilgi
+            Replay = null;
+            RoomId = null;
+            IsSpectator = false;
+            Game = new GameState();
+            ArenaGameTournamentId = null;
+            OpenTournament(tid);
+        }
+
+        private void ClearArenaSession()
+        {
+            ArenaJoinedId = null;
+            ArenaPaused = false;
+            _arenaAwaitingTid = null;
+            ArenaGameTournamentId = null;
+            LastArenaPoints = null;
+            TournamentCreatePending = false;
+            CurrentTournamentId = null;
+            CurrentTournament = null;
+            Standings = new List<StandingRow>();
+            StandingsVersion++;
+            TournamentError = false;
+        }
+
         public void ResetToMenu() => LeaveSession(AppScreen.Menu);
 
-        private void LeaveSession(AppScreen target)
+        /// <summary>AI / online oyun oturumunun yerel durumunu temizler (soket ve ekran degismez).</summary>
+        private void ClearGameSession()
         {
             InvalidateAISession();
             _aiGameId++;
@@ -1851,6 +2301,12 @@ namespace ConnectFourPro.Game
             _rematchSupported = false;
             Rematch = RematchState.None;
             QuickMatchSearching = false;
+        }
+
+        private void LeaveSession(AppScreen target)
+        {
+            ClearGameSession();
+            ClearArenaSession();
             if (OnOnlineGameScreen || Screen == AppScreen.Waiting)
                 _socket.LeaveGame();
             Replay = null;

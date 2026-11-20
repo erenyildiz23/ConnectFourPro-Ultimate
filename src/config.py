@@ -145,6 +145,9 @@ DB_POOL_TIMEOUT = _env_int("DB_POOL_TIMEOUT", 10)
 # Bu kadar saniyedir kullanilmayan baglanti, kullanilmadan once yoklanir
 DB_PING_AFTER_SECONDS = _env_int("DB_PING_AFTER_SECONDS", 30)
 
+# --- Arena hile kontrolu: isaretleme uc noktasinin sirri (tanimsiz/bos ise None) ---
+ARENA_CHECK_SECRET = os.environ.get("ARENA_CHECK_SECRET") or None
+
 # --- Unity WebGL istemcisi (sunucu /play adresinden sunar) ---
 WEB_BUILD_DIR = os.environ.get("CONNECT4_WEB_BUILD", os.path.join(PROJECT_ROOT, 'unity', 'Build', 'WebGL'))
 

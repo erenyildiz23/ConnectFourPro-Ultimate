@@ -1,12 +1,18 @@
 // =============================================================================
 // webgl.spec.mjs - Connect Four Pro Ultimate
 // Unity WebGL build'ini gercek Chromium'da, gercek sunucuya karsi oynayan
-// uctan uca test (use case'ler: misafir girisi, AI maci, online mac, seyirci)
+// uctan uca test (use case'ler: misafir girisi, AI maci, online mac, seyirci,
+// turnuvalar)
 // =============================================================================
 //
 // Kullanim (sunucu calisirken, build CONNECT4_WEB_BUILD'den sunuluyorken):
 //   cd tests/e2e && npm ci && npx playwright install chromium
 //   BASE_URL=http://localhost:5000 node webgl.spec.mjs
+//
+// Arena adimi (5f) iki kayitli test kullanicisi ister: sunucunun veritabani olmali
+// (CI: postgres servisi). Kullanicilar /signup ile rastgele ad ve sifreyle kaydedilir;
+// yalnizca yerel sunucuya (localhost) karsi calisir. Veritabani yoksa adim atlanir;
+// E2E_REQUIRE_DB=1 iken (CI) atlama yerine test basarisiz olur.
 //
 // Arayuz canvas'a cizildigi icin DOM yoktur. Tiklamalar Unity tarafindaki
 // yerlesimden hesaplanir (UI/UIKit.cs Place: 1280x720 referans, ust-orta
@@ -16,6 +22,7 @@
 
 import { chromium } from 'playwright';
 import { PNG } from 'pngjs';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -39,9 +46,15 @@ const UI = {
   // balon govdesi (140, 225 + i*70) 180 genis, yazinin solundaki dolgudan okunur
   chatOpen: at(135, 590), chatMsg0: at(322, 270),
   bubbleP1: at(62, 225), bubbleP2: at(62, 295),
+  // Giris (LoginView): kullanici adi, sifre, "Giris Yap"
+  loginUser: at(0, 255), loginPass: at(0, 340), loginButton: at(-82, 420),
+  // Turnuvalar (Views.cs TournamentsView / TournamentView; menude 4. dugme)
+  menuTournaments: at(0, 398),
+  tCreate: at(-455, 110), tDur15: at(-130, 305), tSubmit: at(-90, 485),
+  tRow0Action: at(500, 170), tPageAction: at(-470, 110),
 };
 const cellCenter = (col, row) => at(-250 - 280 + col * 80 + 40, 375 + 240 - row * 80 - 40);
-const COLORS = { red: [233, 69, 96], yellow: [241, 196, 15], empty: [10, 10, 21] };
+const COLORS = { red: [233, 69, 96], yellow: [241, 196, 15], empty: [10, 10, 21], background: [26, 26, 46] };
 
 let failures = 0;
 const results = [];
@@ -148,6 +161,31 @@ async function waitForBoard(page, predicate, file, timeout = 15000) {
     await sleep(500);
   }
   return board;
+}
+
+// Kayitli kullaniciyla giris (LoginView alanlarina yazilir)
+async function loginAs(page, user) {
+  await click(page, UI.loginUser, 300);
+  await page.keyboard.type(user.name, { delay: 40 });
+  await click(page, UI.loginPass, 300);
+  await page.keyboard.type(user.password, { delay: 40 });
+  await click(page, UI.loginButton, 300);
+  return waitLog(page, new RegExp(`\\[App\\] Oturum acildi: ${user.name} \\(misafir=False\\)`), 15000);
+}
+
+// Rastgele test kullanicisi (gercek hesap degil). Veritabani yoksa sunucu 503 doner.
+async function signupTestUser(prefix) {
+  const name = `e2e${prefix}_${crypto.randomBytes(4).toString('hex')}`;   // <= 20 karakter
+  const password = crypto.randomBytes(12).toString('hex');
+  try {
+    const r = await fetch(`${BASE}/signup`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: name, password }),
+    });
+    return { ok: r.status === 201, status: r.status, name, password };
+  } catch (e) {
+    return { ok: false, status: String(e), name, password };
+  }
 }
 
 async function activeGames() {
@@ -350,6 +388,82 @@ try {
   check(!near(colorAt(goneP, UI.bubbleP1), BUBBLE_WHITE, 25), 'balon 3 sn sonra kayboldu');
   await q1.close();
   await q2.close();
+
+  // ----------------------------------------------- 5e. Turnuvalar (misafir)
+  // Misafir menude "Turnuvalar"a basar: liste ekrani acilir (bos ya da dolu), "+ Turnuva Aç"
+  // dugmesi yoktur. Liste kanvasa cizildigi icin TournamentsView'in "[Turnuvalar] Liste: ..."
+  // satiri ve dugmenin yerindeki arka plan rengi okunur. Veritabani gerekmez.
+  const tg = await openGame('TurnuvaMisafir');
+  check(await guestLogin(tg), 'turnuva: misafir girisi');
+  await click(tg, UI.menuTournaments, 1500);
+  check(await waitLog(tg, /\[Turnuvalar\] Liste: \d+ turnuva, acma dugmesi yok/, 10000),
+        'misafir Turnuvalar listesini gordu, acma dugmesi yok: ' +
+        tg.logs.filter(l => l.includes('[Turnuvalar]')).join(' ; '));
+  const tgPng = await shot(tg, '14k-turnuvalar-misafir.png');
+  check(near(colorAt(tgPng, UI.tCreate), COLORS.background, 12),
+        `misafir ekraninda "+ Turnuva Aç" cizilmedi (renk ${colorAt(tgPng, UI.tCreate).map(Math.round)})`);
+  await tg.close();
+
+  // ------------------------------------- 5f. Arena turnuvasi (iki kayitli oyuncu)
+  // A turnuva acar (15 dk, hemen), B listeden katilir, A sayfasindan katilir. Sunucu turnuvayi
+  // en gec ~10 sn icinde baslatir ve ikisini eslestirir: ikisi de 3+2 saati (3:00) gorur. Bir
+  // misafir seyirci turnuva sayfasini acar ve puan durumunda iki oyuncu gorur.
+  const localServer = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(BASE).hostname);
+  const userA = localServer ? await signupTestUser('A') : { ok: false, status: 'yerel olmayan sunucu' };
+  const userB = userA.ok ? await signupTestUser('B') : userA;
+  if (!userA.ok || !userB.ok) {
+    const why = `test kullanicisi kaydedilemedi (${userA.ok ? userB.status : userA.status}; ` +
+                'sunucunun veritabani yok ya da sunucu yerel degil)';
+    // CI (E2E_REQUIRE_DB=1) veritabaniyla calisir: atlama orada hata sayilir
+    if (process.env.E2E_REQUIRE_DB === '1') check(false, 'arena: ' + why);
+    else console.log(`::notice::Arena adimi atlandi: ${why}`);
+  } else {
+    const ta = await openGame('ArenaA');
+    check(await loginAs(ta, userA), `arena: A (${userA.name}) giris yapti`);
+    await click(ta, UI.menuTournaments, 1500);
+    check(await waitLog(ta, /\[Turnuvalar\] Liste: \d+ turnuva, acma dugmesi var/, 10000), 'arena: A listede "+ Turnuva Aç" goruyor');
+    await click(ta, UI.tCreate, 800);
+    await click(ta, UI.tDur15, 500);
+    await shot(ta, '14l-turnuva-ac-formu.png');
+    await click(ta, UI.tSubmit, 1000);
+    check(await waitLog(ta, /\[App\] Turnuva aciliyor: 15 dk, 0 dk sonra/, 5000), 'arena: A 15 dk, hemen baslayan turnuva istedi');
+    check(await waitLog(ta, /\[App\] Turnuva acildi: \d+/, 10000), 'arena: sunucu turnuvayi acti (arena_created)');
+    const created = ta.logs.find(l => /\[App\] Turnuva acildi: \d+/.test(l));
+    const tid = created ? Number(created.match(/acildi: (\d+)/)[1]) : -1;
+    await sleep(1000);
+    await shot(ta, '14m-turnuva-sayfasi-a.png');
+
+    const tb = await openGame('ArenaB');
+    check(await loginAs(tb, userB), `arena: B (${userB.name}) giris yapti`);
+    await click(tb, UI.menuTournaments, 1500);
+    check(await waitLog(tb, /\[Turnuvalar\] Liste: [1-9]\d* turnuva, acma dugmesi var/, 10000), 'arena: B listede turnuvayi goruyor');
+    await shot(tb, '14n-turnuvalar-b.png');
+    await click(tb, UI.tRow0Action, 1000);
+    check(await waitLog(tb, new RegExp(`\\[App\\] Turnuvaya katiliniyor: ${tid}\\b`), 5000), 'arena: B listeden katildi');
+    await click(ta, UI.tPageAction, 1000);
+    check(await waitLog(ta, new RegExp(`\\[App\\] Turnuvaya katiliniyor: ${tid}\\b`), 5000), 'arena: A sayfasindan katildi');
+
+    check(await waitLog(ta, /\[App\] Online oyun basliyor/, 45000), 'arena: A eslesti, oyun basladi');
+    check(await waitLog(tb, /\[App\] Online oyun basliyor/, 15000), 'arena: B eslesti, oyun basladi');
+    check(await waitLog(ta, /\[Game\] Saat gorunuyor: 3:00 \| 3:00/), 'arena: A ekraninda iki saat 3:00');
+    check(await waitLog(tb, /\[Game\] Saat gorunuyor: 3:00 \| 3:00/), 'arena: B ekraninda iki saat 3:00');
+    await shot(ta, '14o-turnuva-oyunu-a.png');
+
+    const ts = await openGame('ArenaSeyirci');
+    check(await guestLogin(ts), 'arena: seyirci misafir girisi');
+    await click(ts, UI.menuTournaments, 1500);
+    check(await waitLog(ts, /\[Turnuvalar\] Liste: [1-9]\d* turnuva, acma dugmesi yok/, 10000), 'arena: seyirci listeyi gordu');
+    await click(ts, UI.tRow0Action, 1500);                 // misafirde satir dugmesi "Izle"
+    check(await waitLog(ts, new RegExp(`\\[Turnuva\\] Siralama: 2 oyuncu \\(turnuva ${tid}\\)`), 15000),
+          'arena: puan durumunda iki oyuncu gorunuyor: ' + ts.logs.filter(l => l.includes('[Turnuva]')).join(' ; '));
+    await shot(ts, '14p-turnuva-siralama.png');
+    const detail = await (await fetch(`${BASE}/tournaments/${tid}`)).json();
+    check(detail.standings && detail.standings.length === 2 && detail.tournament.status === 'running',
+          'arena: sunucuda turnuva suruyor, 2 katilimci: ' + JSON.stringify(detail));
+    await ts.close();
+    await ta.close();
+    await tb.close();
+  }
 
   // ------------------------------------------------- 6. Dik (portrait) ekran
   // 540x960 pencere, deviceScaleFactor 1: canvas 9:16 ve CanvasScaler olcegi tam 1, yani

@@ -102,4 +102,11 @@ mergeInto(LibraryManager.library, {
     stringToUTF8(value, buffer, size);
     return buffer;
   },
+
+  // Tarayicinin UTC farki (dakika, dogu pozitif; Istanbul +180). Unity WebGL'de .NET
+  // saat dilimi bilgisi olmadigi icin turnuva saatleri (UI/Views.cs BrowserClock) buradan
+  // yerel saate cevrilir.
+  CF4_UtcOffsetMinutes: function () {
+    return -new Date().getTimezoneOffset();
+  },
 });

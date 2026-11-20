@@ -145,8 +145,20 @@ jobs:
     if: needs.build.outputs.built == 'true'
     runs-on: ubuntu-24.04   # ubuntu-latest Ubuntu 26ya geciyor; GameCI imajlari icin sabit
     timeout-minutes: 30
+    # Gecici test veritabani (tests.yml ile ayni ayarlar): arena adimi iki kayitli test
+    # kullanicisi kaydeder. Is bitince silinir; canli veritabanina hic baglanilmaz.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: connect4_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgresql://nobody@127.0.0.1:1/none   # veritabani yok: misafir modu yeterli
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/connect4_e2e
+      E2E_REQUIRE_DB: "1"   # arena adimi veritabani olmadan atlanmasin, basarisiz olsun
       CONNECT4_WEB_BUILD: ${{ github.workspace }}/webgl
     steps:
       - uses: actions/checkout@v4

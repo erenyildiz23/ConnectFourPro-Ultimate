@@ -19,6 +19,7 @@
     <Compile Include="../../../unity/Assets/Scripts/Game/ReplayModel.cs" Link="Game/ReplayModel.cs" />
     <Compile Include="../../../unity/Assets/Scripts/Game/QuickChat.cs" Link="Game/QuickChat.cs" />
     <Compile Include="../../../unity/Assets/Scripts/Game/ClockFormat.cs" Link="Game/ClockFormat.cs" />
+    <Compile Include="../../../unity/Assets/Scripts/Game/ArenaModel.cs" Link="Game/ArenaModel.cs" />
     <Compile Include="../../../unity/Assets/Scripts/Net/GameSocket.cs" Link="Net/GameSocket.cs" />
     <Compile Include="../../../unity/Assets/Scripts/Net/ISocketTransport.cs" Link="Net/ISocketTransport.cs" />
     <Compile Include="../../../unity/Assets/Scripts/Net/ServerConfig.cs" Link="Net/ServerConfig.cs" />

@@ -12,10 +12,12 @@ Baglanti havuzu ilk kullanimda `config.DATABASE_URL` ile kurulur. Testler
 
 import hashlib
 import hmac
+import json
 import secrets
 import threading
 import time
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import psycopg2
@@ -190,6 +192,36 @@ def init_db() -> bool:
             c.execute("ALTER TABLE games ADD COLUMN IF NOT EXISTS end_reason TEXT DEFAULT 'normal'")
             c.execute('CREATE INDEX IF NOT EXISTS idx_users_rating ON users (rating DESC)')
             c.execute('CREATE INDEX IF NOT EXISTS idx_games_players ON games (player1_id, player2_id)')
+            # Arena turnuvasi: turnuva ve katilimci tablolari
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS tournaments (
+                    id SERIAL PRIMARY KEY,
+                    creator_id INTEGER REFERENCES users(user_id),
+                    duration_minutes INTEGER NOT NULL,
+                    starts_at TIMESTAMPTZ NOT NULL,
+                    ends_at TIMESTAMPTZ NOT NULL,
+                    started_at TIMESTAMPTZ NULL,
+                    status TEXT NOT NULL DEFAULT 'scheduled',
+                    created_at TIMESTAMPTZ DEFAULT now(),
+                    cheat_checked_at TIMESTAMPTZ NULL
+                )
+            ''')
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS tournament_players (
+                    tournament_id INTEGER REFERENCES tournaments(id),
+                    user_id INTEGER REFERENCES users(user_id),
+                    score INTEGER DEFAULT 0,
+                    games_played INTEGER DEFAULT 0,
+                    streak INTEGER DEFAULT 0,
+                    paused BOOLEAN DEFAULT FALSE,
+                    recent TEXT DEFAULT '',
+                    joined_at TIMESTAMPTZ DEFAULT now(),
+                    PRIMARY KEY (tournament_id, user_id)
+                )
+            ''')
+            c.execute('ALTER TABLE games ADD COLUMN IF NOT EXISTS tournament_id INTEGER NULL')
+            c.execute('CREATE INDEX IF NOT EXISTS idx_tplayers_score '
+                      'ON tournament_players (tournament_id, score DESC)')
             log.info("Schema verified")
             return True
     except Exception as e:
@@ -374,8 +406,9 @@ def update_elo_by_username(winner_username: str, loser_username: str,
 
 
 def record_game(p1_username: str, p2_username: str, winner_username: Optional[str],
-                moves: str, end_reason: str = 'normal') -> bool:
-    """Biten oyunu kaydeder. Iki oyuncu da kayitli degilse False."""
+                moves: str, end_reason: str = 'normal',
+                tournament_id: Optional[int] = None) -> bool:
+    """Biten oyunu kaydeder (istege bagli turnuva ile). Iki oyuncu da kayitli degilse False."""
     try:
         with get_db_cursor() as c:
             if not c:
@@ -386,9 +419,10 @@ def record_game(p1_username: str, p2_username: str, winner_username: Optional[st
             if p1_username not in ids or p2_username not in ids:
                 return False
             winner_id = ids.get(winner_username) if winner_username else None
-            c.execute('INSERT INTO games (player1_id, player2_id, winner_id, moves, end_reason) '
-                      'VALUES (%s, %s, %s, %s, %s)',
-                      (ids[p1_username], ids[p2_username], winner_id, moves, end_reason))
+            c.execute('INSERT INTO games (player1_id, player2_id, winner_id, moves, end_reason, '
+                      'tournament_id) VALUES (%s, %s, %s, %s, %s, %s)',
+                      (ids[p1_username], ids[p2_username], winner_id, moves, end_reason,
+                       tournament_id))
             return True
     except Exception as e:
         log.error("record_game hatasi: %s", e)
@@ -425,6 +459,245 @@ def get_user_games(username: str, limit: int = 20) -> List[Dict[str, Any]]:
         return []
 
 
+# =============================================================================
+# ARENA TURNUVASI
+# =============================================================================
+
+_TOURNAMENT_COLS = ('t.id, u.username AS creator, t.duration_minutes, t.starts_at, t.ends_at, '
+                    't.started_at, t.status, t.created_at, t.cheat_checked_at')
+_TOURNAMENT_FROM = 'FROM tournaments t JOIN users u ON u.user_id = t.creator_id'
+
+
+def create_tournament(creator_username: str, duration_minutes: int,
+                      starts_at: datetime) -> Optional[int]:
+    """Turnuva olusturur (bitis = baslangic + sure). Yaratici kayitli degilse None."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return None
+            c.execute('SELECT user_id FROM users WHERE username = %s', (creator_username,))
+            user = c.fetchone()
+            if not user:
+                return None
+            ends_at = starts_at + timedelta(minutes=duration_minutes)
+            c.execute('INSERT INTO tournaments (creator_id, duration_minutes, starts_at, ends_at, status) '
+                      "VALUES (%s, %s, %s, %s, 'scheduled') RETURNING id",
+                      (user['user_id'], duration_minutes, starts_at, ends_at))
+            return c.fetchone()['id']
+    except Exception as e:
+        log.error("create_tournament hatasi: %s", e)
+        return None
+
+
+def get_tournament(tid: int) -> Optional[Dict[str, Any]]:
+    """Tek turnuvayi dondurur; yoksa None."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return None
+            c.execute(f'SELECT {_TOURNAMENT_COLS} {_TOURNAMENT_FROM} WHERE t.id = %s', (tid,))
+            row = c.fetchone()
+            return dict(row) if row else None
+    except Exception as e:
+        log.error("get_tournament hatasi: %s", e)
+        return None
+
+
+def list_tournaments(now: datetime) -> List[Dict[str, Any]]:
+    """Planli/suren turnuvalar ve son 7 gundeki bitenler (iptaller yok)."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return []
+            c.execute(f"SELECT {_TOURNAMENT_COLS} {_TOURNAMENT_FROM} "
+                      "WHERE t.status IN ('scheduled', 'running') "
+                      "OR (t.status = 'finished' AND t.ends_at >= %s) "
+                      'ORDER BY t.starts_at, t.id', (now - timedelta(days=7),))
+            return [dict(row) for row in c.fetchall()]
+    except Exception as e:
+        log.error("list_tournaments hatasi: %s", e)
+        return []
+
+
+def active_tournament_of_creator(username: str) -> Optional[int]:
+    """Kullanicinin planli/suren turnuvasinin id'si; yoksa None."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return None
+            c.execute(f"SELECT t.id {_TOURNAMENT_FROM} "
+                      "WHERE u.username = %s AND t.status IN ('scheduled', 'running') "
+                      'ORDER BY t.id LIMIT 1', (username,))
+            row = c.fetchone()
+            return row['id'] if row else None
+    except Exception as e:
+        log.error("active_tournament_of_creator hatasi: %s", e)
+        return None
+
+
+def set_tournament_status(tid: int, status: str, started_at: Optional[datetime] = None,
+                          ends_at: Optional[datetime] = None) -> bool:
+    """Durumu gunceller; verilirse started_at / ends_at de yazilir."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return False
+            c.execute('UPDATE tournaments SET status = %s, '
+                      'started_at = COALESCE(%s, started_at), ends_at = COALESCE(%s, ends_at) '
+                      'WHERE id = %s', (status, started_at, ends_at, tid))
+            return c.rowcount > 0
+    except Exception as e:
+        log.error("set_tournament_status hatasi: %s", e)
+        return False
+
+
+def join_tournament(tid: int, username: str) -> bool:
+    """Oyuncuyu turnuvaya ekler; zaten uyeyse duraklatmayi kaldirir. Basariliysa True."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return False
+            c.execute('SELECT user_id FROM users WHERE username = %s', (username,))
+            user = c.fetchone()
+            if not user:
+                return False
+            c.execute('SELECT 1 FROM tournaments WHERE id = %s', (tid,))
+            if not c.fetchone():
+                return False
+            c.execute('INSERT INTO tournament_players (tournament_id, user_id) VALUES (%s, %s) '
+                      'ON CONFLICT (tournament_id, user_id) DO UPDATE SET paused = FALSE',
+                      (tid, user['user_id']))
+            return True
+    except Exception as e:
+        log.error("join_tournament hatasi: %s", e)
+        return False
+
+
+def set_player_paused(tid: int, username: str, paused: bool) -> bool:
+    """Oyuncunun duraklatma bayragini ayarlar. Uye degilse False."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return False
+            c.execute('UPDATE tournament_players SET paused = %s WHERE tournament_id = %s '
+                      'AND user_id = (SELECT user_id FROM users WHERE username = %s)',
+                      (paused, tid, username))
+            return c.rowcount > 0
+    except Exception as e:
+        log.error("set_player_paused hatasi: %s", e)
+        return False
+
+
+def count_tournament_players(tid: int) -> Optional[int]:
+    """Turnuva uye sayisi; DB yoksa ya da hata olursa None (0 ile karistirilmaz)."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return None
+            c.execute('SELECT COUNT(*) AS n FROM tournament_players WHERE tournament_id = %s', (tid,))
+            row = c.fetchone()
+            return int(row['n']) if row else None
+    except Exception as e:
+        log.error("count_tournament_players hatasi: %s", e)
+        return None
+
+
+def get_standings_rows(tid: int) -> List[Dict[str, Any]]:
+    """Turnuva katilimcilari: puana gore azalan, esitlikte katilma sirasi."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return []
+            c.execute('SELECT u.username, u.rating, p.score, p.games_played, p.streak, p.paused, p.recent '
+                      'FROM tournament_players p JOIN users u ON u.user_id = p.user_id '
+                      'WHERE p.tournament_id = %s '
+                      'ORDER BY p.score DESC, p.joined_at, u.username', (tid,))
+            rows = []
+            for row in c.fetchall():
+                item = dict(row)
+                item['recent'] = item['recent'] or ''
+                rows.append(item)
+            return rows
+    except Exception as e:
+        log.error("get_standings_rows hatasi: %s", e)
+        return []
+
+
+def apply_tournament_result(tid: int, username: str, points: int, new_streak: int,
+                            outcome: str) -> bool:
+    """Oyuncunun puanini/serisini isler; son 5 sonuc dizesine outcome ('W','D','L') eklenir."""
+    if outcome not in ('W', 'D', 'L'):
+        return False
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return False
+            c.execute('UPDATE tournament_players SET score = score + %s, '
+                      'games_played = games_played + 1, streak = %s, '
+                      "recent = RIGHT(COALESCE(recent, '') || %s, 5) "
+                      'WHERE tournament_id = %s '
+                      'AND user_id = (SELECT user_id FROM users WHERE username = %s)',
+                      (points, new_streak, outcome, tid, username))
+            return c.rowcount > 0
+    except Exception as e:
+        log.error("apply_tournament_result hatasi: %s", e)
+        return False
+
+
+def tournament_games(tid: int) -> List[Dict[str, Any]]:
+    """Turnuvada oynanan oyunlar; moves bir tamsayi listesi olarak doner."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return []
+            c.execute('SELECT g.game_id, g.moves, g.end_reason, '
+                      'p1.username AS player1, p2.username AS player2, w.username AS winner '
+                      'FROM games g '
+                      'JOIN users p1 ON p1.user_id = g.player1_id '
+                      'JOIN users p2 ON p2.user_id = g.player2_id '
+                      'LEFT JOIN users w ON w.user_id = g.winner_id '
+                      'WHERE g.tournament_id = %s ORDER BY g.game_id', (tid,))
+            games = []
+            for row in c.fetchall():
+                game = dict(row)
+                try:
+                    game['moves'] = [int(m) for m in json.loads(row['moves'] or '[]')]
+                except (ValueError, TypeError):
+                    game['moves'] = []
+                games.append(game)
+            return games
+    except Exception as e:
+        log.error("tournament_games hatasi: %s", e)
+        return []
+
+
+def finished_unchecked_tournaments() -> List[int]:
+    """Bitmis ama hile taramasi yapilmamis turnuvalarin id'leri."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return []
+            c.execute("SELECT id FROM tournaments WHERE status = 'finished' "
+                      'AND cheat_checked_at IS NULL ORDER BY id')
+            return [row['id'] for row in c.fetchall()]
+    except Exception as e:
+        log.error("finished_unchecked_tournaments hatasi: %s", e)
+        return []
+
+
+def mark_cheat_checked(tid: int) -> bool:
+    """Turnuvayi hile taramasi yapildi diye isaretler."""
+    try:
+        with get_db_cursor() as c:
+            if not c:
+                return False
+            c.execute('UPDATE tournaments SET cheat_checked_at = now() WHERE id = %s', (tid,))
+            return c.rowcount > 0
+    except Exception as e:
+        log.error("mark_cheat_checked hatasi: %s", e)
+        return False
+
+
 def delete_test_users() -> int:
     """Yuk testlerinde olusturulan hesaplari ve oyunlarini siler."""
     patterns = [p.replace('_', r'\_') + '%' for p in TEST_USER_PREFIXES]
@@ -436,6 +709,13 @@ def delete_test_users() -> int:
             ids = [row['user_id'] for row in c.fetchall()]
             if not ids:
                 return 0
+            # Turnuva satirlari once (FK sirasi): oyuncu kayitlari, sonra yaratici olduklari turnuvalar
+            c.execute('SELECT id FROM tournaments WHERE creator_id = ANY(%s)', (ids,))
+            tids = [row['id'] for row in c.fetchall()]
+            c.execute('DELETE FROM tournament_players WHERE user_id = ANY(%s) OR tournament_id = ANY(%s)',
+                      (ids, tids))
+            c.execute('UPDATE games SET tournament_id = NULL WHERE tournament_id = ANY(%s)', (tids,))
+            c.execute('DELETE FROM tournaments WHERE id = ANY(%s)', (tids,))
             c.execute('DELETE FROM games WHERE player1_id = ANY(%s) OR player2_id = ANY(%s)', (ids, ids))
             c.execute('DELETE FROM users WHERE user_id = ANY(%s)', (ids,))
             log.info("%d test kullanicisi silindi", len(ids))

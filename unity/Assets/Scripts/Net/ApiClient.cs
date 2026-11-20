@@ -36,6 +36,10 @@ namespace ConnectFourPro.Net
         public void User(string username, Action<ApiResponse> done) => Get("/user/" + Escape(username), done);
         public void History(string username, Action<ApiResponse> done) => Get("/user/" + Escape(username) + "/games", done);
         public void Health(Action<ApiResponse> done) => Get("/health", done);
+        /// <summary>Arena turnuvalari {tournaments: [...]}; eski sunucuda 404.</summary>
+        public void Tournaments(Action<ApiResponse> done) => Get("/tournaments", done);
+        /// <summary>Turnuva ve puan durumu {tournament, standings}; bilinmeyen id 404.</summary>
+        public void Tournament(int id, Action<ApiResponse> done) => Get("/tournaments/" + id, done);
 
         private static string Escape(string s) => UnityWebRequest.EscapeURL(s ?? "").Replace("+", "%20");
 

@@ -131,6 +131,12 @@ namespace ConnectFourPro.Game
             ["rematch_players_only"] = "Sadece oyuncular rovans isteyebilir",
             ["game_in_progress"] = "Oyun devam ediyor",
             ["already_in_game"] = "Zaten bir oyundasiniz",
+            ["not_registered"] = "Turnuva icin kayitli olmalisiniz",
+            ["bad_duration"] = "Gecersiz turnuva suresi",
+            ["bad_start"] = "Gecersiz baslangic zamani",
+            ["arena_limit"] = "Zaten acik bir turnuvaniz var",
+            ["arena_not_found"] = "Turnuva bulunamadi",
+            ["arena_over"] = "Turnuva bitti",
         };
 
         /// <summary>Turkce -> Ingilizce. {n} iceren anahtarlar sablondur.</summary>
@@ -230,6 +236,7 @@ namespace ConnectFourPro.Game
             ["Rövanşı Kabul Et"] = "Accept Rematch",
             ["Menü"] = "Menu",
             ["Lobiye Dön"] = "Back to Lobby",
+            ["Turnuvaya Dön"] = "Back to Tournament",
             ["Çıkışı Onayla"] = "Confirm Leave",
             ["< SIRA"] = "< TURN",
             ["CANLI YAYIN"] = "LIVE",
@@ -357,6 +364,35 @@ namespace ConnectFourPro.Game
             ["Rövanş?"] = "Rematch?",
             ["Selam!"] = "Hi!",
 
+            // --- Arena turnuvalari (Views.cs TournamentsView / TournamentView, GameView)
+            ["Turnuvalar"] = "Tournaments",
+            ["TURNUVALAR"] = "TOURNAMENTS",
+            ["+ Turnuva Aç"] = "+ Create Tournament",
+            ["Turnuva Aç"] = "Create Tournament",
+            ["Duraklat"] = "Pause",
+            ["Devam"] = "Resume",
+            ["Duraklatıldı"] = "Paused",
+            ["Süre"] = "Duration",
+            ["Başlangıç"] = "Start",
+            ["Hemen"] = "Now",
+            ["Başlıyor"] = "Starts",
+            ["Başlıyor {0}"] = "Starts {0}",
+            ["kaldı"] = "left",
+            ["{0} kaldı"] = "{0} left",
+            ["oyuncu"] = "players",
+            ["{0} oyuncu"] = "{0} players",
+            ["1 oyuncu"] = "1 player",
+            ["{0} dk"] = "{0} min",
+            ["Sıradaki oyun"] = "Next game",
+            ["İptal edildi"] = "Cancelled",
+            ["Seri"] = "Streak",
+            ["Oyuncu"] = "Player",
+            ["Puan"] = "Score",
+            ["Son 5"] = "Last 5",
+            ["Henüz turnuva yok"] = "No tournaments yet",
+            ["Henüz katılan yok"] = "No players yet",
+            ["Turnuva yüklenemedi"] = "Could not load the tournament",
+
             // --- Sunucu hata mesajlari (src/server.py; ASCII Turkce)
             ["Oturum gecersiz, tekrar giris yapin"] = "Session expired, please log in again",
             ["Gecersiz kullanici"] = "Invalid user",
@@ -376,6 +412,12 @@ namespace ConnectFourPro.Game
             ["Sadece oyuncular rovans isteyebilir"] = "Only players can request a rematch",
             ["Oyun devam ediyor"] = "Game in progress",
             ["Zaten bir oyundasiniz"] = "You are already in a game",
+            ["Turnuva icin kayitli olmalisiniz"] = "You must be registered to join a tournament",
+            ["Gecersiz turnuva suresi"] = "Invalid tournament duration",
+            ["Gecersiz baslangic zamani"] = "Invalid start time",
+            ["Zaten acik bir turnuvaniz var"] = "You already have an open tournament",
+            ["Turnuva bulunamadi"] = "Tournament not found",
+            ["Turnuva bitti"] = "Tournament over",   // sunucu mesaji ve turnuva durumu
         };
 
         private static readonly Dictionary<string, string> En = new Dictionary<string, string>();
