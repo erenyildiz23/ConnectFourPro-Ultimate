@@ -14,6 +14,13 @@ permissions:
   issues: write
   contents: read
 
+# Ucuncu taraf kod sabit commit'ten derlenir, acilis kitabi sha256 ile dogrulanir.
+# Guncellemek icin: yukari akisin yeni HEAD commit'ini ve yeni kitabin sha256 ozetini
+# elle dogrulayip buraya yazin (onbellek anahtari commit'e bagli oldugundan yenilenir).
+env:
+  PONS_SHA: d6ba50d8aaf2308c769d9bf2abd42d90f34baf41
+  BOOK_SHA256: f346cd449626fb81da93be0958e017ee854e5f74d85b6d38062357f5403aec53
+
 jobs:
   cheat-check:
     runs-on: ubuntu-latest
@@ -34,19 +41,13 @@ jobs:
 
       - uses: actions/checkout@v4
         if: steps.cfg.outputs.enabled == 'true'
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@v5
         if: steps.cfg.outputs.enabled == 'true'
         with:
           python-version: '3.12'
-
-      - name: Pons commit SHA
-        id: pons
-        if: steps.cfg.outputs.enabled == 'true'
-        run: |
-          sha=$(git ls-remote https://github.com/PascalPons/connect4 HEAD | cut -f1)
-          [ -n "$sha" ] || { echo "Pons SHA alinamadi"; exit 1; }
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Cozucu onbellegi (geri yukle)
         id: solver-cache
@@ -54,25 +55,27 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: solver
-          key: c4solver-${{ steps.pons.outputs.sha }}
+          key: c4solver-${{ env.PONS_SHA }}
 
       - name: Cozucuyu derle ve acilis kitabini indir
         id: build
         if: steps.cfg.outputs.enabled == 'true' && steps.solver-cache.outputs.cache-hit != 'true'
         run: |
           git clone https://github.com/PascalPons/connect4 pons-src
-          git -C pons-src checkout "${{ steps.pons.outputs.sha }}"
+          git -C pons-src checkout --detach "$PONS_SHA"
+          [ "$(git -C pons-src rev-parse HEAD)" = "$PONS_SHA" ] || { echo "Pons commit uyusmuyor"; exit 1; }
           make -C pons-src
           mkdir -p solver
           cp pons-src/c4solver solver/c4solver
           curl -fsSL -o solver/7x6.book https://github.com/PascalPons/connect4/releases/download/book/7x6.book
+          echo "$BOOK_SHA256  solver/7x6.book" | sha256sum -c -
 
       - name: Cozucu onbellegi (kaydet)
         if: always() && steps.build.outcome == 'success' && steps.solver-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: solver
-          key: c4solver-${{ steps.pons.outputs.sha }}
+          key: c4solver-${{ env.PONS_SHA }}
 
       - name: Hile kontrolu
         if: steps.cfg.outputs.enabled == 'true'
@@ -82,6 +85,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
+          echo "$BOOK_SHA256  solver/7x6.book" | sha256sum -c -   # onbellekten gelen kitap da dogrulanir
           chmod +x solver/c4solver
           args=(--server "$SERVER_URL" --solver-dir solver)
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
