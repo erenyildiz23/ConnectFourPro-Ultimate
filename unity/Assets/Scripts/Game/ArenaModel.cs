@@ -6,7 +6,7 @@
 // Sunucu (src/server.py) turnuvayi {id, creator, duration_minutes, starts_at, ends_at,
 // status, players} ve puan durumunu {rank, username, score, games_played, streak,
 // on_fire, paused, recent} olarak gonderir. Turnuva adi sunucudan gelmez; istemci
-// creator'dan sabit kalipla kurar (DisplayName). UnityEngine kullanmaz, testlenebilir.
+// creator'dan kurar (DisplayName; Turkcede ilgi eki unlu uyumuyla). UnityEngine kullanmaz, testlenebilir.
 
 using System;
 using System.Collections.Generic;
@@ -94,9 +94,66 @@ namespace ConnectFourPro.Game
         public static bool IsValidDuration(int minutes) => Array.IndexOf(Durations, minutes) >= 0;
         public static bool IsValidStartIn(int minutes) => minutes >= 0 && minutes <= MaxStartInMinutes;
 
-        /// <summary>Turnuva adi: sabit kalip (Turkce ek unlu uyumu yapilmaz).</summary>
-        public static string DisplayName(string creator, Lang lang) =>
-            lang == Lang.En ? creator + "'s Arena" : creator + "'nın Arenası";
+        /// <summary>Turnuva adi: Ingilizce "&lt;ad&gt;'s Arena", Turkce "&lt;ad&gt;'&lt;ilgi eki&gt; Arenası".</summary>
+        public static string DisplayName(string creator, Lang lang)
+        {
+            creator = creator ?? "";
+            return lang == Lang.En ? creator + "'s Arena" : creator + "'" + TurkishGenitive(creator) + " Arenası";
+        }
+
+        // Kalin/ince ve duz/yuvarlak unlu -> ilgi eki unlusu (a,ı->ı; e,i->i; o,u->u; ö,ü->ü)
+        private const string GenitiveFallback = "nın";
+
+        /// <summary>
+        /// Turkce ilgi eki (apostrofsuz): son unluye gore ın/in/un/ün; ad unluyle bitiyorsa
+        /// kaynastirma "n" eklenir (nın/nin/nun/nün). Buyuk/kucuk harf ve Turkce harfler
+        /// (I->ı, İ->i) desteklenir. 1-9 ile biten adda son rakamin okunusu kullanilir
+        /// (42 -> "kırk iki" -> nin). 0, sembol ya da unlusuz ad icin notr yedek "nın" doner.
+        /// </summary>
+        public static string TurkishGenitive(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return GenitiveFallback;
+            char last = name[name.Length - 1];
+            if (last >= '1' && last <= '9')
+                return DigitGenitive[last - '1'];
+            if (!char.IsLetter(last))
+                return GenitiveFallback;
+            for (int i = name.Length - 1; i >= 0; i--)
+            {
+                char harmony = HarmonyVowel(name[i]);
+                if (harmony == '\0')
+                    continue;
+                string suffix = harmony + "n";
+                return i == name.Length - 1 ? "n" + suffix : suffix;
+            }
+            return GenitiveFallback;
+        }
+
+        // bir, iki, üç, dört, beş, altı, yedi, sekiz, dokuz
+        private static readonly string[] DigitGenitive = { "in", "nin", "ün", "ün", "in", "nın", "nin", "in", "un" };
+
+        /// <summary>Harf unluyse ilgi ekindeki unluyu, degilse '\0' dondurur.</summary>
+        private static char HarmonyVowel(char c)
+        {
+            switch (c)
+            {
+                case 'a': case 'A': case 'â': case 'Â':
+                case 'ı': case 'I':
+                    return 'ı';
+                case 'e': case 'E':
+                case 'i': case 'İ': case 'î': case 'Î':
+                    return 'i';
+                case 'o': case 'O':
+                case 'u': case 'U': case 'û': case 'Û':
+                    return 'u';
+                case 'ö': case 'Ö':
+                case 'ü': case 'Ü':
+                    return 'ü';
+                default:
+                    return '\0';
+            }
+        }
 
         /// <summary>{standings: [...]} (arena_standings ve GET /tournaments/&lt;id&gt;) satirlari.</summary>
         public static List<StandingRow> ParseStandings(JsonObject data)

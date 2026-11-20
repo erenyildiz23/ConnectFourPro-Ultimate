@@ -640,7 +640,7 @@ namespace ConnectFourPro.UI
         public GameView(AppController app, Transform parent) : base(app, parent, "Game")
         {
             _title = UIKit.Label(Root, "", 38, Theme.Red, 0, 42, 1000, 56, TextAnchor.MiddleCenter, FontStyle.Bold);
-            // Dikey: baslik 510'a sigar (uzun sonuc basliklari ve "<ad>'nın Arenası · 12:34" kuculur),
+            // Dikey: baslik 510'a sigar (uzun sonuc basliklari ve "<ad>'in Arenası · 12:34" kuculur),
             // "Sunucu" etiketinin altinda
             P(_title, 0, 38, 510, 44);
             FitInPortrait(_title, 22, 38);

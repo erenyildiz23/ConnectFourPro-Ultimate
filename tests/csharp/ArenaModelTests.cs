@@ -50,11 +50,45 @@ namespace ConnectFourPro.Tests
         }
 
         [Test]
-        public void DisplayNameUsesFixedPatternPerLanguage()
+        public void DisplayNameEnglishIsPossessive()
         {
-            Assert.That(ArenaModel.DisplayName("Ali", Lang.Tr), Is.EqualTo("Ali'nın Arenası"));
             Assert.That(ArenaModel.DisplayName("Ali", Lang.En), Is.EqualTo("Ali's Arena"));
-            Assert.That(ArenaModel.DisplayName("veli", Lang.Tr), Is.EqualTo("veli'nın Arenası"), "ek unlu uyumu yapilmaz");
+            Assert.That(ArenaModel.DisplayName("player42", Lang.En), Is.EqualTo("player42's Arena"));
+        }
+
+        // Turkce: ilgi eki son unluye gore (unlu uyumu), unluyle biten ada kaynastirma "n"
+        [TestCase("Eren", "Eren'in Arenası")]
+        [TestCase("Ali", "Ali'nin Arenası")]
+        [TestCase("Ayşe", "Ayşe'nin Arenası")]
+        [TestCase("Murat", "Murat'ın Arenası")]
+        [TestCase("Oğuz", "Oğuz'un Arenası")]
+        [TestCase("Türkü", "Türkü'nün Arenası")]
+        [TestCase("Öykü", "Öykü'nün Arenası")]
+        [TestCase("Umut", "Umut'un Arenası")]
+        [TestCase("Kaan", "Kaan'ın Arenası")]
+        [TestCase("veli", "veli'nin Arenası")]
+        [TestCase("ALİ", "ALİ'nin Arenası")]
+        [TestCase("IŞIK", "IŞIK'ın Arenası")]
+        [TestCase("BURAK", "BURAK'ın Arenası")]
+        [TestCase("Gül", "Gül'ün Arenası")]
+        public void DisplayNameTurkishGenitiveFollowsVowelHarmony(string creator, string expected)
+        {
+            Assert.That(ArenaModel.DisplayName(creator, Lang.Tr), Is.EqualTo(expected));
+        }
+
+        // Rakamla biten ad: son rakamin okunusu (42 -> "kirk iki" -> 'nin); 0, sembol ya da
+        // unlusuz ad icin notr yedek "'nın" kalir.
+        [TestCase("player42", "player42'nin Arenası")]
+        [TestCase("ece9", "ece9'un Arenası")]
+        [TestCase("can3", "can3'ün Arenası")]
+        [TestCase("player10", "player10'nın Arenası")]
+        [TestCase("ali_", "ali_'nın Arenası")]
+        [TestCase("Abdurrahm...", "Abdurrahm...'nın Arenası")]
+        [TestCase("xyz", "xyz'nın Arenası")]
+        [TestCase("", "'nın Arenası")]
+        public void DisplayNameTurkishFallbacks(string creator, string expected)
+        {
+            Assert.That(ArenaModel.DisplayName(creator, Lang.Tr), Is.EqualTo(expected));
         }
 
         [Test]
