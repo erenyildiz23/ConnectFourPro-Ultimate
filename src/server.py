@@ -1715,6 +1715,16 @@ def _arena_pair_locked(tid: int) -> List[Tuple[str, List[int]]]:
         queue.remove(second)
         a['last_opponent'][first['username']] = second['username']
         a['last_opponent'][second['username']] = first['username']
+        # Ilk hamle sirayla: art arda ayni oyuncu baslamasin (dortlude ilk hamle avantajli)
+        balance = a.setdefault('color_balance', {})
+        last_p1 = a.setdefault('last_was_p1', {})
+        p1_name, _ = arena.order_colors(first['username'], second['username'], balance, last_p1)
+        if p1_name != first['username']:
+            first, second = second, first
+        balance[first['username']] = balance.get(first['username'], 0) + 1
+        balance[second['username']] = balance.get(second['username'], 0) - 1
+        last_p1[first['username']] = True
+        last_p1[second['username']] = False
         _arena_start_game(tid, first, second)
         for e in (first, second):
             others = _arena_leave_others(tid, e['username'])

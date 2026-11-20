@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from conftest import (DRAW_SEQUENCE, P1_VERTICAL_WIN, identity, login_token, play, start_match,
+from conftest import (DRAW_SEQUENCE, P1_VERTICAL_WIN, P2_VERTICAL_WIN, identity, login_token, play, start_match,
                       wait_until)
 
 T0 = datetime(2026, 11, 19, 12, 0, tzinfo=timezone.utc)
@@ -334,6 +334,19 @@ class TestArenaNoDb:
         # Iki oyuncu kuyruga doner ve (baska aday yok) yeniden eslesir
         assert wait_until(lambda: len(a.events('game_joined')) == 2)
         assert a.events('game_joined')[1]['room_id'] != room_id
+
+    def test_colors_alternate_between_games(self, server, sio, arena_env, fake_db):
+        # Ayni iki oyuncu art arda eslesince ilk hamle (P1) sirayla degisir
+        (a, b), _ = hand_pair(server, sio, fake_db)
+        pieces = []
+        for n in range(1, 4):
+            assert wait_until(lambda n=n: len(a.events('game_joined')) >= n and len(b.events('game_joined')) >= n)
+            ja = a.events('game_joined')[n - 1]
+            pieces.append(ja['player_piece'])
+            p1, p2 = (a, b) if ja['player_piece'] == 1 else (b, a)
+            play(ja['room_id'], p1, p2, P1_VERTICAL_WIN)
+            assert wait_until(lambda n=n: len(a.events('game_over')) >= n)
+        assert pieces[0] != pieces[1] and pieces[1] != pieces[2]
 
     def test_rematch_ignored_in_tournament_room(self, server, sio, no_database):
         room_id, a, b = start_match(sio)
@@ -665,12 +678,11 @@ class TestArenaGames:
         got = []
         for n in (1, 2, 3):
             room_id, p1, p2 = next_game([a, b], n)
-            # Once kuyruga donen onceki P1 yine P1 olur: her oyunu ayni oyuncu kazanir
+            # Renkler sirayla degisir; ayni oyuncu her oyunu (P1 ya da P2 olarak) kazanir
             winner = winner or p1
-            assert p1 is winner
-            play(room_id, p1.c, p2.c, P1_VERTICAL_WIN)
-            assert wait_until(lambda n=n, p1=p1: len(p1.c.events('game_over')) >= n)
-            got.append(p1.c.events('game_over')[n - 1]['arena']['points'][p1.name])
+            play(room_id, p1.c, p2.c, P1_VERTICAL_WIN if p1 is winner else P2_VERTICAL_WIN)
+            assert wait_until(lambda n=n, w=winner: len(w.c.events('game_over')) >= n)
+            got.append(winner.c.events('game_over')[n - 1]['arena']['points'][winner.name])
         assert got == [2, 2, 4]
         assert standings(database, tid)[winner.name]['streak'] == 3
 

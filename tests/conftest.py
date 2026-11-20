@@ -223,6 +223,8 @@ def play(room_id, a, b, cols):
 
 # P1'in dikey dortluyle kazandigi hamle dizisi
 P1_VERTICAL_WIN = [0, 1, 0, 1, 0, 1, 0]
+# P2'nin dikey dortluyle kazandigi hamle dizisi
+P2_VERTICAL_WIN = [0, 1, 0, 1, 0, 1, 6, 1]
 # Tahtanin dolup kimsenin kazanmadigi dogrulanmis dizi
 DRAW_SEQUENCE = [3, 4, 4, 6, 0, 3, 5, 2, 6, 5, 0, 6, 5, 0, 3, 6, 5, 6, 1, 3, 1, 3, 6, 5, 2, 0,
                  5, 3, 4, 4, 0, 1, 1, 1, 0, 1, 4, 2, 4, 2, 2, 2]

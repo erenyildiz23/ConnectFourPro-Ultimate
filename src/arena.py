@@ -48,6 +48,18 @@ def pick_pair(queue: List[str], last_opponent: Dict[str, str]) -> Optional[Tuple
     return a, queue[1]
 
 
+def order_colors(a: str, b: str, balance: Dict[str, int],
+                 last_was_p1: Dict[str, bool]) -> Tuple[str, str]:
+    """Eslesen ikiliden (P1, P2) sirasi: ilk hamle dengesi (P1 - P2 sayisi) dusuk olan
+    baslar; esitlikte son oyununda ikinci olan baslar; yine esitse sira korunur."""
+    ba, bb = balance.get(a, 0), balance.get(b, 0)
+    if ba != bb:
+        return (a, b) if ba < bb else (b, a)
+    if last_was_p1.get(a) and not last_was_p1.get(b):
+        return b, a
+    return a, b
+
+
 def lifecycle_action(status: str, now: datetime, starts_at: datetime, ends_at: datetime,
                      started_at: Optional[datetime], players: int, live_games: int) -> Optional[str]:
     """Turnuva icin yapilacak adim: 'start', 'cancel', 'stop_pairing', 'finish' ya da None."""

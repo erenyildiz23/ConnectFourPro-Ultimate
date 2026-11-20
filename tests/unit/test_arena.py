@@ -2,8 +2,8 @@
 
 from datetime import datetime, timedelta
 
-from arena import (DURATIONS, FINISH_GRACE, START_WAIT, lifecycle_action, pick_pair, score_result, sort_standings,
-                   validate_create)
+from arena import (DURATIONS, FINISH_GRACE, START_WAIT, lifecycle_action, order_colors, pick_pair, score_result,
+                   sort_standings, validate_create)
 
 T0 = datetime(2026, 1, 1, 12, 0, 0)
 
@@ -90,3 +90,16 @@ def test_validate_create():
     assert validate_create(15, -5, T0) == (None, 'bad_start')
     assert validate_create(15, True, T0) == (None, 'bad_start')
     assert validate_create(15, '5', T0) == (None, 'bad_start')
+
+
+def test_order_colors_gives_first_move_to_lower_balance():
+    # Denge = ilk hamle (P1) sayisi - ikinci (P2) sayisi
+    assert order_colors('a', 'b', {'a': 1, 'b': -1}, {}) == ('b', 'a')
+    assert order_colors('a', 'b', {'a': -1, 'b': 1}, {}) == ('a', 'b')
+    assert order_colors('a', 'b', {'a': 2, 'b': 0}, {}) == ('b', 'a')
+
+
+def test_order_colors_tie_prefers_who_was_second_last_time():
+    assert order_colors('a', 'b', {}, {}) == ('a', 'b')
+    assert order_colors('a', 'b', {'a': 0, 'b': 0}, {'a': True, 'b': False}) == ('b', 'a')
+    assert order_colors('a', 'b', {'a': 0, 'b': 0}, {'a': False, 'b': True}) == ('a', 'b')
