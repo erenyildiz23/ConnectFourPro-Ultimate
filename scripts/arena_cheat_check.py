@@ -12,8 +12,10 @@ Yalnizca standart kutuphane kullanir.
 Adil rapor kurali: yalnizca "kritik" pozisyonlardaki hamleler sayilir (skor isaretleri birden
 fazla olan, ilk BOOK_PLIES yarim hamleden sonraki pozisyonlar). Tek hamlelik taktikler kritik
 sayilmaz: sirasi gelenin aninda kazanan hamlesi varsa ya da rakibin aninda kazanma tehdidi
-(engellemek zorunlu) varsa o pozisyon disarida birakilir. Cunku bu hamleleri bulmak her insan
-oyuncu icin kolaydir ve haksiz rapor uretir.
+(engellemek zorunlu) varsa o pozisyon disarida birakilir. Sonucu bozan (skor isaretini
+dusuren) hamlelerin hepsi yalnizca rakibe aninda galibiyet verdigi icin kaybettiriyorsa
+("tehdidin altina oynama") o pozisyon da disarida birakilir. Cunku bu hamleleri bulmak her
+insan oyuncu icin kolaydir ve haksiz rapor uretir.
 """
 
 import argparse
@@ -131,6 +133,12 @@ def is_tactical_position(moves: List[int], mover: int) -> bool:
     return has_immediate_win(cols, mover) or has_immediate_win(cols, 1 - mover)
 
 
+def hands_immediate_win(moves: List[int], col: int) -> bool:
+    """Sirasi gelen 'col' sutununa oynarsa rakibin aninda kazanan hamlesi olur mu?"""
+    mover = len(moves) % 2
+    return has_immediate_win(_grid(list(moves) + [col]), 1 - mover)
+
+
 def critical_moves(oracle, moves: List[int]) -> List[Tuple[int, bool]]:
     """(ply_index, dogru_mu) listesi; yalnizca ply >= BOOK_PLIES ve kritik pozisyonlar."""
     out = []
@@ -141,8 +149,12 @@ def critical_moves(oracle, moves: List[int]) -> List[Tuple[int, bool]]:
         signs = {_sign(s) for s in scores if s is not None}
         if len(signs) <= 1:
             continue    # zorunlu pozisyon
+        best = max(signs)
+        losing = [c for c, s in enumerate(scores) if s is not None and _sign(s) < best]
+        if all(hands_immediate_win(moves[:i], c) for c in losing):
+            continue    # yalnizca "tehdidin altina oynama" hatasi: insan icin kolay karar
         chosen = scores[moves[i]]
-        out.append((i, chosen is not None and _sign(chosen) == max(signs)))
+        out.append((i, chosen is not None and _sign(chosen) == best))
     return out
 
 

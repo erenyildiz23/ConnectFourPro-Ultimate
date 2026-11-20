@@ -138,6 +138,72 @@ def test_normal_critical_position_still_counted():
     assert cc.critical_moves(FakeOracle(default=Q), moves) == [(4, True)]
 
 
+# ---- Adil rapor: "tehdidin altina oynama" kararlari kritik sayilmaz ----
+
+def _hands_win(prefix, col):
+    """prefix'te sirasi gelen 'col'a oynarsa rakibin aninda galibiyeti olur mu?"""
+    return cc.has_immediate_win(cc._grid(prefix + [col]), 1 - len(prefix) % 2)
+
+
+def _under_threat_position():
+    """Sessiz (taktik olmayan) bir pozisyon: en az bir sutun rakibe aninda galibiyet verir,
+    en az iki yasal sutun vermez. (hamleler, veren sutunlar, vermeyen sutunlar)."""
+    heights = [0] * 7
+    seq = []
+    found = []
+
+    def dfs(depth):
+        if len(seq) >= cc.BOOK_PLIES + 1 and not cc.is_tactical_position(seq, len(seq) % 2):
+            legal = [c for c in range(7) if heights[c] < 6]
+            hand = [c for c in legal if _hands_win(seq, c)]
+            safe = [c for c in legal if c not in hand]
+            if hand and len(safe) >= 2:
+                found.append((list(seq), hand, safe))
+                return True
+        if depth == 0:
+            return False
+        for c in range(7):
+            if heights[c] >= 6:
+                continue
+            seq.append(c)
+            heights[c] += 1
+            if not cc.is_tactical_position(seq, len(seq) % 2) and dfs(depth - 1):
+                return True
+            seq.pop()
+            heights[c] -= 1
+        return False
+
+    assert dfs(12)
+    return found[0]
+
+
+def test_losing_only_by_handing_immediate_win_not_critical():
+    prefix, hand, safe = _under_threat_position()
+    scores = [None] * 7
+    for c in range(7):
+        if c in hand:
+            scores[c] = -2          # tek kaybettiren: tehdidin altina oynamak
+        elif c in safe:
+            scores[c] = 2
+    oracle = FakeOracle({tuple(prefix): scores}, FORCED)
+    res = cc.critical_moves(oracle, prefix + [safe[0]])
+    assert len(prefix) not in [p for p, _ in res]
+
+
+def test_losing_move_without_immediate_reply_still_critical():
+    prefix, hand, safe = _under_threat_position()
+    scores = [None] * 7
+    for c in range(7):
+        if c in hand:
+            scores[c] = -2
+        elif c in safe:
+            scores[c] = 2
+    scores[safe[1]] = -4            # derin kayip: aninda cevap yok, karar gercekten kritik
+    oracle = FakeOracle({tuple(prefix): scores}, FORCED)
+    assert cc.critical_moves(oracle, prefix + [safe[0]]) == [(len(prefix), True)]
+    assert cc.critical_moves(oracle, prefix + [safe[1]]) == [(len(prefix), False)]
+
+
 # ---- Hamle dogrulama ----
 
 @pytest.mark.parametrize('bad', [[0] * 8, [0, 1, 2, 3, 9], [0, 1, 2, 3, -1], [0, 1, 2, 3, '4'], [0, 1, 2, 3, 1.5]])
